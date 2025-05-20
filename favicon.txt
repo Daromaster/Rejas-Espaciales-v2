@@ -1,0 +1,14 @@
+Para crear el favicon:
+
+1. Crea un archivo favicon.ico en la raíz del proyecto
+2. El favicon debe ser un ícono de 16x16 o 32x32 píxeles
+3. Puedes usar cualquier editor de imágenes que soporte el formato .ico
+4. Sugerencia de diseño: un círculo verde simple que represente la pelota del juego
+
+Alternativamente, puedes usar un generador de favicons online:
+1. Ve a https://favicon.io/
+2. Crea un ícono simple
+3. Descarga el archivo favicon.ico
+4. Colócalo en la raíz del proyecto
+
+El error 404 desaparecerá una vez que el archivo favicon.ico esté presente en la raíz del proyecto. 

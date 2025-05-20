@@ -1,0 +1,57 @@
+
+# Ignorar archivos comunes de Windows
+desktop.ini
+Thumbs.db
+ehthumbs.db
+
+# Ignorar carpetas de sistema de Drive
+.DS_Store
+.Trashes
+.Spotlight-V100
+.fseventsd
+._*
+
+# Ignorar archivos md markdown
+*.md
+
+
+# Ignorar carpetas mias de backup
+Back*/
+
+# Ignorar carpetas ocultas comunes
+*.bak
+*.tmp
+*.swp
+
+# Ignorar carpetas de configuración de VS Code y Cursor
+.vscode/
+.cursor/
+
+# Ignorar archivos de logs
+*.log
+
+# Ignorar archivos generados por navegadores
+*.cache
+
+# Ignorar carpetas node_modules si usás npm o similar
+node_modules/
+
+# Ignorar dependencias web empaquetadas (si las usás)
+dist/
+build/
+
+# Ignorar carpetas temporales de compilación (opcional)
+temp/
+out/
+
+# Ignorar archivos de backups accidentales
+*~
+*.old
+
+# Ignorar carpetas de control de versiones externas
+.git/
+
+# Ignorar archivos relacionados a MacOS (si llegás a usarlo en alguna PC)
+.DS_Store
+.AppleDouble
+.LSOverride

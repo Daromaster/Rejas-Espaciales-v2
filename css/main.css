@@ -1,0 +1,80 @@
+/* Estilos base - Rejas Espaciales */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #0d0d0d;
+  color: #f2f2f2;
+}
+
+/* Zona superior: fija en 10% del alto */
+#zona-superior {
+  height: 10vh;
+  background-color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#zona-superior h1 {
+  font-size: 2rem;
+  color: #00ffff;
+}
+
+/* Zona central: canvas ocupa 80% del alto */
+#zona-juego {
+  height: 80vh;
+  background-color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* El canvas ocupa todo el espacio disponible de su contenedor */
+#canvas-juego {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  /* bordes y bordes redondeados eliminados por ahora para evitar influencia */
+}
+
+/* Zona inferior: fija en 10% del alto */
+#zona-inferior {
+  height: 10vh;
+  background-color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #ccc;
+}
+
+/* Ajustes para dispositivos móviles en orientación vertical (retrato) */
+@media (orientation: portrait) {
+  /* Zona superior: aumentar a 20% en modo retrato */
+  #zona-superior {
+    height: 20vh;
+    flex-direction: column;
+    padding: 5px 0;
+  }
+  
+  /* Zona central: reducir a 60% en modo retrato */
+  #zona-juego {
+    height: 60vh;
+  }
+  
+  /* Zona inferior: aumentar a 20% en modo retrato */
+  #zona-inferior {
+    height: 20vh;
+    padding: 10px;
+  }
+}
+
+/* --- Fin del archivo main.css completo - 2025-04-30 15:57:00 GMT-3 --- */
