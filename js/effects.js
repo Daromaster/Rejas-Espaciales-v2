@@ -1686,6 +1686,17 @@ function showRankingSubmitForm(panel, score) {
     const inputPadding = isMobile ? '15px' : '10px';
     const inputFontSize = isMobile ? '18px' : '16px';
 
+    // Intentar recuperar el nombre guardado anteriormente
+    let savedPlayerName = '';
+    try {
+        savedPlayerName = localStorage.getItem('rejasEspacialesPlayerName') || '';
+        if (savedPlayerName) {
+            console.log("Nombre de jugador recuperado de localStorage:", savedPlayerName);
+        }
+    } catch(storageError) {
+        console.warn("No se pudo recuperar el nombre desde localStorage:", storageError);
+    }
+
     // Cambiar el contenido del panel
     panel.innerHTML = `
         <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 24px;">Guardar Puntuación</h2>
@@ -1693,7 +1704,7 @@ function showRankingSubmitForm(panel, score) {
         <p style="font-size: 28px; margin: 10px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${score} puntos</p>
         
         <div style="margin: 20px 0;">
-            <input type="text" id="player-name-input" placeholder="Tu nombre" style="padding: ${inputPadding}; width: 80%; font-size: ${inputFontSize}; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" maxlength="20">
+            <input type="text" id="player-name-input" placeholder="Tu nombre" style="padding: ${inputPadding}; width: 80%; font-size: ${inputFontSize}; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" maxlength="20" value="${savedPlayerName}">
         </div>
         
         <div id="ranking-submit-message" style="min-height: 20px; margin: 10px 0; color: rgba(255, 255, 0, 0.8);"></div>
@@ -1710,9 +1721,17 @@ function showRankingSubmitForm(panel, score) {
     const messageDiv = document.getElementById('ranking-submit-message');
     
     if (saveButton && nameInput && messageDiv) {
-        // Auto-focus en el campo de nombre (excepto en iOS donde puede causar problemas)
-        if (!(/iPad|iPhone|iPod/.test(navigator.userAgent))) {
-            nameInput.focus();
+        // Si hay un nombre guardado, seleccionarlo para facilitar edición
+        if (savedPlayerName) {
+            setTimeout(() => {
+                nameInput.focus();
+                nameInput.select();
+            }, 100);
+        } else {
+            // Auto-focus en el campo de nombre (excepto en iOS donde puede causar problemas)
+            if (!(/iPad|iPhone|iPod/.test(navigator.userAgent))) {
+                nameInput.focus();
+            }
         }
         
         // Handler para guardar
@@ -1734,6 +1753,14 @@ function showRankingSubmitForm(panel, score) {
             try {
                 // Usar el cliente API para guardar la puntuación
                 if (window.apiClient && window.apiClient.ranking) {
+                    // Guardar el nombre del jugador en localStorage para futuras partidas
+                    try {
+                        localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                        console.log("Nombre del jugador guardado en localStorage:", playerName);
+                    } catch(storageError) {
+                        console.warn("No se pudo guardar el nombre en localStorage:", storageError);
+                    }
+                    
                     await window.apiClient.ranking.save(playerName, score);
                     messageDiv.textContent = "¡Puntuación guardada con éxito!";
                     messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
@@ -1789,22 +1816,75 @@ function showRankingSubmitForm(panel, score) {
             e.preventDefault(); // Prevenir comportamiento predeterminado
             console.log("Botón CANCELAR clickeado - volviendo al panel original");
             
-            // En lugar de crear un nuevo panel, restaurar el contenido original
+            // Simplemente restaurar el contenido original sin recrear el panel
             if (shootingSystem.originalEndPanel) {
+                // Restaurar el contenido original
                 panel.innerHTML = shootingSystem.originalEndPanel.content;
                 
-                // Reconfigurar los botones originales (llamando a la misma función)
-                showGameEndMessage();
+                // Configurar nuevamente los listeners en los botones restaurados
+                const restartButton = document.getElementById('restart-game-button');
+                if (restartButton) {
+                    // Configurar evento para reinicar juego
+                    const handleRestart = function(e) {
+                        e.preventDefault();
+                        console.log("Botón JUGAR DE NUEVO clickeado");
+                        setModalActive(false);
+                        window.completeGameReset(panel);
+                    };
+                    
+                    // Asegurar que no haya listeners duplicados
+                    restartButton.removeEventListener('click', handleRestart);
+                    restartButton.removeEventListener('touchend', handleRestart);
+                    
+                    // Agregar los listeners
+                    restartButton.addEventListener('click', handleRestart);
+                    restartButton.addEventListener('touchend', handleRestart);
+                    
+                    // Efectos táctiles si es móvil
+                    if (shootingSystem.isMobile) {
+                        restartButton.addEventListener('touchstart', function(e) {
+                            e.preventDefault();
+                            this.style.transform = 'scale(0.95)';
+                            this.style.opacity = '0.9';
+                        });
+                        
+                        restartButton.addEventListener('touchend', function(e) {
+                            this.style.transform = 'scale(1)';
+                            this.style.opacity = '1';
+                        });
+                    }
+                }
                 
-                // No recrear todo el panel, solo su contenido
-                document.getElementById('game-end-panel').remove();
-                
-                // Guardar la referencia al nuevo panel que acabamos de configurar
-                const newEndPanel = document.querySelector('#game-end-panel');
-                
-                // Mantener el panel activo pero actualizar sus controles
-                if (newEndPanel) {
-                    // Si encontramos referencias a botones, ya fueron configurados por showGameEndMessage
+                // Configurar el botón de enviar al ranking
+                const submitButton = document.getElementById('submit-score-button');
+                if (submitButton) {
+                    // Configurar handler para mostrar formulario
+                    const handleSubmit = function(e) {
+                        e.preventDefault();
+                        showRankingSubmitForm(panel, shootingSystem.originalEndPanel.score);
+                    };
+                    
+                    // Asegurar que no haya listeners duplicados
+                    submitButton.removeEventListener('click', handleSubmit);
+                    submitButton.removeEventListener('touchend', handleSubmit);
+                    
+                    // Agregar los listeners
+                    submitButton.addEventListener('click', handleSubmit);
+                    submitButton.addEventListener('touchend', handleSubmit);
+                    
+                    // Efectos táctiles si es móvil
+                    if (shootingSystem.isMobile) {
+                        submitButton.addEventListener('touchstart', function(e) {
+                            e.preventDefault();
+                            this.style.transform = 'scale(0.95)';
+                            this.style.opacity = '0.9';
+                        });
+                        
+                        submitButton.addEventListener('touchend', function(e) {
+                            this.style.transform = 'scale(1)';
+                            this.style.opacity = '1';
+                        });
+                    }
                 }
             } else {
                 // Si por alguna razón no tenemos el panel original, cerrar el actual
