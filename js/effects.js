@@ -1,5 +1,56 @@
 // Sistema de efectos y disparos
 
+// Agregar protección global contra recargas inesperadas
+window.addEventListener('DOMContentLoaded', function() {
+    // Prevenir que los formularios causen recargas de página
+    document.addEventListener('submit', function(e) {
+        console.log("Formulario detectado intentando enviar - Previniendo recarga");
+        e.preventDefault();
+        return false;
+    });
+    
+    // Detector de recargas de página
+    window.addEventListener('beforeunload', function(e) {
+        console.error('RECARGA DE PÁGINA DETECTADA');
+        console.trace('Stack trace en momento de recarga');
+        
+        // En entorno de desarrollo, intentar prevenir la recarga para investigar
+        if (window.IS_LOCAL_ENVIRONMENT) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+});
+
+// Función de seguridad para limpiar el juego
+window.safeCleanupGame = function() {
+    console.log("Ejecutando limpieza de seguridad del juego");
+    
+    // 1. Cancelar todas las peticiones pendientes
+    if (window.apiRequestControllers && typeof window.apiRequestControllers.cancelAll === 'function') {
+        window.apiRequestControllers.cancelAll();
+    }
+    
+    // 2. Limpiar todos los temporizadores que podrían estar causando problemas
+    // Esto es una técnica agresiva pero efectiva para encontrar temporizadores perdidos
+    let id = window.setTimeout(function() {}, 0);
+    while (id--) {
+        window.clearTimeout(id);
+        window.clearInterval(id);
+    }
+    
+    // 3. Cancelar todas las animaciones pendientes
+    if (window.gameLoopRequestId) {
+        window.cancelAnimationFrame(window.gameLoopRequestId);
+        window.gameLoopRequestId = null;
+    }
+    
+    // 4. Eliminar handlers globales que podrían causar problemas
+    try {
+        window.removeEventListener('beforeunload', window._tempBeforeUnloadHandler);
+    } catch (e) {}
+};
+
 // Configuración del sistema de disparos
 const shootingSystem = {
     isActive: false,            // ¿Hay un disparo activo?
@@ -1689,9 +1740,14 @@ function showRankingSubmitForm(panel, score) {
     // Intentar recuperar el nombre guardado anteriormente
     let savedPlayerName = '';
     try {
-        savedPlayerName = localStorage.getItem('rejasEspacialesPlayerName') || '';
-        if (savedPlayerName) {
-            console.log("Nombre de jugador recuperado de localStorage:", savedPlayerName);
+        // Verificar si el almacenamiento local está habilitado
+        if (!window.DISABLE_LOCAL_STORAGE) {
+            savedPlayerName = localStorage.getItem('rejasEspacialesPlayerName') || '';
+            if (savedPlayerName) {
+                console.log("Nombre de jugador recuperado de localStorage:", savedPlayerName);
+            }
+        } else {
+            console.log("LocalStorage deshabilitado para pruebas");
         }
     } catch(storageError) {
         console.warn("No se pudo recuperar el nombre desde localStorage:", storageError);
@@ -1867,8 +1923,13 @@ function showRankingSubmitForm(panel, score) {
                 if (window.apiClient && window.apiClient.ranking) {
                     // Guardar el nombre del jugador en localStorage para futuras partidas
                     try {
-                        localStorage.setItem('rejasEspacialesPlayerName', playerName);
-                        console.log("Nombre del jugador guardado en localStorage:", playerName);
+                        // Verificar si el almacenamiento local está habilitado
+                        if (!window.DISABLE_LOCAL_STORAGE) {
+                            localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                            console.log("Nombre del jugador guardado en localStorage:", playerName);
+                        } else {
+                            console.log("LocalStorage deshabilitado para pruebas - No se guardó el nombre");
+                        }
                     } catch(storageError) {
                         console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                     }
@@ -2104,6 +2165,9 @@ async function showRankingList(panel, playerScore, playerName) {
             
             // Establecer bandera para indicar que este cierre fue iniciado por el usuario
             window._userInitiatedClose = true;
+            
+            // Limpieza de seguridad
+            window.safeCleanupGame();
             
             // Desactivar el modo modal
             setModalActive(false);
@@ -2854,6 +2918,9 @@ window.effectsResetGame = function() {
 window.completeGameReset = function(panel = null) {
     console.log("Ejecutando reinicio completo del juego");
     
+    // Limpieza de seguridad primero
+    window.safeCleanupGame();
+    
     // 0. Desactivar cualquier modal activo
     if (shootingSystem.modalActive) {
         setModalActive(false);
@@ -2861,8 +2928,12 @@ window.completeGameReset = function(panel = null) {
     
     // 1. Cerrar cualquier panel que se haya pasado
     if (panel && panel.parentNode) {
-        panel.parentNode.removeChild(panel);
-        console.log("Panel cerrado durante reinicio");
+        // Importante: eliminar todos los listeners antes de quitar del DOM
+        // Esto previene que callbacks pendientes se ejecuten en elementos eliminados
+        const clone = panel.cloneNode(true);
+        panel.parentNode.replaceChild(clone, panel);
+        clone.parentNode.removeChild(clone);
+        console.log("Panel cerrado durante reinicio (con limpieza de eventos)");
     }
     
     // 2. Asegurarse que el juego no esté en estado "finalizado"
@@ -2882,19 +2953,20 @@ window.completeGameReset = function(panel = null) {
         window.resetGame();
     } else {
         console.error("Función resetGame no encontrada");
-        window.location.reload(); // Último recurso: recargar la página
+        // No recargar la página automáticamente, podría causar bucle
+        console.error("No se pudo reiniciar el juego correctamente");
     }
     
     // 6. Reactivar los botones explícitamente
     if (window.shootingSystem) {
         if (window.shootingSystem.shootButton) {
-            window.shootingSystem.shootButton.style.opacity = '1';
-            window.shootingSystem.shootButton.style.pointerEvents = 'auto';
+            shootingSystem.shootButton.style.opacity = '1';
+            shootingSystem.shootButton.style.pointerEvents = 'auto';
         }
         
         if (window.shootingSystem.resetButton) {
-            window.shootingSystem.resetButton.style.transform = 'scale(1)';
-            window.shootingSystem.resetButton.style.boxShadow = 'none';
+            shootingSystem.resetButton.style.transform = 'scale(1)';
+            shootingSystem.resetButton.style.boxShadow = 'none';
         }
     }
     
@@ -2947,6 +3019,9 @@ function setModalActive(active) {
 function closeActiveModal() {
     console.log("Cerrando panel modal activo (Escape)");
     
+    // Limpieza de seguridad
+    window.safeCleanupGame();
+    
     // Buscar panel activo para cerrarlo
     const endPanel = document.getElementById('game-end-panel');
     const infoPanel = document.getElementById('info-panel');
@@ -2958,9 +3033,14 @@ function closeActiveModal() {
         // Si estamos en el panel de información inicial, cerrarlo
         if (infoPanel.parentNode) {
             setModalActive(false);
-            document.body.removeChild(infoPanel);
+            
+            // Importante: eliminar todos los listeners antes de quitar del DOM
+            const clone = infoPanel.cloneNode(true);
+            infoPanel.parentNode.replaceChild(clone, infoPanel);
+            clone.parentNode.removeChild(clone);
+            
             shootingSystem.infoShown = true;
-            console.log("Panel de información cerrado con Escape");
+            console.log("Panel de información cerrado con Escape (con limpieza de eventos)");
         }
     } else {
         // Si no encontramos un panel específico, solo desactivar el modo modal

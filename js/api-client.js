@@ -7,7 +7,19 @@ window.GAME_VERSION = "2.0.0";
 window.DEBUG_RANKING_PANEL = true;
 
 // Bandera temporal para deshabilitar localStorage (prueba de solución)
-window.DISABLE_LOCAL_STORAGE = true;
+window.DISABLE_LOCAL_STORAGE = false;
+
+// MODO DE PRUEBA: Sin peticiones de red reales (para probar si el problema es la red)
+window.MOCK_API_REQUESTS = true;
+
+// Datos simulados para modo de prueba
+window.MOCK_DATA = {
+    ranking: [
+        {nombre: "Jugador Test 1", puntaje: 120, dispositivo: "desktop", ubicacion: "Ciudad Test", version: "2.0.0"},
+        {nombre: "Jugador Test 2", puntaje: 90, dispositivo: "mobile", ubicacion: "Ciudad Test", version: "2.0.0"},
+        {nombre: "Jugador Test 3", puntaje: 70, dispositivo: "desktop", ubicacion: "Ciudad Test", version: "2.0.0"}
+    ]
+};
 
 // Variable global para el control de cancelación de peticiones
 window.apiRequestControllers = {
@@ -61,6 +73,14 @@ const apiClient = {
     ranking: {
         // Obtener todos los puntajes ordenados
         getAll: async function() {
+            // Si estamos en modo de prueba, devolver datos simulados
+            if (window.MOCK_API_REQUESTS) {
+                console.log("MODO PRUEBA: Devolviendo ranking simulado");
+                // Simular una pequeña demora para que sea realista
+                await new Promise(resolve => setTimeout(resolve, 300));
+                return [...window.MOCK_DATA.ranking]; // Devolver copia para evitar modificaciones
+            }
+            
             // Crear un controller para esta petición
             const controller = new AbortController();
             window.apiRequestControllers.active.push(controller);
@@ -94,6 +114,29 @@ const apiClient = {
         
         // Guardar un nuevo puntaje
         save: async function(playerName, score, deviceType, location) {
+            // Si estamos en modo de prueba, simular guardar en el ranking
+            if (window.MOCK_API_REQUESTS) {
+                console.log("MODO PRUEBA: Simulando guardar en ranking");
+                // Simular una pequeña demora para que sea realista
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Añadir a los datos simulados
+                const newEntry = {
+                    nombre: playerName,
+                    puntaje: score,
+                    dispositivo: deviceType || "unknown",
+                    ubicacion: location || "desconocida",
+                    version: window.GAME_VERSION
+                };
+                
+                window.MOCK_DATA.ranking.push(newEntry);
+                
+                // Ordenar por puntuación
+                window.MOCK_DATA.ranking.sort((a, b) => b.puntaje - a.puntaje);
+                
+                return {success: true, message: "Simulación: Puntuación guardada"};
+            }
+            
             // Crear un controller para esta petición
             const controller = new AbortController();
             window.apiRequestControllers.active.push(controller);
@@ -143,6 +186,14 @@ const apiClient = {
         
         // Obtener ubicación basada en IP para entorno de desarrollo
         getLocationFromIP: async function() {
+            // Si estamos en modo de prueba, devolver ubicación simulada
+            if (window.MOCK_API_REQUESTS) {
+                console.log("MODO PRUEBA: Devolviendo ubicación simulada");
+                // Simular una pequeña demora para que sea realista
+                await new Promise(resolve => setTimeout(resolve, 200));
+                return "Ciudad Test";
+            }
+            
             // Crear un controller para esta petición
             const controller = new AbortController();
             window.apiRequestControllers.active.push(controller);
@@ -195,6 +246,14 @@ const apiClient = {
         
         // Obtener ubicación a partir de coordenadas
         getLocationFromCoords: async function(latitude, longitude) {
+            // Si estamos en modo de prueba, devolver ubicación simulada
+            if (window.MOCK_API_REQUESTS) {
+                console.log("MODO PRUEBA: Devolviendo ubicación simulada");
+                // Simular una pequeña demora para que sea realista
+                await new Promise(resolve => setTimeout(resolve, 300));
+                return "Ciudad Test";
+            }
+            
             // Crear un controller para esta petición
             const controller = new AbortController();
             window.apiRequestControllers.active.push(controller);
@@ -260,4 +319,5 @@ window.apiClient = apiClient;
 console.log(`API Client inicializado en entorno: ${apiClient.config.isLocalEnvironment() ? 'Local' : 'Producción'}`);
 console.log(`Versión del juego: ${window.GAME_VERSION}`);
 console.log(`URL del backend: ${apiClient.config.getBaseUrl()}`);
-console.log(`LocalStorage ${window.DISABLE_LOCAL_STORAGE ? 'deshabilitado' : 'habilitado'} para pruebas`); 
+console.log(`LocalStorage ${window.DISABLE_LOCAL_STORAGE ? 'deshabilitado' : 'habilitado'} para pruebas`);
+console.log(`Modo de API: ${window.MOCK_API_REQUESTS ? 'SIMULACIÓN (sin peticiones de red)' : 'REAL'}`); 
