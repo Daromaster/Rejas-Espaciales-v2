@@ -2076,7 +2076,7 @@ async function showRankingList(panel, playerScore, playerName) {
     // Configurar botón de jugar de nuevo
     if (playAgainButton) {
         // Handler para jugar de nuevo
-                const handlePlayAgain = function(e) {                        e.preventDefault(); // Prevenir comportamiento predeterminado            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");                        // Marcar que el panel se está cerrando            panelClosed = true;                        // Desactivar el modo modal
+        const handlePlayAgain = function(e) {            e.preventDefault(); // Prevenir comportamiento predeterminado            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");                        // Marcar que el panel se está cerrando            panelClosed = true;                        // Desactivar el modo modal
             setModalActive(false);
             
             // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
@@ -2195,7 +2195,7 @@ async function showRankingList(panel, playerScore, playerName) {
             }
             
             
-                } catch (error) {            console.error("Error al cargar el ranking:", error);                        // Si el panel fue cerrado durante la carga, abortar
+        } catch (error) {            console.error("Error al cargar el ranking:", error);                        // Si el panel fue cerrado durante la carga, abortar
             if (panelClosed) {
                 console.log("Panel cerrado durante el manejo de error, abortando");
                 return;
