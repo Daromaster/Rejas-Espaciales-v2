@@ -1984,6 +1984,14 @@ function showRankingSubmitForm(panel, score) {
 
 // Mostrar lista de ranking
 async function showRankingList(panel, playerScore, playerName) {
+    // Debugging para el cierre automático
+    if (window.DEBUG_RANKING_PANEL) {
+        console.log("===== RANKING PANEL OPENING =====");
+        console.log("playerScore:", playerScore);
+        console.log("playerName:", playerName);
+        console.trace("Panel stack trace");
+    }
+    
     // Determinar tamaños y espaciado basados en si es dispositivo móvil
     const isMobile = shootingSystem.isMobile;
     const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
@@ -1991,6 +1999,12 @@ async function showRankingList(panel, playerScore, playerName) {
     const tableHeaderSize = isMobile ? '16px' : '14px';
     const tableCellPadding = isMobile ? '10px' : '8px';
     const maxHeight = isMobile ? '50vh' : '300px';
+
+    // Asegurarse de que el panel existe antes de manipularlo
+    if (!panel || !panel.parentNode) {
+        console.error("ERROR: Panel inválido o ya fue removido");
+        return;
+    }
 
     panel.innerHTML = `
         <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 15px 0; font-size: 24px;">Ranking de Puntuaciones</h2>
@@ -2007,6 +2021,9 @@ async function showRankingList(panel, playerScore, playerName) {
     if (playAgainButton) {
         // Handler para jugar de nuevo
         const handlePlayAgain = function(e) {
+            if (window.DEBUG_RANKING_PANEL) {
+                console.log("===== PLAY AGAIN CLICKED =====");
+            }
             e.preventDefault(); // Prevenir comportamiento predeterminado
             console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
             
@@ -2046,7 +2063,25 @@ async function showRankingList(panel, playerScore, playerName) {
             let rankingData = [];
             
             if (window.apiClient && window.apiClient.ranking) {
+                if (window.DEBUG_RANKING_PANEL) {
+                    console.log("Cargando datos de ranking desde API...");
+                }
                 rankingData = await window.apiClient.ranking.getAll();
+                if (window.DEBUG_RANKING_PANEL) {
+                    console.log("Datos recibidos:", rankingData ? rankingData.length : 0, "registros");
+                }
+            }
+            
+            // Verificar nuevamente que el panel sigue existiendo
+            if (!panel || !panel.parentNode) {
+                console.error("ERROR: Panel ya no existe durante la carga de datos");
+                return;
+            }
+            
+            // Verificar que los elementos siguen existiendo
+            if (!rankingListDiv || !loadingDiv) {
+                console.error("ERROR: Elementos del ranking ya no existen durante la carga de datos");
+                return;
             }
             
             // Ocultar mensaje de carga
@@ -2097,12 +2132,27 @@ async function showRankingList(panel, playerScore, playerName) {
             } else {
                 rankingListDiv.innerHTML = '<p style="text-align: center;">No hay puntuaciones registradas todavía.</p>';
             }
+            
+            if (window.DEBUG_RANKING_PANEL) {
+                console.log("===== RANKING PANEL LOADED SUCCESSFULLY =====");
+            }
         } catch (error) {
             console.error("Error al cargar el ranking:", error);
-            loadingDiv.style.display = 'none';
-            rankingListDiv.style.display = 'block';
-            rankingListDiv.innerHTML = '<p style="color: rgba(255, 50, 50, 0.9); text-align: center;">Error al cargar el ranking. Por favor intenta más tarde.</p>';
+            
+            // Verificar si los elementos todavía existen
+            if (loadingDiv && rankingListDiv) {
+                loadingDiv.style.display = 'none';
+                rankingListDiv.style.display = 'block';
+                rankingListDiv.innerHTML = '<p style="color: rgba(255, 50, 50, 0.9); text-align: center;">Error al cargar el ranking. Por favor intenta más tarde.</p>';
+            }
         }
+    }
+    
+    // Desactivar cualquier temporizador previo que pudiera estar causando un cierre automático
+    if (window._rankingAutoCloseTimer) {
+        console.log("Eliminando temporizador previo de cierre automático");
+        clearTimeout(window._rankingAutoCloseTimer);
+        window._rankingAutoCloseTimer = null;
     }
 }
 

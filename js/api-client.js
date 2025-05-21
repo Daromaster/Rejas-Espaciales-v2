@@ -3,6 +3,9 @@
 // Versión actual del juego (constante global)
 window.GAME_VERSION = "2.0.0";
 
+// Debug flag para ayudar con el problema del cierre del panel de ranking
+window.DEBUG_RANKING_PANEL = true;
+
 // Objeto principal del cliente API
 const apiClient = {
     // Configuración del cliente
@@ -75,8 +78,19 @@ const apiClient = {
         getLocationFromIP: async function() {
             try {
                 console.log("Usando método alternativo de geolocalización (IP)");
-                // Usamos ip-api.com que no requiere API key para uso básico
-                const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName');
+                
+                // Establecer un timeout para la solicitud
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
+                
+                // Usamos ip-api.com con HTTPS para evitar contenido mixto
+                // Nota: El endpoint HTTPS requiere una key en ip-api.com PRO, por lo que usamos una alternativa segura: ipinfo.io
+                const response = await fetch('https://ipinfo.io/json', {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                }).finally(() => clearTimeout(timeoutId));
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener ubicación por IP');
@@ -84,7 +98,7 @@ const apiClient = {
                 
                 const data = await response.json();
                 
-                if (data.status === "success" && data.city) {
+                if (data && data.city) {
                     console.log("Ubicación obtenida por IP:", data.city);
                     return data.city;
                 } else {
@@ -92,6 +106,7 @@ const apiClient = {
                 }
             } catch (error) {
                 console.error('Error al obtener ubicación por IP:', error);
+                // En caso de error, devolvemos "desconocida" para no bloquear el flujo
                 return "desconocida";
             }
         },
@@ -99,8 +114,21 @@ const apiClient = {
         // Obtener ubicación a partir de coordenadas
         getLocationFromCoords: async function(latitude, longitude) {
             try {
+                // Establecer un timeout para la solicitud
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
+                
                 // Utilizamos el servicio de geocodificación inversa de OpenStreetMap (Nominatim)
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                // Añadiendo User-Agent apropiado para cumplir con las políticas de uso de Nominatim
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+                    {
+                        signal: controller.signal,
+                        headers: {
+                            'User-Agent': 'RejasEspacialesGame/2.0.0'
+                        }
+                    }
+                ).finally(() => clearTimeout(timeoutId));
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener ubicación');
@@ -121,6 +149,7 @@ const apiClient = {
                 
             } catch (error) {
                 console.error('Error al obtener ubicación:', error);
+                // En caso de error, devolvemos "desconocida" para no bloquear el flujo
                 return "desconocida";
             }
         }

@@ -288,4 +288,58 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 // Exportar funciones necesarias
-window.initGame = initGame; 
+window.initGame = initGame;
+
+// Añadir detector para reinicio inesperado
+window.addEventListener('DOMContentLoaded', function() {
+    // Observar cambios en los modales
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+                // Comprobar si se ha eliminado un panel de ranking
+                for (let i = 0; i < mutation.removedNodes.length; i++) {
+                    const node = mutation.removedNodes[i];
+                    if (node.id === 'game-end-panel' && window.DEBUG_RANKING_PANEL) {
+                        console.log("===== RANKING PANEL REMOVED =====");
+                        console.trace("Panel removal stack trace");
+                        
+                        // Si hay un cierre no iniciado por el usuario, registrarlo
+                        if (!window._userInitiatedClose) {
+                            console.error("¡ALERTA! Panel de ranking cerrado sin interacción del usuario");
+                        }
+                    }
+                }
+            }
+        });
+    });
+    
+    // Observar el body para detectar cuando se eliminen nodos
+    observer.observe(document.body, { childList: true });
+    
+    // Parche para resetGame - asegurar que no afecte a paneles activos
+    const originalResetGame = window.resetGame;
+    if (originalResetGame) {
+        window.resetGame = function() {
+            // Verificar si hay un panel de ranking activo
+            const rankingPanel = document.getElementById('game-end-panel');
+            
+            if (rankingPanel && window.DEBUG_RANKING_PANEL) {
+                console.log("resetGame llamado mientras el panel de ranking está activo");
+                
+                // Verificar si esta función fue llamada por completeGameReset
+                const stack = new Error().stack || '';
+                const calledFromComplete = stack.includes('completeGameReset');
+                
+                if (!calledFromComplete) {
+                    console.warn("Evitando resetGame automático mientras se muestra el ranking");
+                    return; // No permitir el reseteo automático
+                } else {
+                    window._userInitiatedClose = true;
+                }
+            }
+            
+            // Llamar a la implementación original
+            return originalResetGame.apply(this, arguments);
+        };
+    }
+}); 
