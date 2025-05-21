@@ -1760,9 +1760,25 @@ function showRankingSubmitForm(panel, score) {
             // Variable para almacenar la ubicación
             let ubicacion = "desconocida";
             
-            // Intentar obtener la ubicación con geolocalización
+            // Verificar si estamos en entorno local (Live Server)
+            const isLocalEnvironment = window.location.hostname === 'localhost' || 
+                                      window.location.hostname === '127.0.0.1';
+            
+            // Intentar obtener la ubicación según el entorno
             try {
-                if (navigator.geolocation) {
+                if (isLocalEnvironment) {
+                    // En entorno local, usar método de geolocalización por IP
+                    console.log("Entorno local detectado, usando geolocalización por IP");
+                    messageDiv.textContent = "Obteniendo localidad (modo desarrollo)...";
+                    
+                    // Usar la API basada en IP
+                    if (window.apiClient && window.apiClient.ranking) {
+                        ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                    }
+                } else if (navigator.geolocation) {
+                    // En producción, usar la API de geolocalización del navegador
+                    console.log("Entorno de producción, usando geolocalización del navegador");
+                    
                     // Envolver la geolocalización en una promesa para manejarla mejor
                     const getPosition = () => {
                         return new Promise((resolve, reject) => {
@@ -1790,7 +1806,7 @@ function showRankingSubmitForm(panel, score) {
                     }
                 }
             } catch (error) {
-                console.warn("Geolocalización no soportada:", error);
+                console.warn("Error al obtener ubicación:", error);
             }
             
             messageDiv.textContent = "Guardando puntuación...";

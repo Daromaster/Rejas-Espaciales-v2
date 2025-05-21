@@ -71,6 +71,31 @@ const apiClient = {
             }
         },
         
+        // Obtener ubicación basada en IP para entorno de desarrollo
+        getLocationFromIP: async function() {
+            try {
+                console.log("Usando método alternativo de geolocalización (IP)");
+                // Usamos ip-api.com que no requiere API key para uso básico
+                const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName');
+                
+                if (!response.ok) {
+                    throw new Error('Error al obtener ubicación por IP');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === "success" && data.city) {
+                    console.log("Ubicación obtenida por IP:", data.city);
+                    return data.city;
+                } else {
+                    return "desconocida";
+                }
+            } catch (error) {
+                console.error('Error al obtener ubicación por IP:', error);
+                return "desconocida";
+            }
+        },
+        
         // Obtener ubicación a partir de coordenadas
         getLocationFromCoords: async function(latitude, longitude) {
             try {
