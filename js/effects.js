@@ -878,16 +878,11 @@ function handleKeyDown(event) {
         // Si estamos en un input, permitir la entrada de texto normal
         const isInputActive = document.activeElement && document.activeElement.tagName === 'INPUT';
         
-        // Solo permitir Escape para cerrar paneles y teclas de navegación para inputs
-        if (!isInputActive || (event.code !== 'Escape' && 
-            event.code !== 'Tab' && 
-            event.code !== 'ArrowLeft' && 
-            event.code !== 'ArrowRight' && 
-            event.code !== 'ArrowUp' && 
-            event.code !== 'ArrowDown' && 
-            event.code !== 'Enter')) {
-            
-            // Si se presiona Escape, cerrar el panel activo
+        if (isInputActive) {
+            // Si estamos en un input, permitir todas las teclas para poder escribir
+            return;
+        } else {
+            // Si NO estamos en un input, solo permitir Escape
             if (event.code === 'Escape') {
                 closeActiveModal();
             }
@@ -1657,10 +1652,8 @@ function showRankingSubmitForm(panel, score) {
                     messageDiv.textContent = "¡Puntuación guardada con éxito!";
                     messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
                     
-                    // Mostrar el ranking después de guardar
-                    setTimeout(() => {
-                        showRankingList(panel, score, playerName);
-                    }, 1500);
+                    // Mostrar el ranking inmediatamente sin temporizador
+                    showRankingList(panel, score, playerName);
                 } else {
                     throw new Error("API Client no disponible");
                 }
