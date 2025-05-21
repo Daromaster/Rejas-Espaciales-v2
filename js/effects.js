@@ -172,6 +172,7 @@ window.setAudioVolume = function(volume) {
     }
 };
 
+// Función para inicializar efectos
 function initEffects() {
     // Inicialización de efectos
     console.log("Sistema de efectos inicializado");
@@ -250,8 +251,8 @@ function initEffects() {
         shootingSystem.gameTimer = null;
     }
     
-    // Mostrar panel de información inicial si no se ha mostrado antes
-    if (!shootingSystem.infoShown) {
+    // Mostrar panel de información inicial si no se ha mostrado antes y no es un reinicio desde el ranking
+    if (!shootingSystem.infoShown && !window.isGameRestarting) {
         showInfoPanel();
     }
     
@@ -870,6 +871,14 @@ function handleResetButtonPress(event) {
 }
 
 function handleKeyDown(event) {
+    // Verificar si estamos en el panel de ranking (si hay un input activo)
+    const isInputActive = document.activeElement && document.activeElement.tagName === 'INPUT';
+    
+    // Si estamos en un campo de entrada, permitir la entrada de texto normal
+    if (isInputActive) {
+        return; // No procesar atajos de teclado cuando se está escribiendo
+    }
+    
     // Detectar si se presionó la tecla espaciadora
     if (event.code === 'Space' || event.key === ' ') {
         tryToShoot();
@@ -996,12 +1005,18 @@ function checkAndAddPoints() {
         // Solo penalizar si el jugador tiene suficientes puntos (más de 20)
         const puntosActuales = window.gameState.score;
         if (puntosActuales > 20) {
-            // Calcular penalización: 5 puntos si tiene más de 20
-            const penalizacion = 5;
-        
+            // Determinar la penalización según el tiempo transcurrido
+            let penalizacion = 5; // Penalización inicial: 5 puntos
+            
+            // Verificar si hemos pasado los primeros 30 segundos
+            const tiempoTranscurrido = Date.now() - shootingSystem.gameStartTime;
+            if (tiempoTranscurrido > 30000) { // 30 segundos en milisegundos
+                penalizacion = 10; // Aumentar a 10 puntos en la segunda mitad
+            }
+            
             // Restar puntos por disparo fallido
             window.gameState.score -= penalizacion;
-            console.log(`Penalización: -${penalizacion} puntos. Total: ${window.gameState.score}`);
+            console.log(`Penalización: -${penalizacion} puntos (${tiempoTranscurrido > 30000 ? 'segunda' : 'primera'} mitad). Total: ${window.gameState.score}`);
             
             // Mostrar efecto visual de puntos perdidos
             showPointsEffect(ballPosition, -penalizacion, true);
@@ -1450,7 +1465,17 @@ function endGame() {
     
     // Detener el juego
     if (window.gameState) {
+        console.log("Deteniendo el bucle del juego (gameState.isRunning = false)");
         window.gameState.isRunning = false;
+        
+        // Asegurarnos que el bucle se detenga cancelando cualquier animación pendiente
+        if (window.gameLoopRequestId) {
+            console.log("Cancelando animación pendiente:", window.gameLoopRequestId);
+            window.cancelAnimationFrame(window.gameLoopRequestId);
+            window.gameLoopRequestId = null;
+        }
+    } else {
+        console.error("No se pudo acceder a gameState");
     }
     
     // Desactivar visualmente los botones
@@ -1473,92 +1498,271 @@ function endGame() {
     showGameEndMessage();
 }
 
-// Mostrar mensaje de fin de juego
+// Mostrar panel de fin de juego con puntuación y opciones
 function showGameEndMessage() {
-    // Crear un panel de mensaje
-    const messagePanel = document.createElement('div');
-    messagePanel.style.position = 'fixed';
-    messagePanel.style.top = '50%';
-    messagePanel.style.left = '50%';
-    messagePanel.style.transform = 'translate(-50%, -50%)';
-    messagePanel.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    messagePanel.style.color = 'white';
-    messagePanel.style.padding = '20px';
-    messagePanel.style.borderRadius = '10px';
-    messagePanel.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.5)';
-    messagePanel.style.textAlign = 'center';
-    messagePanel.style.zIndex = '2000';
-    messagePanel.style.minWidth = '300px';
+    console.log("Mostrando panel de fin de juego");
     
-    // Obtener la puntuación final
+    // Crear panel de resultados
+    const endPanel = document.createElement('div');
+    endPanel.id = 'game-end-panel';
+    
+    // Estilos similares al panel de información inicial
+    endPanel.style.position = 'fixed';
+    endPanel.style.top = '50%';
+    endPanel.style.left = '50%';
+    endPanel.style.transform = 'translate(-50%, -50%)';
+    endPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    endPanel.style.color = 'white';
+    endPanel.style.padding = '25px';
+    endPanel.style.borderRadius = '10px';
+    endPanel.style.boxShadow = '0 0 25px rgba(255, 50, 50, 0.7)';
+    endPanel.style.textAlign = 'center';
+    endPanel.style.zIndex = '3000';
+    endPanel.style.minWidth = '300px';
+    endPanel.style.maxWidth = '600px';
+    
+    // Obtener puntuación final
     const finalScore = window.gameState ? window.gameState.score : 0;
     
-    // Contenido del mensaje
-    messagePanel.innerHTML = `
-        <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 15px 0;">¡Tiempo Cumplido!</h2>
-        <p style="font-size: 18px; margin: 10px 0;">Has alcanzado <span style="color: rgba(0, 255, 255, 1); font-weight: bold; font-size: 22px;">${finalScore}</span> puntos en 1 minuto.</p>
-        <button id="restart-button" style="background-color: rgba(95, 158, 160, 0.8); color: white; border: none; padding: 10px 20px; margin-top: 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">Reiniciar Juego</button>
+    // Contenido del panel
+    endPanel.innerHTML = `
+        <h2 style="color: rgba(255, 50, 50, 1); margin: 0 0 20px 0; font-size: 28px;">¡Tiempo Finalizado!</h2>
+        <p style="font-size: 22px; margin: 15px 0;">Tu puntuación final es:</p>
+        <p style="font-size: 42px; margin: 20px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${finalScore} puntos</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
+            <button id="submit-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">GUARDAR EN RANKING</button>
+            <button id="restart-game-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">JUGAR DE NUEVO</button>
+        </div>
     `;
     
     // Añadir al DOM
-    document.body.appendChild(messagePanel);
+    document.body.appendChild(endPanel);
     
-    // Añadir evento al botón de reinicio
-    const restartButton = document.getElementById('restart-button');
+    // Configurar botón de reinicio
+    const restartButton = document.getElementById('restart-game-button');
     if (restartButton) {
         restartButton.addEventListener('click', function() {
-            // Eliminar el panel de mensaje
-            document.body.removeChild(messagePanel);
+            console.log("Botón JUGAR DE NUEVO clickeado");
             
-            // Reiniciar el tiempo primero
-            resetGameTime();
+            // Verificar si la función resetGame está disponible
+            console.log("¿resetGame está disponible?", typeof window.resetGame === 'function');
             
-            // Reiniciar el juego
-            if (typeof window.resetGame === 'function') {
-                window.resetGame();
+            // Cerrar el panel
+            if (endPanel.parentNode) {
+                document.body.removeChild(endPanel);
+                console.log("Panel de fin de juego cerrado");
             }
+            
+            // Usar la función auxiliar para reiniciar el juego
+            if (typeof window.effectsResetGame === 'function') {
+                console.log("Usando función auxiliar effectsResetGame");
+                window.effectsResetGame();
+            } else if (typeof window.resetGame === 'function') {
+                console.log("Llamando a window.resetGame()");
+                window.resetGame();
+            } else {
+                console.error("Ninguna función de reinicio disponible");
+                alert("No se pudo reiniciar el juego. Por favor, recarga la página.");
+                window.location.reload();
+            }
+        });
+    }
+    
+    // Configurar botón de enviar al ranking
+    const submitButton = document.getElementById('submit-score-button');
+    if (submitButton) {
+        submitButton.addEventListener('click', function() {
+            // Cambiar el panel para mostrar el formulario de envío
+            showRankingSubmitForm(endPanel, finalScore);
         });
     }
 }
 
-// Reiniciar el tiempo del juego
-function resetGameTime() {
-    console.log("Reiniciando sistema de tiempo...");
+// Mostrar formulario para enviar puntuación al ranking
+function showRankingSubmitForm(panel, score) {
+    // Cambiar el contenido del panel
+    panel.innerHTML = `
+        <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 24px;">Guardar Puntuación</h2>
+        <p style="font-size: 16px; margin: 15px 0;">Ingresa tu nombre para guardar tu puntuación en el ranking:</p>
+        <p style="font-size: 28px; margin: 10px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${score} puntos</p>
+        
+        <div style="margin: 20px 0;">
+            <input type="text" id="player-name-input" placeholder="Tu nombre" style="padding: 10px; width: 80%; font-size: 16px; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" maxlength="20">
+        </div>
+        
+        <div id="ranking-submit-message" style="min-height: 20px; margin: 10px 0; color: rgba(255, 255, 0, 0.8);"></div>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+            <button id="save-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">GUARDAR</button>
+            <button id="cancel-score-button" style="background-color: rgba(150, 150, 150, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">CANCELAR</button>
+        </div>
+    `;
     
-    // Detener el temporizador si existe
-    if (shootingSystem.gameTimer) {
-        clearInterval(shootingSystem.gameTimer);
-        shootingSystem.gameTimer = null;
+    // Configurar botón de guardar
+    const saveButton = document.getElementById('save-score-button');
+    const nameInput = document.getElementById('player-name-input');
+    const messageDiv = document.getElementById('ranking-submit-message');
+    
+    if (saveButton && nameInput && messageDiv) {
+        // Auto-focus en el campo de nombre
+        nameInput.focus();
+        
+        saveButton.addEventListener('click', async function() {
+            const playerName = nameInput.value.trim();
+            
+            if (!playerName) {
+                messageDiv.textContent = "Por favor ingresa tu nombre";
+                messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
+                return;
+            }
+            
+            // Deshabilitar botón durante el envío
+            saveButton.disabled = true;
+            saveButton.textContent = "GUARDANDO...";
+            saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.4)";
+            
+            try {
+                // Usar el cliente API para guardar la puntuación
+                if (window.apiClient && window.apiClient.ranking) {
+                    await window.apiClient.ranking.save(playerName, score);
+                    messageDiv.textContent = "¡Puntuación guardada con éxito!";
+                    messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
+                    
+                    // Mostrar el ranking después de guardar
+                    setTimeout(() => {
+                        showRankingList(panel, score, playerName);
+                    }, 1500);
+                } else {
+                    throw new Error("API Client no disponible");
+                }
+            } catch (error) {
+                console.error("Error al guardar puntuación:", error);
+                messageDiv.textContent = "Error al guardar. Intenta de nuevo.";
+                messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
+                
+                // Reactivar botón
+                saveButton.disabled = false;
+                saveButton.textContent = "GUARDAR";
+                saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
+            }
+        });
     }
     
-    // Reiniciar variables de tiempo
-    shootingSystem.gameStarted = false;
-    shootingSystem.gameEnded = false;
-    shootingSystem.gameStartTime = 0;
-    
-    // Actualizar el display a 1 minuto inicial
-    if (shootingSystem.timeDisplay) {
-        shootingSystem.timeDisplay.textContent = 'Tiempo: 01:00.0';
-        shootingSystem.timeDisplay.style.color = 'rgba(0, 255, 255, 1)'; // Restaurar color original
-        shootingSystem.timeDisplay.style.opacity = '1'; // Restaurar opacidad
+    // Configurar botón de cancelar
+    const cancelButton = document.getElementById('cancel-score-button');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function() {
+            // Volver al panel anterior
+            showGameEndMessage();
+        });
     }
-    
-    // Restaurar los botones a su estado original
-    if (shootingSystem.shootButton) {
-        shootingSystem.shootButton.style.opacity = '1';
-        shootingSystem.shootButton.style.pointerEvents = 'auto';
-    }
-    
-    if (shootingSystem.resetButton) {
-        shootingSystem.resetButton.style.transform = 'scale(1)';
-        shootingSystem.resetButton.style.boxShadow = 'none';
-    }
-    
-    // Limpiar todas las partículas activas
-    clearAllParticles();
-    
-    console.log("Sistema de tiempo reiniciado correctamente");
 }
+
+// Mostrar lista de ranking
+async function showRankingList(panel, playerScore, playerName) {
+    panel.innerHTML = `
+        <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 15px 0; font-size: 24px;">Ranking de Puntuaciones</h2>
+        <div id="ranking-loading" style="margin: 20px 0;">Cargando ranking...</div>
+        <div id="ranking-list" style="max-height: 300px; overflow-y: auto; margin: 10px 0; display: none;"></div>
+        <button id="play-again-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 12px 20px; margin-top: 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">JUGAR DE NUEVO</button>
+    `;
+    
+    const loadingDiv = document.getElementById('ranking-loading');
+    const rankingListDiv = document.getElementById('ranking-list');
+    const playAgainButton = document.getElementById('play-again-button');
+    
+    // Configurar botón de jugar de nuevo
+    if (playAgainButton) {
+        playAgainButton.addEventListener('click', function() {
+            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
+            
+            // Verificar si la función resetGame está disponible
+            console.log("¿resetGame está disponible?", typeof window.resetGame === 'function');
+            
+            // Indicar que estamos reiniciando desde el ranking
+            window.isGameRestarting = true;
+            console.log("Bandera isGameRestarting establecida:", window.isGameRestarting);
+            
+            // Cerrar el panel
+            if (panel.parentNode) {
+                document.body.removeChild(panel);
+                console.log("Panel de ranking cerrado");
+            }
+            
+            // Usar la función auxiliar para reiniciar el juego
+            if (typeof window.effectsResetGame === 'function') {
+                console.log("Usando función auxiliar effectsResetGame desde ranking");
+                window.effectsResetGame();
+            } else if (typeof window.resetGame === 'function') {
+                console.log("Llamando a window.resetGame() desde ranking");
+                window.resetGame();
+            } else {
+                console.error("Ninguna función de reinicio disponible");
+                alert("No se pudo reiniciar el juego. Por favor, recarga la página.");
+                window.location.reload();
+            }
+        });
+    }
+    
+    // Cargar el ranking
+    if (rankingListDiv && loadingDiv) {
+        try {
+            let rankingData = [];
+            
+            if (window.apiClient && window.apiClient.ranking) {
+                rankingData = await window.apiClient.ranking.getAll();
+            }
+            
+            // Ocultar mensaje de carga
+            loadingDiv.style.display = 'none';
+            rankingListDiv.style.display = 'block';
+            
+            // Formatear y mostrar el ranking
+            if (rankingData && rankingData.length > 0) {
+                // Construir tabla de ranking
+                let tableHTML = `
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <tr style="border-bottom: 1px solid rgba(0, 255, 255, 0.5);">
+                            <th style="padding: 8px; text-align: center;">#</th>
+                            <th style="padding: 8px;">Jugador</th>
+                            <th style="padding: 8px; text-align: right;">Puntos</th>
+                        </tr>
+                `;
+                
+                // Añadir filas
+                rankingData.forEach((entry, index) => {
+                    // Destacar la entrada del jugador actual
+                    const isCurrentPlayer = entry.nombre === playerName && entry.puntaje === playerScore;
+                    const rowStyle = isCurrentPlayer ? 
+                        'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;' : 
+                        ((index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '');
+                    
+                    tableHTML += `
+                        <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
+                            <td style="padding: 8px; text-align: center;">${index + 1}</td>
+                            <td style="padding: 8px;">${entry.nombre}</td>
+                            <td style="padding: 8px; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</table>';
+                rankingListDiv.innerHTML = tableHTML;
+            } else {
+                rankingListDiv.innerHTML = '<p style="text-align: center;">No hay puntuaciones registradas todavía.</p>';
+            }
+        } catch (error) {
+            console.error("Error al cargar el ranking:", error);
+            loadingDiv.style.display = 'none';
+            rankingListDiv.style.display = 'block';
+            rankingListDiv.innerHTML = '<p style="color: rgba(255, 50, 50, 0.9); text-align: center;">Error al cargar el ranking. Por favor intenta más tarde.</p>';
+        }
+    }
+}
+
+// Exportar la función endGame al ámbito global
+window.endGame = endGame;
 
 // Eliminar todas las partículas activas
 function clearAllParticles() {
@@ -2069,3 +2273,64 @@ window.toggleAudioMute = function() {
     shootingSystem.audio.muted = !shootingSystem.audio.muted;
     return shootingSystem.audio.muted;
 }; 
+
+// Reiniciar el tiempo del juego
+function resetGameTime() {
+    console.log("Reiniciando sistema de tiempo...");
+    
+    // Detener el temporizador si existe
+    if (shootingSystem.gameTimer) {
+        clearInterval(shootingSystem.gameTimer);
+        shootingSystem.gameTimer = null;
+    }
+    
+    // Reiniciar variables de tiempo
+    shootingSystem.gameStarted = false;
+    shootingSystem.gameEnded = false;
+    shootingSystem.gameStartTime = 0;
+    
+    // Actualizar el display a 1 minuto inicial
+    if (shootingSystem.timeDisplay) {
+        shootingSystem.timeDisplay.textContent = 'Tiempo: 01:00.0';
+        shootingSystem.timeDisplay.style.color = 'rgba(0, 255, 255, 1)'; // Restaurar color original
+        shootingSystem.timeDisplay.style.opacity = '1'; // Restaurar opacidad
+    }
+    
+    // Restaurar los botones a su estado original
+    if (shootingSystem.shootButton) {
+        shootingSystem.shootButton.style.opacity = '1';
+        shootingSystem.shootButton.style.pointerEvents = 'auto';
+    }
+    
+    if (shootingSystem.resetButton) {
+        shootingSystem.resetButton.style.transform = 'scale(1)';
+        shootingSystem.resetButton.style.boxShadow = 'none';
+    }
+    
+    // Limpiar todas las partículas activas
+    clearAllParticles();
+    
+    console.log("Sistema de tiempo reiniciado correctamente");
+}
+
+// Función auxiliar para reiniciar el juego (como alternativa a window.resetGame)
+window.effectsResetGame = function() {
+    console.log("Ejecutando effectsResetGame como alternativa");
+    
+    // Reiniciar el tiempo primero
+    if (typeof window.resetGameTime === 'function') {
+        window.resetGameTime();
+    }
+    
+    // Intentar obtener la función resetGame del módulo game.js
+    if (typeof window.resetGame === 'function') {
+        console.log("Llamando a window.resetGame desde effectsResetGame");
+        window.resetGame();
+    } else {
+        console.log("Intentando reiniciar el juego manualmente");
+        
+        // Recargar la página como último recurso
+        console.log("Recargando la página como último recurso");
+        window.location.reload();
+    }
+};

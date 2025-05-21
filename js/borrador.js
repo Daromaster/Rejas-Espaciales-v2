@@ -17,6 +17,11 @@ let borradorElements = {
 function initBorrador() {
     console.log("Sistema de borrador inicializado");
     // Inicialmente verificar si estamos en entorno local
+    const isLocalEnv = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+    window.IS_LOCAL_ENVIRONMENT = isLocalEnv; // Asegurar que esté correctamente establecido
+    
+    console.log("IS_LOCAL_ENVIRONMENT =", window.IS_LOCAL_ENVIRONMENT);
+    
     borradorElements.targetPoint.visible = window.IS_LOCAL_ENVIRONMENT;
     borradorElements.stateIndicators.visible = window.IS_LOCAL_ENVIRONMENT;
 }

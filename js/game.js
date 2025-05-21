@@ -45,8 +45,16 @@ function initGame() {
     gameState.lastFrameTime = performance.now();
     gameState.frameCount = 0;
     
+    // Si ya había un loop ejecutándose, cancelarlo
+    if (window.gameLoopRequestId) {
+        console.log("Cancelando loop existente antes de iniciar uno nuevo:", window.gameLoopRequestId);
+        window.cancelAnimationFrame(window.gameLoopRequestId);
+        window.gameLoopRequestId = null;
+    }
+    
     // Iniciar bucle del juego unificado
-    gameLoop();
+    window.gameLoopRequestId = requestAnimationFrame(gameLoop);
+    console.log("Nuevo loop de juego iniciado con ID:", window.gameLoopRequestId);
 }
 
 // Función para reiniciar el juego
@@ -55,6 +63,13 @@ function resetGame() {
     
     // Detener el bucle del juego actual
     gameState.isRunning = false;
+    
+    // Cancelar cualquier animación pendiente
+    if (window.gameLoopRequestId) {
+        console.log("Cancelando animación previa en resetGame:", window.gameLoopRequestId);
+        window.cancelAnimationFrame(window.gameLoopRequestId);
+        window.gameLoopRequestId = null;
+    }
     
     // Limpiar todos los disparos activos
     if (window.shootingSystem) {
@@ -122,8 +137,14 @@ function resetGame() {
             }
         }
         
-        // Reiniciar el loop
-        requestAnimationFrame(gameLoop);
+        // Limpiar la bandera de reinicio si existe
+        if (window.isGameRestarting) {
+            window.isGameRestarting = false;
+        }
+        
+        // Reiniciar el loop con un nuevo ID
+        window.gameLoopRequestId = requestAnimationFrame(gameLoop);
+        console.log("Nuevo loop de juego iniciado en resetGame con ID:", window.gameLoopRequestId);
         
         console.log("¡Juego reiniciado!");
     }, 100);
@@ -254,7 +275,8 @@ function gameLoop() {
         console.error("Función render() no encontrada.");
     }
 
-    requestAnimationFrame(gameLoop);
+    // Guardar la referencia al ID de requestAnimationFrame para poder cancelarlo después
+    window.gameLoopRequestId = requestAnimationFrame(gameLoop);
 }
 
 // Event listeners para el juego
