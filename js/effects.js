@@ -1543,27 +1543,47 @@ function showGameEndMessage() {
     const restartButton = document.getElementById('restart-game-button');
     if (restartButton) {
         restartButton.addEventListener('click', function() {
-            console.log("Botón JUGAR DE NUEVO clickeado");
-            
-            // Verificar si la función resetGame está disponible
-            console.log("¿resetGame está disponible?", typeof window.resetGame === 'function');
+            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
             
             // Cerrar el panel
             if (endPanel.parentNode) {
                 document.body.removeChild(endPanel);
-                console.log("Panel de fin de juego cerrado");
+                console.log("Panel de ranking cerrado");
             }
             
-            // Usar la función auxiliar para reiniciar el juego
-            if (typeof window.effectsResetGame === 'function') {
-                console.log("Usando función auxiliar effectsResetGame");
-                window.effectsResetGame();
-            } else if (typeof window.resetGame === 'function') {
-                console.log("Llamando a window.resetGame()");
+            // Asegurarse que el juego no esté en estado "finalizado"
+            if (window.shootingSystem) {
+                window.shootingSystem.gameEnded = false;
+            }
+            
+            // Usar exactamente la misma secuencia que la tecla R
+            // Reiniciar el tiempo primero
+            resetGameTime();
+            
+            // Reiniciar el juego directamente, igual que la tecla R
+            if (typeof window.resetGame === 'function') {
+                console.log("Llamando a window.resetGame() igual que la tecla R");
+                
+                // Establecer bandera para evitar panel inicial
+                window.isGameRestarting = true;
+                
+                // Reiniciar el juego directamente
                 window.resetGame();
+                
+                // Reactivar los botones explícitamente
+                if (window.shootingSystem) {
+                    if (window.shootingSystem.shootButton) {
+                        window.shootingSystem.shootButton.style.opacity = '1';
+                        window.shootingSystem.shootButton.style.pointerEvents = 'auto';
+                    }
+                    
+                    if (window.shootingSystem.resetButton) {
+                        window.shootingSystem.resetButton.style.transform = 'scale(1)';
+                        window.shootingSystem.resetButton.style.boxShadow = 'none';
+                    }
+                }
             } else {
-                console.error("Ninguna función de reinicio disponible");
-                alert("No se pudo reiniciar el juego. Por favor, recarga la página.");
+                console.error("Función resetGame no encontrada");
                 window.location.reload();
             }
         });
@@ -1653,8 +1673,91 @@ function showRankingSubmitForm(panel, score) {
     const cancelButton = document.getElementById('cancel-score-button');
     if (cancelButton) {
         cancelButton.addEventListener('click', function() {
-            // Volver al panel anterior
-            showGameEndMessage();
+            // Cerrar completamente el panel actual
+            if (panel.parentNode) {
+                document.body.removeChild(panel);
+                console.log("Panel de ranking cerrado por cancelación");
+            }
+            
+            // Mostrar el botón de jugar de nuevo directamente
+            const endPanel = document.createElement('div');
+            endPanel.id = 'game-end-panel';
+            
+            // Estilos similares al panel anterior
+            endPanel.style.position = 'fixed';
+            endPanel.style.top = '50%';
+            endPanel.style.left = '50%';
+            endPanel.style.transform = 'translate(-50%, -50%)';
+            endPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+            endPanel.style.color = 'white';
+            endPanel.style.padding = '25px';
+            endPanel.style.borderRadius = '10px';
+            endPanel.style.boxShadow = '0 0 25px rgba(255, 50, 50, 0.7)';
+            endPanel.style.textAlign = 'center';
+            endPanel.style.zIndex = '3000';
+            endPanel.style.minWidth = '300px';
+            endPanel.style.maxWidth = '600px';
+            
+            // Contenido simplificado del panel, solo con la opción de jugar de nuevo
+            endPanel.innerHTML = `
+                <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 28px;">¿Quieres jugar de nuevo?</h2>
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
+                    <button id="restart-game-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">JUGAR DE NUEVO</button>
+                </div>
+            `;
+            
+            // Añadir al DOM
+            document.body.appendChild(endPanel);
+            
+            // Configurar botón de reinicio
+            const restartButton = document.getElementById('restart-game-button');
+            if (restartButton) {
+                restartButton.addEventListener('click', function() {
+                    console.log("Botón JUGAR DE NUEVO clickeado (desde cancelación)");
+                    
+                    // Cerrar el panel
+                    if (endPanel.parentNode) {
+                        document.body.removeChild(endPanel);
+                        console.log("Panel de fin de juego cerrado");
+                    }
+                    
+                    // Asegurarse que el juego no esté en estado "finalizado"
+                    if (window.shootingSystem) {
+                        window.shootingSystem.gameEnded = false;
+                    }
+                    
+                    // Usar exactamente la misma secuencia que la tecla R
+                    // Reiniciar el tiempo primero
+                    resetGameTime();
+                    
+                    // Reiniciar el juego directamente, igual que la tecla R
+                    if (typeof window.resetGame === 'function') {
+                        console.log("Llamando a window.resetGame() igual que la tecla R");
+                        
+                        // Establecer bandera para evitar panel inicial
+                        window.isGameRestarting = true;
+                        
+                        // Reiniciar el juego directamente
+                        window.resetGame();
+                        
+                        // Reactivar los botones explícitamente
+                        if (window.shootingSystem) {
+                            if (window.shootingSystem.shootButton) {
+                                window.shootingSystem.shootButton.style.opacity = '1';
+                                window.shootingSystem.shootButton.style.pointerEvents = 'auto';
+                            }
+                            
+                            if (window.shootingSystem.resetButton) {
+                                window.shootingSystem.resetButton.style.transform = 'scale(1)';
+                                window.shootingSystem.resetButton.style.boxShadow = 'none';
+                            }
+                        }
+                    } else {
+                        console.error("Función resetGame no encontrada");
+                        window.location.reload();
+                    }
+                });
+            }
         });
     }
 }
@@ -1677,29 +1780,45 @@ async function showRankingList(panel, playerScore, playerName) {
         playAgainButton.addEventListener('click', function() {
             console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
             
-            // Verificar si la función resetGame está disponible
-            console.log("¿resetGame está disponible?", typeof window.resetGame === 'function');
-            
-            // Indicar que estamos reiniciando desde el ranking
-            window.isGameRestarting = true;
-            console.log("Bandera isGameRestarting establecida:", window.isGameRestarting);
-            
             // Cerrar el panel
             if (panel.parentNode) {
                 document.body.removeChild(panel);
                 console.log("Panel de ranking cerrado");
             }
             
-            // Usar la función auxiliar para reiniciar el juego
-            if (typeof window.effectsResetGame === 'function') {
-                console.log("Usando función auxiliar effectsResetGame desde ranking");
-                window.effectsResetGame();
-            } else if (typeof window.resetGame === 'function') {
-                console.log("Llamando a window.resetGame() desde ranking");
+            // Asegurarse que el juego no esté en estado "finalizado"
+            if (window.shootingSystem) {
+                window.shootingSystem.gameEnded = false;
+            }
+            
+            // Usar exactamente la misma secuencia que la tecla R
+            // Reiniciar el tiempo primero
+            resetGameTime();
+            
+            // Reiniciar el juego directamente, igual que la tecla R
+            if (typeof window.resetGame === 'function') {
+                console.log("Llamando a window.resetGame() igual que la tecla R");
+                
+                // Establecer bandera para evitar panel inicial
+                window.isGameRestarting = true;
+                
+                // Reiniciar el juego directamente
                 window.resetGame();
+                
+                // Reactivar los botones explícitamente
+                if (window.shootingSystem) {
+                    if (window.shootingSystem.shootButton) {
+                        window.shootingSystem.shootButton.style.opacity = '1';
+                        window.shootingSystem.shootButton.style.pointerEvents = 'auto';
+                    }
+                    
+                    if (window.shootingSystem.resetButton) {
+                        window.shootingSystem.resetButton.style.transform = 'scale(1)';
+                        window.shootingSystem.resetButton.style.boxShadow = 'none';
+                    }
+                }
             } else {
-                console.error("Ninguna función de reinicio disponible");
-                alert("No se pudo reiniciar el juego. Por favor, recarga la página.");
+                console.error("Función resetGame no encontrada");
                 window.location.reload();
             }
         });
@@ -2313,24 +2432,41 @@ function resetGameTime() {
     console.log("Sistema de tiempo reiniciado correctamente");
 }
 
-// Función auxiliar para reiniciar el juego (como alternativa a window.resetGame)
+// Función auxiliar para reiniciar el juego desde los efectos
 window.effectsResetGame = function() {
-    console.log("Ejecutando effectsResetGame como alternativa");
+    console.log("Ejecutando efectsResetGame");
     
-    // Reiniciar el tiempo primero
-    if (typeof window.resetGameTime === 'function') {
-        window.resetGameTime();
+    // Asegurarse de que no hay paneles residuales
+    const endPanels = document.querySelectorAll('#game-end-panel');
+    endPanels.forEach(panel => {
+        if (panel && panel.parentNode) {
+            panel.parentNode.removeChild(panel);
+        }
+    });
+    
+    // Reiniciar banderas internas
+    if (window.shootingSystem) {
+        window.shootingSystem.gameEnded = false;
+        window.shootingSystem.isActive = true;
+        
+        // Reactivar botones si existen
+        if (window.shootingSystem.shootButton) {
+            window.shootingSystem.shootButton.style.opacity = '1';
+            window.shootingSystem.shootButton.style.pointerEvents = 'auto';
+        }
+        
+        if (window.shootingSystem.resetButton) {
+            window.shootingSystem.resetButton.style.transform = 'scale(1)';
+            window.shootingSystem.resetButton.style.boxShadow = 'none';
+        }
     }
     
-    // Intentar obtener la función resetGame del módulo game.js
+    // Llamar a la función principal de reinicio
     if (typeof window.resetGame === 'function') {
-        console.log("Llamando a window.resetGame desde effectsResetGame");
+        console.log("Llamando a resetGame desde effectsResetGame");
         window.resetGame();
     } else {
-        console.log("Intentando reiniciar el juego manualmente");
-        
-        // Recargar la página como último recurso
-        console.log("Recargando la página como último recurso");
-        window.location.reload();
+        console.error("No se encontró la función resetGame");
+        window.location.reload(); // Último recurso: recargar la página
     }
 };
