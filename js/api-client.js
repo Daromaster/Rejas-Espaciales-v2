@@ -368,11 +368,20 @@ const apiClient = {
             // Ejecutar limpieza inmediata
             window.cleanupAllResources();
             
-            // También programar una limpieza retrasada (por si hay callbacks tardíos)
-            window.createCleanableTimeout(() => {
-                console.log("Limpieza retrasada post-ranking (8 segundos)");
-                window.cleanupAllResources();
-            }, 8000); // Exactamente el tiempo en que ocurre la recarga
+            // DESHABILITANDO TEMPORALMENTE: La limpieza retrasada a los 8 segundos parece ser la causa de la recarga
+            // window.createCleanableTimeout(() => {
+            //     console.log("Limpieza retrasada post-ranking (8 segundos)");
+            //     window.cleanupAllResources();
+            // }, 8000); // Exactamente el tiempo en que ocurre la recarga
+            
+            /* 
+            // POSIBLE SOLUCIÓN ALTERNATIVA: Limpieza a los 6 segundos en lugar de 8
+            // Para activar esta limpieza, quitar los comentarios de estas líneas
+            // window.createCleanableTimeout(() => {
+            //     console.log("Limpieza retrasada post-ranking (6 segundos)");
+            //     window.cleanupAllResources();
+            // }, 6000); // Intentar limpieza antes de que ocurra la recarga (7 segundos)
+            */
         },
         
         // Obtener todos los puntajes ordenados con limpieza automática

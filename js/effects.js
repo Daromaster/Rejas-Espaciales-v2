@@ -2921,7 +2921,9 @@ window.effectsResetGame = function() {
         window.resetGame();
     } else {
         console.error("No se encontró la función resetGame");
-        window.location.reload(); // Último recurso: recargar la página
+        // DESHABILITADO: Esta línea parece ser la causante de recargas no deseadas
+        // window.location.reload(); // Último recurso: recargar la página
+        console.error("No se pudo realizar el resetGame. Se recomienda recargar manualmente la página.");
     }
 };
 
