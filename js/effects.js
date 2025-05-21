@@ -1750,6 +1750,51 @@ function showRankingSubmitForm(panel, score) {
             saveButton.textContent = "GUARDANDO...";
             saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.4)";
             
+            // Mostrar mensaje de obtención de datos
+            messageDiv.textContent = "Obteniendo ubicación...";
+            messageDiv.style.color = "rgba(255, 255, 0, 0.8)";
+            
+            // Detectar el tipo de dispositivo
+            const deviceType = shootingSystem.isMobile ? "mobile" : "desktop";
+            
+            // Variable para almacenar la ubicación
+            let ubicacion = "desconocida";
+            
+            // Intentar obtener la ubicación con geolocalización
+            try {
+                if (navigator.geolocation) {
+                    // Envolver la geolocalización en una promesa para manejarla mejor
+                    const getPosition = () => {
+                        return new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(
+                                position => resolve(position),
+                                error => reject(error),
+                                { timeout: 5000, enableHighAccuracy: false }
+                            );
+                        });
+                    };
+                    
+                    try {
+                        const position = await getPosition();
+                        
+                        messageDiv.textContent = "Obteniendo nombre de localidad...";
+                        
+                        // Usar las coordenadas para obtener el nombre de la localidad
+                        ubicacion = await window.apiClient.ranking.getLocationFromCoords(
+                            position.coords.latitude,
+                            position.coords.longitude
+                        );
+                    } catch (geoError) {
+                        console.warn("Error de geolocalización:", geoError.message);
+                        messageDiv.textContent = "Ubicación no disponible";
+                    }
+                }
+            } catch (error) {
+                console.warn("Geolocalización no soportada:", error);
+            }
+            
+            messageDiv.textContent = "Guardando puntuación...";
+            
             try {
                 // Usar el cliente API para guardar la puntuación
                 if (window.apiClient && window.apiClient.ranking) {
@@ -1761,7 +1806,8 @@ function showRankingSubmitForm(panel, score) {
                         console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                     }
                     
-                    await window.apiClient.ranking.save(playerName, score);
+                    // Enviar todos los datos al servidor
+                    await window.apiClient.ranking.save(playerName, score, deviceType, ubicacion);
                     messageDiv.textContent = "¡Puntuación guardada con éxito!";
                     messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
                     
@@ -2000,6 +2046,8 @@ async function showRankingList(panel, playerScore, playerName) {
                             <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
                             <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
                             <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
+                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Dispositivo</th>
+                            <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Ubicación</th>
                         </tr>
                 `;
                 
@@ -2011,11 +2059,19 @@ async function showRankingList(panel, playerScore, playerName) {
                         'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;' : 
                         ((index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '');
                     
+                    // Formatear dispositivo (desktop o mobile)
+                    const deviceIcon = (entry.dispositivo === 'mobile') ? '📱' : '💻';
+                    
+                    // Formatear ubicación (mostrar "desconocida" si no está disponible)
+                    const location = entry.ubicacion || "desconocida";
+                    
                     tableHTML += `
                         <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
                             <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
                             <td style="padding: ${tableCellPadding};">${entry.nombre}</td>
                             <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
+                            <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
+                            <td style="padding: ${tableCellPadding};">${location}</td>
                         </tr>
                     `;
                 });

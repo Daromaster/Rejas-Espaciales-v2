@@ -1,5 +1,8 @@
 // api-client.js - Cliente para comunicarse con el backend de Rejas Espaciales
 
+// Versión actual del juego (constante global)
+window.GAME_VERSION = "2.0.0";
+
 // Objeto principal del cliente API
 const apiClient = {
     // Configuración del cliente
@@ -37,12 +40,17 @@ const apiClient = {
         },
         
         // Guardar un nuevo puntaje
-        save: async function(playerName, score) {
+        save: async function(playerName, score, deviceType, location) {
             try {
                 const data = {
                     nombre: playerName,
-                    puntaje: score
+                    puntaje: score,
+                    version: window.GAME_VERSION,
+                    dispositivo: deviceType || "unknown",
+                    ubicacion: location || "desconocida"
                 };
+                
+                console.log("Enviando datos al servidor:", data);
                 
                 const response = await fetch(`${apiClient.config.getBaseUrl()}/ranking`, {
                     method: 'POST',
@@ -61,6 +69,35 @@ const apiClient = {
                 console.error('Error al guardar puntaje:', error);
                 throw error;
             }
+        },
+        
+        // Obtener ubicación a partir de coordenadas
+        getLocationFromCoords: async function(latitude, longitude) {
+            try {
+                // Utilizamos el servicio de geocodificación inversa de OpenStreetMap (Nominatim)
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                
+                if (!response.ok) {
+                    throw new Error('Error al obtener ubicación');
+                }
+                
+                const data = await response.json();
+                
+                // Extraer el nombre de la localidad o ciudad
+                let location = "desconocida";
+                if (data && data.address) {
+                    // Intentar obtener la localidad en diferentes niveles
+                    location = data.address.city || data.address.town || data.address.village || 
+                              data.address.suburb || data.address.neighbourhood || "desconocida";
+                }
+                
+                console.log("Ubicación obtenida:", location);
+                return location;
+                
+            } catch (error) {
+                console.error('Error al obtener ubicación:', error);
+                return "desconocida";
+            }
         }
     }
 };
@@ -70,4 +107,5 @@ window.apiClient = apiClient;
 
 // Registrar el entorno detectado en la consola
 console.log(`API Client inicializado en entorno: ${apiClient.config.isLocalEnvironment() ? 'Local' : 'Producción'}`);
+console.log(`Versión del juego: ${window.GAME_VERSION}`);
 console.log(`URL del backend: ${apiClient.config.getBaseUrl()}`); 
