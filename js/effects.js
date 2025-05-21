@@ -882,12 +882,30 @@ function handleKeyDown(event) {
             // Si estamos en un input, permitir todas las teclas para poder escribir
             return;
         } else {
-            // Si NO estamos en un input, solo permitir Escape
+            // Permitir teclas de desarrollo y navegador incluso en modo modal
+            
+            // Lista de teclas permitidas (teclas funcionales y teclas de desarrollo)
+            const allowedKeys = [
+                'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
+                'PrintScreen', 'ScrollLock', 'Pause', 'Insert'
+            ];
+            
+            // Verificar si la tecla es una de las permitidas
+            if (allowedKeys.includes(event.key) || 
+                event.ctrlKey ||  // Permitir combinaciones con Ctrl
+                event.altKey ||   // Permitir combinaciones con Alt
+                event.metaKey) {  // Permitir combinaciones con tecla Windows/Command
+                
+                // Permitir que estas teclas funcionen normalmente
+                return;
+            }
+            
+            // Si es Escape, cerrar el panel activo
             if (event.code === 'Escape') {
                 closeActiveModal();
             }
             
-            // Prevenir acción de teclas cuando hay un modal activo
+            // Prevenir acción de otras teclas cuando hay un modal activo
             event.preventDefault();
             return;
         }
@@ -1550,10 +1568,18 @@ function showGameEndMessage() {
     endPanel.style.textAlign = 'center';
     endPanel.style.zIndex = '3000';
     endPanel.style.minWidth = '300px';
-    endPanel.style.maxWidth = '600px';
+    endPanel.style.maxWidth = '90%'; // Limitado al 90% del ancho para dispositivos móviles
+    endPanel.style.maxHeight = '80%'; // Limitado al 80% de la altura para dispositivos móviles
+    endPanel.style.overflowY = 'auto'; // Permitir scroll si es necesario
     
     // Obtener puntuación final
     const finalScore = window.gameState ? window.gameState.score : 0;
+    
+    // Determinar tamaños y espaciado basados en si es dispositivo móvil
+    const isMobile = shootingSystem.isMobile;
+    const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
+    const buttonMargin = isMobile ? '10px 0' : '5px 0';
+    const buttonSize = isMobile ? '20px' : '18px';
     
     // Contenido del panel
     const panelContent = `
@@ -1562,8 +1588,8 @@ function showGameEndMessage() {
         <p style="font-size: 42px; margin: 20px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${finalScore} puntos</p>
         
         <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
-            <button id="submit-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">GUARDAR EN RANKING</button>
-            <button id="restart-game-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">JUGAR DE NUEVO</button>
+            <button id="submit-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR EN RANKING</button>
+            <button id="restart-game-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">JUGAR DE NUEVO</button>
         </div>
     `;
     
@@ -1581,7 +1607,9 @@ function showGameEndMessage() {
     // Configurar botón de reinicio
     const restartButton = document.getElementById('restart-game-button');
     if (restartButton) {
-        restartButton.addEventListener('click', function() {
+        // Configurar handlers para eventos de ratón y táctiles
+        const handleRestart = function(e) {
+            e.preventDefault(); // Prevenir comportamiento predeterminado
             console.log("Botón JUGAR DE NUEVO clickeado");
             
             // Desactivar el modo modal
@@ -1589,21 +1617,75 @@ function showGameEndMessage() {
             
             // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
             window.completeGameReset(endPanel);
-        });
+        };
+        
+        restartButton.addEventListener('click', handleRestart);
+        restartButton.addEventListener('touchend', handleRestart); // Añadir soporte táctil
+        
+        // Efectos visuales para dispositivos táctiles
+        if (isMobile) {
+            restartButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.9';
+            });
+            
+            restartButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+            
+            restartButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+        }
     }
     
     // Configurar botón de enviar al ranking
     const submitButton = document.getElementById('submit-score-button');
     if (submitButton) {
-        submitButton.addEventListener('click', function() {
+        // Configurar handlers para eventos de ratón y táctiles
+        const handleSubmit = function(e) {
+            e.preventDefault(); // Prevenir comportamiento predeterminado
             // Cambiar el panel para mostrar el formulario de envío
             showRankingSubmitForm(endPanel, finalScore);
-        });
+        };
+        
+        submitButton.addEventListener('click', handleSubmit);
+        submitButton.addEventListener('touchend', handleSubmit); // Añadir soporte táctil
+        
+        // Efectos visuales para dispositivos táctiles
+        if (isMobile) {
+            submitButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.9';
+            });
+            
+            submitButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+            
+            submitButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+        }
     }
 }
 
 // Mostrar formulario para enviar puntuación al ranking
 function showRankingSubmitForm(panel, score) {
+    // Determinar tamaños y espaciado basados en si es dispositivo móvil
+    const isMobile = shootingSystem.isMobile;
+    const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
+    const buttonMargin = isMobile ? '10px 0' : '5px 0';
+    const buttonSize = isMobile ? '20px' : '18px';
+    const inputPadding = isMobile ? '15px' : '10px';
+    const inputFontSize = isMobile ? '18px' : '16px';
+
     // Cambiar el contenido del panel
     panel.innerHTML = `
         <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 24px;">Guardar Puntuación</h2>
@@ -1611,14 +1693,14 @@ function showRankingSubmitForm(panel, score) {
         <p style="font-size: 28px; margin: 10px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${score} puntos</p>
         
         <div style="margin: 20px 0;">
-            <input type="text" id="player-name-input" placeholder="Tu nombre" style="padding: 10px; width: 80%; font-size: 16px; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" maxlength="20">
+            <input type="text" id="player-name-input" placeholder="Tu nombre" style="padding: ${inputPadding}; width: 80%; font-size: ${inputFontSize}; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" maxlength="20">
         </div>
         
         <div id="ranking-submit-message" style="min-height: 20px; margin: 10px 0; color: rgba(255, 255, 0, 0.8);"></div>
         
         <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
-            <button id="save-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">GUARDAR</button>
-            <button id="cancel-score-button" style="background-color: rgba(150, 150, 150, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">CANCELAR</button>
+            <button id="save-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR</button>
+            <button id="cancel-score-button" style="background-color: rgba(150, 150, 150, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">CANCELAR</button>
         </div>
     `;
     
@@ -1628,10 +1710,14 @@ function showRankingSubmitForm(panel, score) {
     const messageDiv = document.getElementById('ranking-submit-message');
     
     if (saveButton && nameInput && messageDiv) {
-        // Auto-focus en el campo de nombre
-        nameInput.focus();
+        // Auto-focus en el campo de nombre (excepto en iOS donde puede causar problemas)
+        if (!(/iPad|iPhone|iPod/.test(navigator.userAgent))) {
+            nameInput.focus();
+        }
         
-        saveButton.addEventListener('click', async function() {
+        // Handler para guardar
+        const handleSave = async function(e) {
+            e.preventDefault(); // Prevenir comportamiento predeterminado
             const playerName = nameInput.value.trim();
             
             if (!playerName) {
@@ -1667,39 +1753,58 @@ function showRankingSubmitForm(panel, score) {
                 saveButton.textContent = "GUARDAR";
                 saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
             }
-        });
+        };
+        
+        saveButton.addEventListener('click', handleSave);
+        saveButton.addEventListener('touchend', handleSave);
+        
+        // Efectos visuales para dispositivos táctiles
+        if (isMobile) {
+            saveButton.addEventListener('touchstart', function(e) {
+                if (this.disabled) return;
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.9';
+            });
+            
+            saveButton.addEventListener('touchend', function(e) {
+                if (this.disabled) return;
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+            
+            saveButton.addEventListener('touchcancel', function(e) {
+                if (this.disabled) return;
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+        }
     }
     
     // Configurar botón de cancelar
     const cancelButton = document.getElementById('cancel-score-button');
     if (cancelButton) {
-        cancelButton.addEventListener('click', function() {
+        // Handler para cancelar
+        const handleCancel = function(e) {
+            e.preventDefault(); // Prevenir comportamiento predeterminado
             console.log("Botón CANCELAR clickeado - volviendo al panel original");
             
             // En lugar de crear un nuevo panel, restaurar el contenido original
             if (shootingSystem.originalEndPanel) {
                 panel.innerHTML = shootingSystem.originalEndPanel.content;
                 
-                // Reconfigurar los botones originales
-                const restartButton = document.getElementById('restart-game-button');
-                if (restartButton) {
-                    restartButton.addEventListener('click', function() {
-                        console.log("Botón JUGAR DE NUEVO clickeado");
-                        
-                        // Desactivar el modo modal
-                        setModalActive(false);
-                        
-                        // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
-                        window.completeGameReset(panel);
-                    });
-                }
+                // Reconfigurar los botones originales (llamando a la misma función)
+                showGameEndMessage();
                 
-                const submitButton = document.getElementById('submit-score-button');
-                if (submitButton) {
-                    submitButton.addEventListener('click', function() {
-                        // Cambiar el panel para mostrar el formulario de envío
-                        showRankingSubmitForm(panel, shootingSystem.originalEndPanel.score);
-                    });
+                // No recrear todo el panel, solo su contenido
+                document.getElementById('game-end-panel').remove();
+                
+                // Guardar la referencia al nuevo panel que acabamos de configurar
+                const newEndPanel = document.querySelector('#game-end-panel');
+                
+                // Mantener el panel activo pero actualizar sus controles
+                if (newEndPanel) {
+                    // Si encontramos referencias a botones, ya fueron configurados por showGameEndMessage
                 }
             } else {
                 // Si por alguna razón no tenemos el panel original, cerrar el actual
@@ -1709,17 +1814,47 @@ function showRankingSubmitForm(panel, score) {
                     document.body.removeChild(panel);
                 }
             }
-        });
+        };
+        
+        cancelButton.addEventListener('click', handleCancel);
+        cancelButton.addEventListener('touchend', handleCancel);
+        
+        // Efectos visuales para dispositivos táctiles
+        if (isMobile) {
+            cancelButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.9';
+            });
+            
+            cancelButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+            
+            cancelButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+        }
     }
 }
 
 // Mostrar lista de ranking
 async function showRankingList(panel, playerScore, playerName) {
+    // Determinar tamaños y espaciado basados en si es dispositivo móvil
+    const isMobile = shootingSystem.isMobile;
+    const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
+    const buttonSize = isMobile ? '20px' : '18px';
+    const tableHeaderSize = isMobile ? '16px' : '14px';
+    const tableCellPadding = isMobile ? '10px' : '8px';
+    const maxHeight = isMobile ? '50vh' : '300px';
+
     panel.innerHTML = `
         <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 15px 0; font-size: 24px;">Ranking de Puntuaciones</h2>
         <div id="ranking-loading" style="margin: 20px 0;">Cargando ranking...</div>
-        <div id="ranking-list" style="max-height: 300px; overflow-y: auto; margin: 10px 0; display: none;"></div>
-        <button id="play-again-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 12px 20px; margin-top: 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">JUGAR DE NUEVO</button>
+        <div id="ranking-list" style="max-height: ${maxHeight}; overflow-y: auto; margin: 10px 0; display: none; -webkit-overflow-scrolling: touch;"></div>
+        <button id="play-again-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin-top: 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">JUGAR DE NUEVO</button>
     `;
     
     const loadingDiv = document.getElementById('ranking-loading');
@@ -1728,7 +1863,9 @@ async function showRankingList(panel, playerScore, playerName) {
     
     // Configurar botón de jugar de nuevo
     if (playAgainButton) {
-        playAgainButton.addEventListener('click', function() {
+        // Handler para jugar de nuevo
+        const handlePlayAgain = function(e) {
+            e.preventDefault(); // Prevenir comportamiento predeterminado
             console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
             
             // Desactivar el modo modal
@@ -1736,7 +1873,29 @@ async function showRankingList(panel, playerScore, playerName) {
             
             // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
             window.completeGameReset(panel);
-        });
+        };
+        
+        playAgainButton.addEventListener('click', handlePlayAgain);
+        playAgainButton.addEventListener('touchend', handlePlayAgain);
+        
+        // Efectos visuales para dispositivos táctiles
+        if (isMobile) {
+            playAgainButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.9';
+            });
+            
+            playAgainButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+            
+            playAgainButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+                this.style.opacity = '1';
+            });
+        }
     }
     
     // Cargar el ranking
@@ -1758,9 +1917,9 @@ async function showRankingList(panel, playerScore, playerName) {
                 let tableHTML = `
                     <table style="width: 100%; border-collapse: collapse; text-align: left;">
                         <tr style="border-bottom: 1px solid rgba(0, 255, 255, 0.5);">
-                            <th style="padding: 8px; text-align: center;">#</th>
-                            <th style="padding: 8px;">Jugador</th>
-                            <th style="padding: 8px; text-align: right;">Puntos</th>
+                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
+                            <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
+                            <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
                         </tr>
                 `;
                 
@@ -1774,9 +1933,9 @@ async function showRankingList(panel, playerScore, playerName) {
                     
                     tableHTML += `
                         <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
-                            <td style="padding: 8px; text-align: center;">${index + 1}</td>
-                            <td style="padding: 8px;">${entry.nombre}</td>
-                            <td style="padding: 8px; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
+                            <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
+                            <td style="padding: ${tableCellPadding};">${entry.nombre}</td>
+                            <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
                         </tr>
                     `;
                 });
