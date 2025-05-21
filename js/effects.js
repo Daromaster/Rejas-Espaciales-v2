@@ -1,56 +1,5 @@
 // Sistema de efectos y disparos
 
-// Agregar protección global contra recargas inesperadas
-window.addEventListener('DOMContentLoaded', function() {
-    // Prevenir que los formularios causen recargas de página
-    document.addEventListener('submit', function(e) {
-        console.log("Formulario detectado intentando enviar - Previniendo recarga");
-        e.preventDefault();
-        return false;
-    });
-    
-    // Detector de recargas de página
-    window.addEventListener('beforeunload', function(e) {
-        console.error('RECARGA DE PÁGINA DETECTADA');
-        console.trace('Stack trace en momento de recarga');
-        
-        // En entorno de desarrollo, intentar prevenir la recarga para investigar
-        if (window.IS_LOCAL_ENVIRONMENT) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-});
-
-// Función de seguridad para limpiar el juego
-window.safeCleanupGame = function() {
-    console.log("Ejecutando limpieza de seguridad del juego");
-    
-    // 1. Cancelar todas las peticiones pendientes
-    if (window.apiRequestControllers && typeof window.apiRequestControllers.cancelAll === 'function') {
-        window.apiRequestControllers.cancelAll();
-    }
-    
-    // 2. Limpiar todos los temporizadores que podrían estar causando problemas
-    // Esto es una técnica agresiva pero efectiva para encontrar temporizadores perdidos
-    let id = window.setTimeout(function() {}, 0);
-    while (id--) {
-        window.clearTimeout(id);
-        window.clearInterval(id);
-    }
-    
-    // 3. Cancelar todas las animaciones pendientes
-    if (window.gameLoopRequestId) {
-        window.cancelAnimationFrame(window.gameLoopRequestId);
-        window.gameLoopRequestId = null;
-    }
-    
-    // 4. Eliminar handlers globales que podrían causar problemas
-    try {
-        window.removeEventListener('beforeunload', window._tempBeforeUnloadHandler);
-    } catch (e) {}
-};
-
 // Configuración del sistema de disparos
 const shootingSystem = {
     isActive: false,            // ¿Hay un disparo activo?
@@ -1740,14 +1689,9 @@ function showRankingSubmitForm(panel, score) {
     // Intentar recuperar el nombre guardado anteriormente
     let savedPlayerName = '';
     try {
-        // Verificar si el almacenamiento local está habilitado
-        if (!window.DISABLE_LOCAL_STORAGE) {
-            savedPlayerName = localStorage.getItem('rejasEspacialesPlayerName') || '';
-            if (savedPlayerName) {
-                console.log("Nombre de jugador recuperado de localStorage:", savedPlayerName);
-            }
-        } else {
-            console.log("LocalStorage deshabilitado para pruebas");
+        savedPlayerName = localStorage.getItem('rejasEspacialesPlayerName') || '';
+        if (savedPlayerName) {
+            console.log("Nombre de jugador recuperado de localStorage:", savedPlayerName);
         }
     } catch(storageError) {
         console.warn("No se pudo recuperar el nombre desde localStorage:", storageError);
@@ -1921,44 +1865,28 @@ function showRankingSubmitForm(panel, score) {
             try {
                 // Usar el cliente API para guardar la puntuación
                 if (window.apiClient && window.apiClient.ranking) {
+                    // Guardar la puntuación
+                    const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion);
+                    
+                    // Aplicar un timeout para evitar bloqueos
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => ({ success: false, message: "Timeout al guardar" }), 5000)
+                    );
+                    
+                    const result = await Promise.race([savePromise, timeoutPromise]);
+                    
+                    console.log("Resultado de guardar puntuación:", result);
+                    
                     // Guardar el nombre del jugador en localStorage para futuras partidas
                     try {
-                        // Verificar si el almacenamiento local está habilitado
-                        if (!window.DISABLE_LOCAL_STORAGE) {
-                            localStorage.setItem('rejasEspacialesPlayerName', playerName);
-                            console.log("Nombre del jugador guardado en localStorage:", playerName);
-                        } else {
-                            console.log("LocalStorage deshabilitado para pruebas - No se guardó el nombre");
-                        }
+                        localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                        console.log("Nombre del jugador guardado en localStorage:", playerName);
                     } catch(storageError) {
                         console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                     }
                     
-                    // Enviar todos los datos al servidor con timeout
-                    try {
-                        // Usar la versión con limpieza automática de recursos
-                        const savePromise = window.apiClient.ranking.saveWithCleanup(playerName, score, deviceType, ubicacion);
-                        const saveTimeoutPromise = new Promise((_, reject) => {
-                            setTimeout(() => reject(new Error('Save timeout')), 8000);
-                        });
-                        
-                        await Promise.race([savePromise, saveTimeoutPromise]);
-                        
-                        messageDiv.textContent = "¡Puntuación guardada con éxito!";
-                        messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
-                        
-                        // Mostrar el ranking inmediatamente sin temporizador
-                        showRankingList(panel, score, playerName);
-                    } catch (saveError) {
-                        console.error("Error al guardar puntuación (timeout o error de servidor):", saveError);
-                        messageDiv.textContent = "Error al guardar. Intenta de nuevo.";
-                        messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
-                        
-                        // Reactivar botón
-                        saveButton.disabled = false;
-                        saveButton.textContent = "GUARDAR";
-                        saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
-                    }
+                    // Mostrar el ranking inmediatamente sin temporizador
+                    showRankingList(panel, score, playerName);
                 } else {
                     throw new Error("API Client no disponible");
                 }
@@ -2114,13 +2042,7 @@ function showRankingSubmitForm(panel, score) {
 
 // Mostrar lista de ranking
 async function showRankingList(panel, playerScore, playerName) {
-    // Debugging para el cierre automático
-    if (window.DEBUG_RANKING_PANEL) {
-        console.log("===== RANKING PANEL OPENING =====");
-        console.log("playerScore:", playerScore);
-        console.log("playerName:", playerName);
-        console.trace("Panel stack trace");
-    }
+        // Debugging para el cierre automático
     
     // Determinar tamaños y espaciado basados en si es dispositivo móvil
     const isMobile = shootingSystem.isMobile;
@@ -2154,23 +2076,7 @@ async function showRankingList(panel, playerScore, playerName) {
     // Configurar botón de jugar de nuevo
     if (playAgainButton) {
         // Handler para jugar de nuevo
-        const handlePlayAgain = function(e) {
-            if (window.DEBUG_RANKING_PANEL) {
-                console.log("===== PLAY AGAIN CLICKED =====");
-            }
-            e.preventDefault(); // Prevenir comportamiento predeterminado
-            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
-            
-            // Marcar que el panel se está cerrando
-            panelClosed = true;
-            
-            // Establecer bandera para indicar que este cierre fue iniciado por el usuario
-            window._userInitiatedClose = true;
-            
-            // Limpieza de seguridad
-            window.safeCleanupGame();
-            
-            // Desactivar el modo modal
+                const handlePlayAgain = function(e) {                        e.preventDefault(); // Prevenir comportamiento predeterminado            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");                        // Marcar que el panel se está cerrando            panelClosed = true;                        // Desactivar el modo modal
             setModalActive(false);
             
             // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
@@ -2206,29 +2112,17 @@ async function showRankingList(panel, playerScore, playerName) {
             let rankingData = [];
             
             if (window.apiClient && window.apiClient.ranking && !panelClosed) {
-                if (window.DEBUG_RANKING_PANEL) {
-                    console.log("Cargando datos de ranking desde API...");
-                }
                 
                 // Añadir timeout para prevenir bloqueos
-                // Usar la versión con limpieza de recursos
-                const fetchPromise = window.apiClient.ranking.getAllWithCleanup();
+                const fetchPromise = window.apiClient.ranking.getAll();
                 const timeoutPromise = new Promise((_, reject) => {
                     setTimeout(() => reject(new Error('Timeout obteniendo ranking')), 6000);
                 });
                 
                 try {
                     rankingData = await Promise.race([fetchPromise, timeoutPromise]);
-                    
-                    if (window.DEBUG_RANKING_PANEL) {
-                        console.log("Datos recibidos:", rankingData ? rankingData.length : 0, "registros");
-                    }
                 } catch (fetchError) {
                     console.error("Error o timeout al obtener ranking:", fetchError);
-                    // Limpiar recursos en caso de error
-                    if (window.apiClient && window.apiClient.ranking) {
-                        window.apiClient.ranking.cleanupAfterRankingOperation();
-                    }
                     // Continuar con rankingData vacío
                 }
             }
@@ -2300,18 +2194,8 @@ async function showRankingList(panel, playerScore, playerName) {
                 rankingListDiv.innerHTML = '<p style="text-align: center;">No hay puntuaciones registradas todavía.</p>';
             }
             
-            if (window.DEBUG_RANKING_PANEL) {
-                console.log("===== RANKING PANEL LOADED SUCCESSFULLY =====");
-            }
-        } catch (error) {
-            console.error("Error al cargar el ranking:", error);
             
-            // Limpiar recursos en caso de error
-            if (window.apiClient && window.apiClient.ranking) {
-                window.apiClient.ranking.cleanupAfterRankingOperation();
-            }
-            
-            // Si el panel fue cerrado durante la carga, abortar
+                } catch (error) {            console.error("Error al cargar el ranking:", error);                        // Si el panel fue cerrado durante la carga, abortar
             if (panelClosed) {
                 console.log("Panel cerrado durante el manejo de error, abortando");
                 return;
@@ -2324,13 +2208,6 @@ async function showRankingList(panel, playerScore, playerName) {
                 rankingListDiv.innerHTML = '<p style="color: rgba(255, 50, 50, 0.9); text-align: center;">Error al cargar el ranking. Por favor intenta más tarde.</p>';
             }
         }
-    }
-    
-    // Desactivar cualquier temporizador previo que pudiera estar causando un cierre automático
-    if (window._rankingAutoCloseTimer) {
-        console.log("Eliminando temporizador previo de cierre automático");
-        clearTimeout(window._rankingAutoCloseTimer);
-        window._rankingAutoCloseTimer = null;
     }
 }
 
@@ -2931,8 +2808,7 @@ window.effectsResetGame = function() {
 window.completeGameReset = function(panel = null) {
     console.log("Ejecutando reinicio completo del juego");
     
-    // Limpieza de seguridad primero
-    window.safeCleanupGame();
+    
     
     // 0. Desactivar cualquier modal activo
     if (shootingSystem.modalActive) {
@@ -3031,9 +2907,6 @@ function setModalActive(active) {
 // Nueva función para cerrar el modal activo
 function closeActiveModal() {
     console.log("Cerrando panel modal activo (Escape)");
-    
-    // Limpieza de seguridad
-    window.safeCleanupGame();
     
     // Buscar panel activo para cerrarlo
     const endPanel = document.getElementById('game-end-panel');
@@ -3153,8 +3026,7 @@ async function handleFormSubmit(e, nameInput, panel, score) {
         // Guardar la puntuación en el ranking
         if (window.apiClient && window.apiClient.ranking) {
             try {
-                // Usar la versión con limpieza de recursos
-                const savePromise = window.apiClient.ranking.saveWithCleanup(playerName, score, deviceType, ubicacion);
+                // Guardar la puntuación                const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion);
                 
                 // Aplicar un timeout para evitar bloqueos
                 const timeoutPromise = new Promise((_, reject) => 
@@ -3167,13 +3039,9 @@ async function handleFormSubmit(e, nameInput, panel, score) {
                 
                 // Guardar el nombre del jugador en localStorage para futuras partidas
                 try {
-                    if (!window.DISABLE_LOCAL_STORAGE) {
-                        localStorage.setItem('rejasEspacialesPlayerName', playerName);
-                        console.log("Nombre del jugador guardado en localStorage:", playerName);
-                    } else {
-                        console.log("LocalStorage deshabilitado para pruebas - No se guardó el nombre");
-                    }
-                } catch (storageError) {
+                    localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                    console.log("Nombre del jugador guardado en localStorage:", playerName);
+                } catch(storageError) {
                     console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                 }
                 

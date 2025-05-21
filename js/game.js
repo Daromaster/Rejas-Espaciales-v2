@@ -290,56 +290,33 @@ window.addEventListener("DOMContentLoaded", () => {
 // Exportar funciones necesarias
 window.initGame = initGame;
 
-// Añadir detector para reinicio inesperado
-window.addEventListener('DOMContentLoaded', function() {
-    // Observar cambios en los modales
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-                // Comprobar si se ha eliminado un panel de ranking
-                for (let i = 0; i < mutation.removedNodes.length; i++) {
-                    const node = mutation.removedNodes[i];
-                    if (node.id === 'game-end-panel' && window.DEBUG_RANKING_PANEL) {
-                        console.log("===== RANKING PANEL REMOVED =====");
-                        console.trace("Panel removal stack trace");
-                        
-                        // Si hay un cierre no iniciado por el usuario, registrarlo
-                        if (!window._userInitiatedClose) {
-                            console.error("¡ALERTA! Panel de ranking cerrado sin interacción del usuario");
-                        }
-                    }
+// Observador para detectar cambios en el DOM
+// Nos permite identificar y manipular elementos añadidos dinámicamente
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            // Recorrer todos los nodos añadidos
+            mutation.addedNodes.forEach((node) => {
+                // Verificar si es el panel de fin de juego
+                if (node.id === 'game-end-panel') {
+                    console.log('Panel de fin de juego detectado');
+                    handleEndGamePanel(node);
                 }
-            }
-        });
+            });
+        }
     });
+});
+
+// Función para manejar el panel de fin de juego
+function handleEndGamePanel(panel) {
+    // Intentar encontrar el panel de ranking dentro del panel de fin de juego
+    const rankingPanel = document.getElementById('ranking-list');
     
-    // Observar el body para detectar cuando se eliminen nodos
-    observer.observe(document.body, { childList: true });
-    
-    // Parche para resetGame - asegurar que no afecte a paneles activos
-    const originalResetGame = window.resetGame;
-    if (originalResetGame) {
-        window.resetGame = function() {
-            // Verificar si hay un panel de ranking activo
-            const rankingPanel = document.getElementById('game-end-panel');
-            
-            if (rankingPanel && window.DEBUG_RANKING_PANEL) {
-                console.log("resetGame llamado mientras el panel de ranking está activo");
-                
-                // Verificar si esta función fue llamada por completeGameReset
-                const stack = new Error().stack || '';
-                const calledFromComplete = stack.includes('completeGameReset');
-                
-                if (!calledFromComplete) {
-                    console.warn("Evitando resetGame automático mientras se muestra el ranking");
-                    return; // No permitir el reseteo automático
-                } else {
-                    window._userInitiatedClose = true;
-                }
-            }
-            
-            // Llamar a la implementación original
-            return originalResetGame.apply(this, arguments);
-        };
+    if (rankingPanel) {
+        console.log('Panel de ranking detectado');
+        // Lógica específica para manipular el panel de ranking
     }
-}); 
+}
+
+// Iniciar la observación del DOM
+observer.observe(document.body, { childList: true }); 
