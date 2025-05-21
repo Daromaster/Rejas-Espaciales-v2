@@ -129,6 +129,12 @@ function createRealEndGameButton() {
     
     // Manejar el clic
     button.onclick = function() {
+        // No permitir finalizar el juego si hay un panel modal activo
+        if (window.shootingSystem && window.shootingSystem.modalActive) {
+            console.log("No se puede finalizar el juego mientras hay un panel abierto");
+            return;
+        }
+        
         console.log("¡Fin del juego! (botón real clickeado)");
         
         // Si existe la función endGame, llamarla
@@ -187,6 +193,12 @@ function dibujarBorrador() {
 function handleBorradorClick(event) {
     if (!window.IS_LOCAL_ENVIRONMENT) return;
     
+    // No procesar clics si hay un panel modal activo
+    if (window.shootingSystem && window.shootingSystem.modalActive) {
+        console.log("No se procesan clics en el canvas de borrador mientras hay un panel abierto");
+        return;
+    }
+    
     // Obtener las coordenadas del clic relativas al canvas
     const rect = canvasBorrador.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -222,6 +234,13 @@ function handleBorradorClick(event) {
 // Función para detectar si el cursor está sobre el botón
 function handleBorradorMouseMove(event) {
     if (!window.IS_LOCAL_ENVIRONMENT) return;
+    
+    // No procesar movimientos de ratón si hay un panel modal activo
+    if (window.shootingSystem && window.shootingSystem.modalActive) {
+        // Asegurar que el cursor no muestre interacción
+        canvasBorrador.style.cursor = 'default';
+        return;
+    }
     
     // Obtener las coordenadas del ratón relativas al canvas
     const rect = canvasBorrador.getBoundingClientRect();

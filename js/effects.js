@@ -55,7 +55,10 @@ const shootingSystem = {
             hit: [],
             miss: []
         }
-    }
+    },
+    // Variable global para controlar si hay un panel modal abierto
+    modalActive: false,
+    originalEndPanel: null // Guardar el contenido original del panel
 };
 
 // Sistema de audio para cargar y reproducir efectos de sonido
@@ -266,6 +269,9 @@ function showInfoPanel() {
     const infoPanel = document.createElement('div');
     infoPanel.id = 'info-panel';
     
+    // Activar el modo modal
+    setModalActive(true);
+    
     // Estilos del panel
     infoPanel.style.position = 'fixed';
     infoPanel.style.top = '50%';
@@ -303,6 +309,9 @@ function showInfoPanel() {
     const closeInfoPanel = function() {
         // Registrar que el panel de información ya se mostró
         shootingSystem.infoShown = true;
+        
+        // Desactivar el modo modal
+        setModalActive(false);
         
         // Eliminar el panel de información
         if (infoPanel.parentNode) {
@@ -857,20 +866,38 @@ function handleResetButtonPress(event) {
         }, 100);
     }
     
-    // Reiniciar el tiempo primero
-    resetGameTime();
-    
-    // Reiniciar el juego
-    if (typeof window.resetGame === 'function') {
-        window.resetGame();
-    } else {
-        console.error("Función resetGame no encontrada");
-    }
+    // Usar la función unificada para reiniciar el juego
+    window.completeGameReset();
     
     return false;
 }
 
 function handleKeyDown(event) {
+    // Verificar si hay un panel modal activo
+    if (shootingSystem.modalActive) {
+        // Si estamos en un input, permitir la entrada de texto normal
+        const isInputActive = document.activeElement && document.activeElement.tagName === 'INPUT';
+        
+        // Solo permitir Escape para cerrar paneles y teclas de navegación para inputs
+        if (!isInputActive || (event.code !== 'Escape' && 
+            event.code !== 'Tab' && 
+            event.code !== 'ArrowLeft' && 
+            event.code !== 'ArrowRight' && 
+            event.code !== 'ArrowUp' && 
+            event.code !== 'ArrowDown' && 
+            event.code !== 'Enter')) {
+            
+            // Si se presiona Escape, cerrar el panel activo
+            if (event.code === 'Escape') {
+                closeActiveModal();
+            }
+            
+            // Prevenir acción de teclas cuando hay un modal activo
+            event.preventDefault();
+            return;
+        }
+    }
+    
     // Verificar si estamos en el panel de ranking (si hay un input activo)
     const isInputActive = document.activeElement && document.activeElement.tagName === 'INPUT';
     
@@ -892,12 +919,18 @@ function handleKeyDown(event) {
     
     // Detectar si se presionó la tecla R para reiniciar
     if (event.code === 'KeyR' || event.key === 'r' || event.key === 'R') {
-        // Llamar a la misma función que el botón de reinicio para mantener consistencia
-        handleResetButtonPress(event);
+        // Usar la función unificada para reiniciar
+        window.completeGameReset();
     }
 }
 
 function tryToShoot() {
+    // No permitir disparos si hay un panel modal activo
+    if (shootingSystem.modalActive) {
+        console.log("No se permite disparar mientras hay un panel abierto");
+        return;
+    }
+    
     // No permitir disparos si el juego ha terminado
     if (shootingSystem.gameEnded) {
         console.log("El juego ha terminado. No se pueden realizar más disparos.");
@@ -1502,6 +1535,9 @@ function endGame() {
 function showGameEndMessage() {
     console.log("Mostrando panel de fin de juego");
     
+    // Activar el bloqueo modal
+    setModalActive(true);
+    
     // Crear panel de resultados
     const endPanel = document.createElement('div');
     endPanel.id = 'game-end-panel';
@@ -1525,7 +1561,7 @@ function showGameEndMessage() {
     const finalScore = window.gameState ? window.gameState.score : 0;
     
     // Contenido del panel
-    endPanel.innerHTML = `
+    const panelContent = `
         <h2 style="color: rgba(255, 50, 50, 1); margin: 0 0 20px 0; font-size: 28px;">¡Tiempo Finalizado!</h2>
         <p style="font-size: 22px; margin: 15px 0;">Tu puntuación final es:</p>
         <p style="font-size: 42px; margin: 20px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${finalScore} puntos</p>
@@ -1536,6 +1572,14 @@ function showGameEndMessage() {
         </div>
     `;
     
+    // Guardar el contenido original para poder restaurarlo
+    shootingSystem.originalEndPanel = {
+        content: panelContent,
+        score: finalScore
+    };
+    
+    endPanel.innerHTML = panelContent;
+    
     // Añadir al DOM
     document.body.appendChild(endPanel);
     
@@ -1543,49 +1587,13 @@ function showGameEndMessage() {
     const restartButton = document.getElementById('restart-game-button');
     if (restartButton) {
         restartButton.addEventListener('click', function() {
-            console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
+            console.log("Botón JUGAR DE NUEVO clickeado");
             
-            // Cerrar el panel
-            if (endPanel.parentNode) {
-                document.body.removeChild(endPanel);
-                console.log("Panel de ranking cerrado");
-            }
+            // Desactivar el modo modal
+            setModalActive(false);
             
-            // Asegurarse que el juego no esté en estado "finalizado"
-            if (window.shootingSystem) {
-                window.shootingSystem.gameEnded = false;
-            }
-            
-            // Usar exactamente la misma secuencia que la tecla R
-            // Reiniciar el tiempo primero
-            resetGameTime();
-            
-            // Reiniciar el juego directamente, igual que la tecla R
-            if (typeof window.resetGame === 'function') {
-                console.log("Llamando a window.resetGame() igual que la tecla R");
-                
-                // Establecer bandera para evitar panel inicial
-                window.isGameRestarting = true;
-                
-                // Reiniciar el juego directamente
-                window.resetGame();
-                
-                // Reactivar los botones explícitamente
-                if (window.shootingSystem) {
-                    if (window.shootingSystem.shootButton) {
-                        window.shootingSystem.shootButton.style.opacity = '1';
-                        window.shootingSystem.shootButton.style.pointerEvents = 'auto';
-                    }
-                    
-                    if (window.shootingSystem.resetButton) {
-                        window.shootingSystem.resetButton.style.transform = 'scale(1)';
-                        window.shootingSystem.resetButton.style.boxShadow = 'none';
-                    }
-                }
-            } else {
-                console.error("Función resetGame no encontrada");
-                window.location.reload();
-            }
+            // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
+            window.completeGameReset(endPanel);
         });
     }
     
@@ -1673,90 +1681,40 @@ function showRankingSubmitForm(panel, score) {
     const cancelButton = document.getElementById('cancel-score-button');
     if (cancelButton) {
         cancelButton.addEventListener('click', function() {
-            // Cerrar completamente el panel actual
-            if (panel.parentNode) {
-                document.body.removeChild(panel);
-                console.log("Panel de ranking cerrado por cancelación");
-            }
+            console.log("Botón CANCELAR clickeado - volviendo al panel original");
             
-            // Mostrar el botón de jugar de nuevo directamente
-            const endPanel = document.createElement('div');
-            endPanel.id = 'game-end-panel';
-            
-            // Estilos similares al panel anterior
-            endPanel.style.position = 'fixed';
-            endPanel.style.top = '50%';
-            endPanel.style.left = '50%';
-            endPanel.style.transform = 'translate(-50%, -50%)';
-            endPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-            endPanel.style.color = 'white';
-            endPanel.style.padding = '25px';
-            endPanel.style.borderRadius = '10px';
-            endPanel.style.boxShadow = '0 0 25px rgba(255, 50, 50, 0.7)';
-            endPanel.style.textAlign = 'center';
-            endPanel.style.zIndex = '3000';
-            endPanel.style.minWidth = '300px';
-            endPanel.style.maxWidth = '600px';
-            
-            // Contenido simplificado del panel, solo con la opción de jugar de nuevo
-            endPanel.innerHTML = `
-                <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 28px;">¿Quieres jugar de nuevo?</h2>
-                <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
-                    <button id="restart-game-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px;">JUGAR DE NUEVO</button>
-                </div>
-            `;
-            
-            // Añadir al DOM
-            document.body.appendChild(endPanel);
-            
-            // Configurar botón de reinicio
-            const restartButton = document.getElementById('restart-game-button');
-            if (restartButton) {
-                restartButton.addEventListener('click', function() {
-                    console.log("Botón JUGAR DE NUEVO clickeado (desde cancelación)");
-                    
-                    // Cerrar el panel
-                    if (endPanel.parentNode) {
-                        document.body.removeChild(endPanel);
-                        console.log("Panel de fin de juego cerrado");
-                    }
-                    
-                    // Asegurarse que el juego no esté en estado "finalizado"
-                    if (window.shootingSystem) {
-                        window.shootingSystem.gameEnded = false;
-                    }
-                    
-                    // Usar exactamente la misma secuencia que la tecla R
-                    // Reiniciar el tiempo primero
-                    resetGameTime();
-                    
-                    // Reiniciar el juego directamente, igual que la tecla R
-                    if (typeof window.resetGame === 'function') {
-                        console.log("Llamando a window.resetGame() igual que la tecla R");
+            // En lugar de crear un nuevo panel, restaurar el contenido original
+            if (shootingSystem.originalEndPanel) {
+                panel.innerHTML = shootingSystem.originalEndPanel.content;
+                
+                // Reconfigurar los botones originales
+                const restartButton = document.getElementById('restart-game-button');
+                if (restartButton) {
+                    restartButton.addEventListener('click', function() {
+                        console.log("Botón JUGAR DE NUEVO clickeado");
                         
-                        // Establecer bandera para evitar panel inicial
-                        window.isGameRestarting = true;
+                        // Desactivar el modo modal
+                        setModalActive(false);
                         
-                        // Reiniciar el juego directamente
-                        window.resetGame();
-                        
-                        // Reactivar los botones explícitamente
-                        if (window.shootingSystem) {
-                            if (window.shootingSystem.shootButton) {
-                                window.shootingSystem.shootButton.style.opacity = '1';
-                                window.shootingSystem.shootButton.style.pointerEvents = 'auto';
-                            }
-                            
-                            if (window.shootingSystem.resetButton) {
-                                window.shootingSystem.resetButton.style.transform = 'scale(1)';
-                                window.shootingSystem.resetButton.style.boxShadow = 'none';
-                            }
-                        }
-                    } else {
-                        console.error("Función resetGame no encontrada");
-                        window.location.reload();
-                    }
-                });
+                        // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
+                        window.completeGameReset(panel);
+                    });
+                }
+                
+                const submitButton = document.getElementById('submit-score-button');
+                if (submitButton) {
+                    submitButton.addEventListener('click', function() {
+                        // Cambiar el panel para mostrar el formulario de envío
+                        showRankingSubmitForm(panel, shootingSystem.originalEndPanel.score);
+                    });
+                }
+            } else {
+                // Si por alguna razón no tenemos el panel original, cerrar el actual
+                if (panel.parentNode) {
+                    // Desactivar el bloqueo modal
+                    setModalActive(false);
+                    document.body.removeChild(panel);
+                }
             }
         });
     }
@@ -1780,47 +1738,11 @@ async function showRankingList(panel, playerScore, playerName) {
         playAgainButton.addEventListener('click', function() {
             console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
             
-            // Cerrar el panel
-            if (panel.parentNode) {
-                document.body.removeChild(panel);
-                console.log("Panel de ranking cerrado");
-            }
+            // Desactivar el modo modal
+            setModalActive(false);
             
-            // Asegurarse que el juego no esté en estado "finalizado"
-            if (window.shootingSystem) {
-                window.shootingSystem.gameEnded = false;
-            }
-            
-            // Usar exactamente la misma secuencia que la tecla R
-            // Reiniciar el tiempo primero
-            resetGameTime();
-            
-            // Reiniciar el juego directamente, igual que la tecla R
-            if (typeof window.resetGame === 'function') {
-                console.log("Llamando a window.resetGame() igual que la tecla R");
-                
-                // Establecer bandera para evitar panel inicial
-                window.isGameRestarting = true;
-                
-                // Reiniciar el juego directamente
-                window.resetGame();
-                
-                // Reactivar los botones explícitamente
-                if (window.shootingSystem) {
-                    if (window.shootingSystem.shootButton) {
-                        window.shootingSystem.shootButton.style.opacity = '1';
-                        window.shootingSystem.shootButton.style.pointerEvents = 'auto';
-                    }
-                    
-                    if (window.shootingSystem.resetButton) {
-                        window.shootingSystem.resetButton.style.transform = 'scale(1)';
-                        window.shootingSystem.resetButton.style.boxShadow = 'none';
-                    }
-                }
-            } else {
-                console.error("Función resetGame no encontrada");
-                window.location.reload();
-            }
+            // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
+            window.completeGameReset(panel);
         });
     }
     
@@ -2470,3 +2392,121 @@ window.effectsResetGame = function() {
         window.location.reload(); // Último recurso: recargar la página
     }
 };
+
+// Función unificada para reiniciar completamente el juego desde cualquier punto
+window.completeGameReset = function(panel = null) {
+    console.log("Ejecutando reinicio completo del juego");
+    
+    // 0. Desactivar cualquier modal activo
+    if (shootingSystem.modalActive) {
+        setModalActive(false);
+    }
+    
+    // 1. Cerrar cualquier panel que se haya pasado
+    if (panel && panel.parentNode) {
+        panel.parentNode.removeChild(panel);
+        console.log("Panel cerrado durante reinicio");
+    }
+    
+    // 2. Asegurarse que el juego no esté en estado "finalizado"
+    if (window.shootingSystem) {
+        window.shootingSystem.gameEnded = false;
+    }
+    
+    // 3. Establecer bandera para evitar que se muestre el panel inicial
+    window.isGameRestarting = true;
+    
+    // 4. Reiniciar el tiempo
+    resetGameTime();
+    
+    // 5. Reiniciar el juego con la función principal
+    if (typeof window.resetGame === 'function') {
+        console.log("Llamando a resetGame() desde completeGameReset");
+        window.resetGame();
+    } else {
+        console.error("Función resetGame no encontrada");
+        window.location.reload(); // Último recurso: recargar la página
+    }
+    
+    // 6. Reactivar los botones explícitamente
+    if (window.shootingSystem) {
+        if (window.shootingSystem.shootButton) {
+            window.shootingSystem.shootButton.style.opacity = '1';
+            window.shootingSystem.shootButton.style.pointerEvents = 'auto';
+        }
+        
+        if (window.shootingSystem.resetButton) {
+            window.shootingSystem.resetButton.style.transform = 'scale(1)';
+            window.shootingSystem.resetButton.style.boxShadow = 'none';
+        }
+    }
+    
+    console.log("Reinicio completo finalizado");
+};
+
+// Nueva función: Bloquear/Desbloquear interacción durante paneles modales
+function setModalActive(active) {
+    shootingSystem.modalActive = active;
+    console.log(`Panel modal ${active ? 'activado' : 'desactivado'}`);
+    
+    // Desactivar visualmente los botones cuando el modal está activo
+    if (shootingSystem.shootButton) {
+        shootingSystem.shootButton.style.pointerEvents = active ? 'none' : 'auto';
+        shootingSystem.shootButton.style.opacity = active ? '0.3' : '1';
+    }
+    
+    if (shootingSystem.resetButton) {
+        shootingSystem.resetButton.style.pointerEvents = active ? 'none' : 'auto';
+        shootingSystem.resetButton.style.opacity = active ? '0.3' : '1';
+    }
+    
+    if (shootingSystem.audioButton) {
+        shootingSystem.audioButton.style.pointerEvents = active ? 'none' : 'auto';
+        shootingSystem.audioButton.style.opacity = active ? '0.3' : '1';
+    }
+    
+    // Crear/remover un overlay para bloquear la interacción con el resto de la página
+    const existingOverlay = document.getElementById('modal-overlay');
+    
+    if (active && !existingOverlay) {
+        // Crear overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'modal-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        overlay.style.zIndex = '2000'; // Menor que el panel (3000)
+        document.body.appendChild(overlay);
+    } else if (!active && existingOverlay) {
+        // Remover overlay
+        document.body.removeChild(existingOverlay);
+    }
+}
+
+// Nueva función para cerrar el modal activo
+function closeActiveModal() {
+    console.log("Cerrando panel modal activo (Escape)");
+    
+    // Buscar panel activo para cerrarlo
+    const endPanel = document.getElementById('game-end-panel');
+    const infoPanel = document.getElementById('info-panel');
+    
+    if (endPanel) {
+        // Si estamos en algún panel de fin de juego o ranking, volver al juego
+        window.completeGameReset(endPanel);
+    } else if (infoPanel) {
+        // Si estamos en el panel de información inicial, cerrarlo
+        if (infoPanel.parentNode) {
+            setModalActive(false);
+            document.body.removeChild(infoPanel);
+            shootingSystem.infoShown = true;
+            console.log("Panel de información cerrado con Escape");
+        }
+    } else {
+        // Si no encontramos un panel específico, solo desactivar el modo modal
+        setModalActive(false);
+    }
+}
