@@ -12,6 +12,37 @@ window.DISABLE_LOCAL_STORAGE = false;
 // MODO DE PRUEBA: Sin peticiones de red reales (para probar si el problema es la red)
 window.MOCK_API_REQUESTS = false;
 
+// Variables para el manejo selectivo de geolocalización
+window.MOCK_GEOLOCATION_ON_LOCALHOST = false; // Permitir geolocalización real en localhost
+
+// Sistema de timeouts globales pendientes
+window.pendingTimeouts = [];
+
+// Utilidad para manejar timeouts de forma limpia
+window.createCleanableTimeout = function(callback, delay) {
+    const timeoutId = setTimeout(() => {
+        // Remover de la lista cuando se ejecuta
+        const index = window.pendingTimeouts.indexOf(timeoutId);
+        if (index > -1) {
+            window.pendingTimeouts.splice(index, 1);
+        }
+        callback();
+    }, delay);
+    
+    // Guardar referencia al timeout
+    window.pendingTimeouts.push(timeoutId);
+    return timeoutId;
+};
+
+// Función para limpiar todos los timeouts pendientes
+window.clearAllPendingTimeouts = function() {
+    console.log(`Limpiando ${window.pendingTimeouts.length} timeouts pendientes`);
+    window.pendingTimeouts.forEach(id => {
+        clearTimeout(id);
+    });
+    window.pendingTimeouts = [];
+};
+
 // Datos simulados para modo de prueba
 window.MOCK_DATA = {
     ranking: [
@@ -37,10 +68,23 @@ window.apiRequestControllers = {
     }
 };
 
+// Función para limpiar todos los recursos
+window.cleanupAllResources = function() {
+    console.log("=== LIMPIEZA GENERAL DE RECURSOS ===");
+    // Cancelar todas las peticiones API
+    window.apiRequestControllers.cancelAll();
+    // Limpiar todos los timeouts
+    window.clearAllPendingTimeouts();
+    console.log("=== LIMPIEZA COMPLETADA ===");
+};
+
 // Detector de recargas de página
 window.addEventListener('beforeunload', function(e) {
     console.error('=== RECARGA DE PÁGINA DETECTADA ===');
     console.trace('Stack trace en momento de recarga');
+    
+    // Intentar limpiar recursos antes de la recarga
+    window.cleanupAllResources();
     
     // En desarrollo, podemos intentar prevenir la recarga para investigar
     if (window.IS_LOCAL_ENVIRONMENT) {
@@ -171,6 +215,12 @@ const apiClient = {
                     throw new Error('Error al guardar puntaje');
                 }
                 
+                // Limpiar recursos después de guardar exitosamente
+                window.createCleanableTimeout(() => {
+                    console.log("Limpieza programada después de guardar puntuación");
+                    window.cleanupAllResources();
+                }, 1000);
+                
                 return await response.json();
             } catch (error) {
                 // No lanzar error si fue cancelada
@@ -186,12 +236,13 @@ const apiClient = {
         
         // Obtener ubicación basada en IP para entorno de desarrollo
         getLocationFromIP: async function() {
-            // Si estamos en modo de prueba, devolver ubicación simulada
-            if (window.MOCK_API_REQUESTS) {
-                console.log("MODO PRUEBA: Devolviendo ubicación simulada");
+            // Si estamos en modo de prueba o es localhost con simulación activada
+            if (window.MOCK_API_REQUESTS || 
+                (window.MOCK_GEOLOCATION_ON_LOCALHOST && apiClient.config.isLocalEnvironment())) {
+                console.log("Modo local: Devolviendo ubicación simulada para IP");
                 // Simular una pequeña demora para que sea realista
                 await new Promise(resolve => setTimeout(resolve, 200));
-                return "Ciudad Test";
+                return "Ciudad Local";
             }
             
             // Crear un controller para esta petición
@@ -201,23 +252,23 @@ const apiClient = {
             try {
                 console.log("Usando método alternativo de geolocalización (IP)");
                 
-                // Establecer un timeout para la solicitud (el timeout ahora se manejará con AbortController)
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
+                // Establecer un timeout para la solicitud
+                const timeoutId = window.createCleanableTimeout(() => controller.abort(), 3000);
                 
-                // Usamos ip-api.com con HTTPS para evitar contenido mixto
-                // Nota: El endpoint HTTPS requiere una key en ip-api.com PRO, por lo que usamos una alternativa segura: ipinfo.io
+                // Hacer petición HTTP
                 const response = await fetch('https://ipinfo.io/json', {
                     signal: controller.signal,
                     headers: {
                         'Accept': 'application/json'
                     }
-                }).finally(() => clearTimeout(timeoutId));
+                });
                 
-                // Eliminar el controller de la lista de activos
+                // Eliminar el controller de la lista de activos y cancelar el timeout
                 const index = window.apiRequestControllers.active.indexOf(controller);
                 if (index > -1) {
                     window.apiRequestControllers.active.splice(index, 1);
                 }
+                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener ubicación por IP');
@@ -246,12 +297,13 @@ const apiClient = {
         
         // Obtener ubicación a partir de coordenadas
         getLocationFromCoords: async function(latitude, longitude) {
-            // Si estamos en modo de prueba, devolver ubicación simulada
-            if (window.MOCK_API_REQUESTS) {
-                console.log("MODO PRUEBA: Devolviendo ubicación simulada");
+            // Si estamos en modo de prueba o es localhost con simulación activada
+            if (window.MOCK_API_REQUESTS || 
+                (window.MOCK_GEOLOCATION_ON_LOCALHOST && apiClient.config.isLocalEnvironment())) {
+                console.log("Modo local: Devolviendo ubicación simulada para coordenadas");
                 // Simular una pequeña demora para que sea realista
                 await new Promise(resolve => setTimeout(resolve, 300));
-                return "Ciudad Test";
+                return "Ciudad Local";
             }
             
             // Crear un controller para esta petición
@@ -259,11 +311,10 @@ const apiClient = {
             window.apiRequestControllers.active.push(controller);
             
             try {
-                // El timeout ahora se manejará con AbortController
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
+                // Usar nuestro sistema de timeouts limpiables
+                const timeoutId = window.createCleanableTimeout(() => controller.abort(), 3000);
                 
                 // Utilizamos el servicio de geocodificación inversa de OpenStreetMap (Nominatim)
-                // Añadiendo User-Agent apropiado para cumplir con las políticas de uso de Nominatim
                 const response = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
                     {
@@ -272,13 +323,14 @@ const apiClient = {
                             'User-Agent': 'RejasEspacialesGame/2.0.0'
                         }
                     }
-                ).finally(() => clearTimeout(timeoutId));
+                );
                 
-                // Eliminar el controller de la lista de activos
+                // Eliminar el controller de la lista de activos y cancelar el timeout
                 const index = window.apiRequestControllers.active.indexOf(controller);
                 if (index > -1) {
                     window.apiRequestControllers.active.splice(index, 1);
                 }
+                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener ubicación');
@@ -308,6 +360,45 @@ const apiClient = {
                 // En caso de error, devolvemos "desconocida" para no bloquear el flujo
                 return "desconocida";
             }
+        },
+        
+        // Limpieza de recursos después de operaciones de ranking
+        cleanupAfterRankingOperation: function() {
+            console.log("Iniciando limpieza post-ranking");
+            // Ejecutar limpieza inmediata
+            window.cleanupAllResources();
+            
+            // También programar una limpieza retrasada (por si hay callbacks tardíos)
+            window.createCleanableTimeout(() => {
+                console.log("Limpieza retrasada post-ranking (8 segundos)");
+                window.cleanupAllResources();
+            }, 8000); // Exactamente el tiempo en que ocurre la recarga
+        },
+        
+        // Obtener todos los puntajes ordenados con limpieza automática
+        getAllWithCleanup: async function() {
+            try {
+                const result = await this.getAll();
+                // Limpiar recursos al terminar
+                this.cleanupAfterRankingOperation();
+                return result;
+            } catch (error) {
+                this.cleanupAfterRankingOperation();
+                throw error;
+            }
+        },
+        
+        // Guardar puntuación con limpieza automática
+        saveWithCleanup: async function(playerName, score, deviceType, location) {
+            try {
+                const result = await this.save(playerName, score, deviceType, location);
+                // Limpiar recursos al terminar
+                this.cleanupAfterRankingOperation();
+                return result;
+            } catch (error) {
+                this.cleanupAfterRankingOperation();
+                throw error;
+            }
         }
     }
 };
@@ -320,4 +411,6 @@ console.log(`API Client inicializado en entorno: ${apiClient.config.isLocalEnvir
 console.log(`Versión del juego: ${window.GAME_VERSION}`);
 console.log(`URL del backend: ${apiClient.config.getBaseUrl()}`);
 console.log(`LocalStorage ${window.DISABLE_LOCAL_STORAGE ? 'deshabilitado' : 'habilitado'} para pruebas`);
-console.log(`Modo de API: ${window.MOCK_API_REQUESTS ? 'SIMULACIÓN (sin peticiones de red)' : 'REAL'}`); 
+console.log(`Modo de API: ${window.MOCK_API_REQUESTS ? 'SIMULACIÓN (sin peticiones de red)' : 'REAL'}`);
+console.log(`Geolocalización en localhost: ${window.MOCK_GEOLOCATION_ON_LOCALHOST ? 'SIMULADA' : 'REAL'}`);
+console.log(`Sistema de limpieza de recursos: ACTIVADO`);
