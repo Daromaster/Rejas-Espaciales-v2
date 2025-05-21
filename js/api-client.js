@@ -10,7 +10,7 @@ window.DEBUG_RANKING_PANEL = true;
 window.DISABLE_LOCAL_STORAGE = false;
 
 // MODO DE PRUEBA: Sin peticiones de red reales (para probar si el problema es la red)
-window.MOCK_API_REQUESTS = true;
+window.MOCK_API_REQUESTS = false;
 
 // Datos simulados para modo de prueba
 window.MOCK_DATA = {
