@@ -1771,42 +1771,93 @@ function showRankingSubmitForm(panel, score) {
                     console.log("Entorno local detectado, usando geolocalización por IP");
                     messageDiv.textContent = "Obteniendo localidad (modo desarrollo)...";
                     
-                    // Usar la API basada en IP
-                    if (window.apiClient && window.apiClient.ranking) {
-                        ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                    try {
+                        // Usar la API basada en IP con un timeout para evitar bloqueos
+                        if (window.apiClient && window.apiClient.ranking) {
+                            const locationPromise = window.apiClient.ranking.getLocationFromIP();
+                            const timeoutPromise = new Promise((_, reject) => {
+                                setTimeout(() => reject(new Error('Timeout')), 5000);
+                            });
+                            
+                            // Race entre la obtención de ubicación y el timeout
+                            ubicacion = await Promise.race([locationPromise, timeoutPromise])
+                                .catch(error => {
+                                    console.warn("Error o timeout en geolocalización IP:", error);
+                                    return "desconocida";
+                                });
+                        }
+                    } catch (geoError) {
+                        console.warn("Error en geolocalización IP:", geoError);
+                        ubicacion = "desconocida";
                     }
                 } else if (navigator.geolocation) {
                     // En producción, usar la API de geolocalización del navegador
                     console.log("Entorno de producción, usando geolocalización del navegador");
                     
-                    // Envolver la geolocalización en una promesa para manejarla mejor
-                    const getPosition = () => {
-                        return new Promise((resolve, reject) => {
-                            navigator.geolocation.getCurrentPosition(
-                                position => resolve(position),
-                                error => reject(error),
-                                { timeout: 5000, enableHighAccuracy: false }
-                            );
-                        });
-                    };
-                    
                     try {
-                        const position = await getPosition();
+                        // Envolver la geolocalización en una promesa para manejarla mejor
+                        const getPosition = () => {
+                            return new Promise((resolve, reject) => {
+                                const geoTimeout = setTimeout(() => {
+                                    reject(new Error('Geolocation timeout'));
+                                }, 5000);
+                                
+                                navigator.geolocation.getCurrentPosition(
+                                    position => {
+                                        clearTimeout(geoTimeout);
+                                        resolve(position);
+                                    },
+                                    error => {
+                                        clearTimeout(geoTimeout);
+                                        reject(error);
+                                    },
+                                    { timeout: 4000, enableHighAccuracy: false }
+                                );
+                            });
+                        };
                         
-                        messageDiv.textContent = "Obteniendo nombre de localidad...";
-                        
-                        // Usar las coordenadas para obtener el nombre de la localidad
-                        ubicacion = await window.apiClient.ranking.getLocationFromCoords(
-                            position.coords.latitude,
-                            position.coords.longitude
-                        );
-                    } catch (geoError) {
-                        console.warn("Error de geolocalización:", geoError.message);
-                        messageDiv.textContent = "Ubicación no disponible";
+                        try {
+                            messageDiv.textContent = "Solicitando ubicación...";
+                            const position = await getPosition();
+                            
+                            messageDiv.textContent = "Obteniendo nombre de localidad...";
+                            
+                            try {
+                                // Usar las coordenadas para obtener el nombre de la localidad con un timeout
+                                if (window.apiClient && window.apiClient.ranking) {
+                                    const locationPromise = window.apiClient.ranking.getLocationFromCoords(
+                                        position.coords.latitude, 
+                                        position.coords.longitude
+                                    );
+                                    
+                                    const timeoutPromise = new Promise((_, reject) => {
+                                        setTimeout(() => reject(new Error('Reverse geocoding timeout')), 5000);
+                                    });
+                                    
+                                    // Race entre la obtención de ubicación y el timeout
+                                    ubicacion = await Promise.race([locationPromise, timeoutPromise])
+                                        .catch(error => {
+                                            console.warn("Error o timeout en geocodificación inversa:", error);
+                                            return "desconocida";
+                                        });
+                                }
+                            } catch (reverseGeoError) {
+                                console.warn("Error en geocodificación inversa:", reverseGeoError);
+                                ubicacion = "desconocida";
+                            }
+                        } catch (positionError) {
+                            console.warn("Error de geolocalización:", positionError.message);
+                            messageDiv.textContent = "Ubicación no disponible";
+                            ubicacion = "desconocida";
+                        }
+                    } catch (geoWrapperError) {
+                        console.warn("Error en wrapper de geolocalización:", geoWrapperError);
+                        ubicacion = "desconocida";
                     }
                 }
-            } catch (error) {
-                console.warn("Error al obtener ubicación:", error);
+            } catch (outerGeoError) {
+                console.warn("Error general al obtener ubicación:", outerGeoError);
+                ubicacion = "desconocida";
             }
             
             messageDiv.textContent = "Guardando puntuación...";
@@ -1822,13 +1873,30 @@ function showRankingSubmitForm(panel, score) {
                         console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                     }
                     
-                    // Enviar todos los datos al servidor
-                    await window.apiClient.ranking.save(playerName, score, deviceType, ubicacion);
-                    messageDiv.textContent = "¡Puntuación guardada con éxito!";
-                    messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
-                    
-                    // Mostrar el ranking inmediatamente sin temporizador
-                    showRankingList(panel, score, playerName);
+                    // Enviar todos los datos al servidor con timeout
+                    try {
+                        const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion);
+                        const saveTimeoutPromise = new Promise((_, reject) => {
+                            setTimeout(() => reject(new Error('Save timeout')), 8000);
+                        });
+                        
+                        await Promise.race([savePromise, saveTimeoutPromise]);
+                        
+                        messageDiv.textContent = "¡Puntuación guardada con éxito!";
+                        messageDiv.style.color = "rgba(50, 205, 50, 0.9)";
+                        
+                        // Mostrar el ranking inmediatamente sin temporizador
+                        showRankingList(panel, score, playerName);
+                    } catch (saveError) {
+                        console.error("Error al guardar puntuación (timeout o error de servidor):", saveError);
+                        messageDiv.textContent = "Error al guardar. Intenta de nuevo.";
+                        messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
+                        
+                        // Reactivar botón
+                        saveButton.disabled = false;
+                        saveButton.textContent = "GUARDAR";
+                        saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
+                    }
                 } else {
                     throw new Error("API Client no disponible");
                 }
@@ -2017,6 +2085,10 @@ async function showRankingList(panel, playerScore, playerName) {
     const rankingListDiv = document.getElementById('ranking-list');
     const playAgainButton = document.getElementById('play-again-button');
     
+    // Configurar bandera para controlar si el juego se ha reiniciado
+    // Esto evitará operaciones en componentes que ya no existen
+    let panelClosed = false;
+    
     // Configurar botón de jugar de nuevo
     if (playAgainButton) {
         // Handler para jugar de nuevo
@@ -2026,6 +2098,12 @@ async function showRankingList(panel, playerScore, playerName) {
             }
             e.preventDefault(); // Prevenir comportamiento predeterminado
             console.log("Botón JUGAR DE NUEVO (desde ranking) clickeado");
+            
+            // Marcar que el panel se está cerrando
+            panelClosed = true;
+            
+            // Establecer bandera para indicar que este cierre fue iniciado por el usuario
+            window._userInitiatedClose = true;
             
             // Desactivar el modo modal
             setModalActive(false);
@@ -2062,14 +2140,33 @@ async function showRankingList(panel, playerScore, playerName) {
         try {
             let rankingData = [];
             
-            if (window.apiClient && window.apiClient.ranking) {
+            if (window.apiClient && window.apiClient.ranking && !panelClosed) {
                 if (window.DEBUG_RANKING_PANEL) {
                     console.log("Cargando datos de ranking desde API...");
                 }
-                rankingData = await window.apiClient.ranking.getAll();
-                if (window.DEBUG_RANKING_PANEL) {
-                    console.log("Datos recibidos:", rankingData ? rankingData.length : 0, "registros");
+                
+                // Añadir timeout para prevenir bloqueos
+                const fetchPromise = window.apiClient.ranking.getAll();
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout obteniendo ranking')), 6000);
+                });
+                
+                try {
+                    rankingData = await Promise.race([fetchPromise, timeoutPromise]);
+                    
+                    if (window.DEBUG_RANKING_PANEL) {
+                        console.log("Datos recibidos:", rankingData ? rankingData.length : 0, "registros");
+                    }
+                } catch (fetchError) {
+                    console.error("Error o timeout al obtener ranking:", fetchError);
+                    // Continuar con rankingData vacío
                 }
+            }
+            
+            // Si el panel fue cerrado durante la carga, abortar
+            if (panelClosed) {
+                console.log("Panel cerrado durante la carga de datos, abortando renderizado");
+                return;
             }
             
             // Verificar nuevamente que el panel sigue existiendo
@@ -2138,6 +2235,12 @@ async function showRankingList(panel, playerScore, playerName) {
             }
         } catch (error) {
             console.error("Error al cargar el ranking:", error);
+            
+            // Si el panel fue cerrado durante la carga, abortar
+            if (panelClosed) {
+                console.log("Panel cerrado durante el manejo de error, abortando");
+                return;
+            }
             
             // Verificar si los elementos todavía existen
             if (loadingDiv && rankingListDiv) {

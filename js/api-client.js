@@ -6,6 +6,37 @@ window.GAME_VERSION = "2.0.0";
 // Debug flag para ayudar con el problema del cierre del panel de ranking
 window.DEBUG_RANKING_PANEL = true;
 
+// Bandera temporal para deshabilitar localStorage (prueba de solución)
+window.DISABLE_LOCAL_STORAGE = true;
+
+// Variable global para el control de cancelación de peticiones
+window.apiRequestControllers = {
+    active: [],
+    cancelAll: function() {
+        console.log(`Cancelando ${this.active.length} peticiones API pendientes`);
+        this.active.forEach(controller => {
+            try {
+                controller.abort();
+            } catch (e) {
+                console.warn("Error al cancelar petición:", e);
+            }
+        });
+        this.active = [];
+    }
+};
+
+// Detector de recargas de página
+window.addEventListener('beforeunload', function(e) {
+    console.error('=== RECARGA DE PÁGINA DETECTADA ===');
+    console.trace('Stack trace en momento de recarga');
+    
+    // En desarrollo, podemos intentar prevenir la recarga para investigar
+    if (window.IS_LOCAL_ENVIRONMENT) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 // Objeto principal del cliente API
 const apiClient = {
     // Configuración del cliente
@@ -30,13 +61,32 @@ const apiClient = {
     ranking: {
         // Obtener todos los puntajes ordenados
         getAll: async function() {
+            // Crear un controller para esta petición
+            const controller = new AbortController();
+            window.apiRequestControllers.active.push(controller);
+            
             try {
-                const response = await fetch(`${apiClient.config.getBaseUrl()}/ranking`);
+                const response = await fetch(`${apiClient.config.getBaseUrl()}/ranking`, {
+                    signal: controller.signal
+                });
+                
+                // Eliminar el controller de la lista de activos
+                const index = window.apiRequestControllers.active.indexOf(controller);
+                if (index > -1) {
+                    window.apiRequestControllers.active.splice(index, 1);
+                }
+                
                 if (!response.ok) {
                     throw new Error('Error al obtener ranking');
                 }
                 return await response.json();
             } catch (error) {
+                // No lanzar error si fue cancelada
+                if (error.name === 'AbortError') {
+                    console.log('Petición de ranking cancelada');
+                    return [];
+                }
+                
                 console.error('Error al cargar el ranking:', error);
                 throw error;
             }
@@ -44,6 +94,10 @@ const apiClient = {
         
         // Guardar un nuevo puntaje
         save: async function(playerName, score, deviceType, location) {
+            // Crear un controller para esta petición
+            const controller = new AbortController();
+            window.apiRequestControllers.active.push(controller);
+            
             try {
                 const data = {
                     nombre: playerName,
@@ -60,8 +114,15 @@ const apiClient = {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
+                    signal: controller.signal
                 });
+                
+                // Eliminar el controller de la lista de activos
+                const index = window.apiRequestControllers.active.indexOf(controller);
+                if (index > -1) {
+                    window.apiRequestControllers.active.splice(index, 1);
+                }
                 
                 if (!response.ok) {
                     throw new Error('Error al guardar puntaje');
@@ -69,6 +130,12 @@ const apiClient = {
                 
                 return await response.json();
             } catch (error) {
+                // No lanzar error si fue cancelada
+                if (error.name === 'AbortError') {
+                    console.log('Petición de guardado cancelada');
+                    return { cancelled: true };
+                }
+                
                 console.error('Error al guardar puntaje:', error);
                 throw error;
             }
@@ -76,11 +143,14 @@ const apiClient = {
         
         // Obtener ubicación basada en IP para entorno de desarrollo
         getLocationFromIP: async function() {
+            // Crear un controller para esta petición
+            const controller = new AbortController();
+            window.apiRequestControllers.active.push(controller);
+            
             try {
                 console.log("Usando método alternativo de geolocalización (IP)");
                 
-                // Establecer un timeout para la solicitud
-                const controller = new AbortController();
+                // Establecer un timeout para la solicitud (el timeout ahora se manejará con AbortController)
                 const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
                 
                 // Usamos ip-api.com con HTTPS para evitar contenido mixto
@@ -91,6 +161,12 @@ const apiClient = {
                         'Accept': 'application/json'
                     }
                 }).finally(() => clearTimeout(timeoutId));
+                
+                // Eliminar el controller de la lista de activos
+                const index = window.apiRequestControllers.active.indexOf(controller);
+                if (index > -1) {
+                    window.apiRequestControllers.active.splice(index, 1);
+                }
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener ubicación por IP');
@@ -105,6 +181,12 @@ const apiClient = {
                     return "desconocida";
                 }
             } catch (error) {
+                // No lanzar error si fue cancelada
+                if (error.name === 'AbortError') {
+                    console.log('Petición de geolocalización IP cancelada');
+                    return "desconocida";
+                }
+                
                 console.error('Error al obtener ubicación por IP:', error);
                 // En caso de error, devolvemos "desconocida" para no bloquear el flujo
                 return "desconocida";
@@ -113,9 +195,12 @@ const apiClient = {
         
         // Obtener ubicación a partir de coordenadas
         getLocationFromCoords: async function(latitude, longitude) {
+            // Crear un controller para esta petición
+            const controller = new AbortController();
+            window.apiRequestControllers.active.push(controller);
+            
             try {
-                // Establecer un timeout para la solicitud
-                const controller = new AbortController();
+                // El timeout ahora se manejará con AbortController
                 const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
                 
                 // Utilizamos el servicio de geocodificación inversa de OpenStreetMap (Nominatim)
@@ -129,6 +214,12 @@ const apiClient = {
                         }
                     }
                 ).finally(() => clearTimeout(timeoutId));
+                
+                // Eliminar el controller de la lista de activos
+                const index = window.apiRequestControllers.active.indexOf(controller);
+                if (index > -1) {
+                    window.apiRequestControllers.active.splice(index, 1);
+                }
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener ubicación');
@@ -148,6 +239,12 @@ const apiClient = {
                 return location;
                 
             } catch (error) {
+                // No lanzar error si fue cancelada
+                if (error.name === 'AbortError') {
+                    console.log('Petición de geocodificación inversa cancelada');
+                    return "desconocida";
+                }
+                
                 console.error('Error al obtener ubicación:', error);
                 // En caso de error, devolvemos "desconocida" para no bloquear el flujo
                 return "desconocida";
@@ -162,4 +259,5 @@ window.apiClient = apiClient;
 // Registrar el entorno detectado en la consola
 console.log(`API Client inicializado en entorno: ${apiClient.config.isLocalEnvironment() ? 'Local' : 'Producción'}`);
 console.log(`Versión del juego: ${window.GAME_VERSION}`);
-console.log(`URL del backend: ${apiClient.config.getBaseUrl()}`); 
+console.log(`URL del backend: ${apiClient.config.getBaseUrl()}`);
+console.log(`LocalStorage ${window.DISABLE_LOCAL_STORAGE ? 'deshabilitado' : 'habilitado'} para pruebas`); 
