@@ -2158,6 +2158,7 @@ async function showRankingList(panel, playerScore, playerName) {
                             <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
                             <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
                             <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
+                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Versión</th>
                             <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Dispositivo</th>
                             <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Ubicación</th>
                         </tr>
@@ -2177,11 +2178,15 @@ async function showRankingList(panel, playerScore, playerName) {
                     // Formatear ubicación (mostrar "desconocida" si no está disponible)
                     const location = entry.ubicacion || "desconocida";
                     
+                    // Formatear versión (mostrar "desconocida" si no está disponible)
+                    const version = entry.version || "desconocida";
+                    
                     tableHTML += `
                         <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
                             <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
                             <td style="padding: ${tableCellPadding};">${entry.nombre}</td>
                             <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
+                            <td style="padding: ${tableCellPadding}; text-align: center;">${version}</td>
                             <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
                             <td style="padding: ${tableCellPadding};">${location}</td>
                         </tr>

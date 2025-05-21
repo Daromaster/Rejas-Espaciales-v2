@@ -1,8 +1,5 @@
 // api-client.js - Cliente para comunicarse con el backend de Rejas Espaciales
 
-// Versión actual del juego (constante global)
-window.GAME_VERSION = "2.0.0";
-
 // Configuración para geolocalización
 window.MOCK_GEOLOCATION_ON_LOCALHOST = false; // Permitir geolocalización real en localhost
 
