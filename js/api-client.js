@@ -43,12 +43,23 @@ const apiClient = {
         // Guardar un nuevo puntaje
         save: async function(playerName, score, deviceType, location) {
             try {
+                // Generar fecha y hora actual en formato YYYYMMDD-HHMMSS
+                const ahora = new Date();
+                const fecha = ahora.getFullYear() +
+                    String(ahora.getMonth() + 1).padStart(2, '0') +
+                    String(ahora.getDate()).padStart(2, '0');
+                const hora = String(ahora.getHours()).padStart(2, '0') +
+                    String(ahora.getMinutes()).padStart(2, '0') +
+                    String(ahora.getSeconds()).padStart(2, '0');
+                const fechaHora = `${fecha}-${hora}`;
+                
                 const data = {
                     nombre: playerName,
                     puntaje: score,
                     version: window.GAME_VERSION,
                     dispositivo: deviceType || "unknown",
-                    ubicacion: location || "desconocida"
+                    ubicacion: location || "desconocida",
+                    fechaHora: fechaHora
                 };
                 
                 console.log("Enviando datos al servidor:", data);
