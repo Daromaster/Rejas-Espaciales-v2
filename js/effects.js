@@ -1849,123 +1849,117 @@ function showRankingSubmitForm(panel, score) {
         // Handler para guardar
         const handleSave = async function(e) {
             e.preventDefault(); // Prevenir comportamiento predeterminado
+            
+            // Deshabilitar botón temporalmente
+            saveButton.disabled = true;
+            saveButton.textContent = "GUARDANDO...";
+            saveButton.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
+            
             const playerName = nameInput.value.trim();
             
+            // Validar que el nombre no esté vacío
             if (!playerName) {
                 messageDiv.textContent = "Por favor ingresa tu nombre";
                 messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
+                // Reactivar botón
+                saveButton.disabled = false;
+                saveButton.textContent = "GUARDAR";
+                saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
                 return;
             }
             
-            // Deshabilitar botón durante el envío
-            saveButton.disabled = true;
-            saveButton.textContent = "GUARDANDO...";
-            saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.4)";
-            
-            // Mostrar mensaje de obtención de datos
-            messageDiv.textContent = "Obteniendo ubicación...";
-            messageDiv.style.color = "rgba(255, 255, 0, 0.8)";
-            
-            // Detectar el tipo de dispositivo
-            const deviceType = shootingSystem.isMobile ? "mobile" : "desktop";
-            
-            // Variable para almacenar la ubicación
+            const deviceType = shootingSystem.isMobile ? 'mobile' : 'desktop';
             let ubicacion = "desconocida";
             
-            // Verificar si estamos en entorno local (Live Server)
-            const isLocalEnvironment = window.location.hostname === 'localhost' || 
-                                      window.location.hostname === '127.0.0.1';
+            // Agregar variable para controlar el modo de respaldo
+            let isRetryWithoutGeo = saveButton.dataset.retryWithoutGeo === 'true';
             
-            // Intentar obtener la ubicación según el entorno
             try {
-                if (isLocalEnvironment) {
-                    // En entorno local, usar método de geolocalización por IP
-                    console.log("Entorno local detectado, usando geolocalización por IP");
-                    messageDiv.textContent = "Obteniendo localidad (modo desarrollo)...";
+                // Solo intentar geolocalización si no es un reintento sin geo
+                if (!isRetryWithoutGeo) {
+                    messageDiv.textContent = "Obteniendo ubicación...";
                     
-                    try {
-                        // Usar la API basada en IP con un timeout para evitar bloqueos
-                        if (window.apiClient && window.apiClient.ranking) {
-                            const locationPromise = window.apiClient.ranking.getLocationFromIP();
-                            const timeoutPromise = new Promise((_, reject) => {
-                                setTimeout(() => reject(new Error('Timeout')), 5000);
-                            });
-                            
-                            // Race entre la obtención de ubicación y el timeout
-                            ubicacion = await Promise.race([locationPromise, timeoutPromise])
-                                .catch(error => {
-                                    console.warn("Error o timeout en geolocalización IP:", error);
-                                    return "desconocida";
-                                });
-                        }
-                    } catch (geoError) {
-                        console.warn("Error en geolocalización IP:", geoError);
-                        ubicacion = "desconocida";
-                    }
-                } else if (navigator.geolocation) {
-                    // En producción, usar la API de geolocalización del navegador
-                    console.log("Entorno de producción, usando geolocalización del navegador");
+                    // Verificar si estamos en entorno de desarrollo
+                    const isLocalEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                     
-                    try {
-                        // Envolver la geolocalización en una promesa para manejarla mejor
-                        const getPosition = () => {
-                            return new Promise((resolve, reject) => {
-                                const geoTimeout = setTimeout(() => {
-                                    reject(new Error('Geolocation timeout'));
-                                }, 5000);
-                                
-                                navigator.geolocation.getCurrentPosition(
-                                    position => {
-                                        clearTimeout(geoTimeout);
-                                        resolve(position);
-                                    },
-                                    error => {
-                                        clearTimeout(geoTimeout);
-                                        reject(error);
-                                    },
-                                    { timeout: 4000, enableHighAccuracy: false }
-                                );
-                            });
-                        };
-                        
+                    if (isLocalEnv) {
+                        // En desarrollo local
                         try {
-                            messageDiv.textContent = "Solicitando ubicación...";
-                            const position = await getPosition();
-                            
-                            messageDiv.textContent = "Obteniendo nombre de localidad...";
-                            
-                            try {
-                                // Usar las coordenadas para obtener el nombre de la localidad con un timeout
-                                if (window.apiClient && window.apiClient.ranking) {
-                                    const locationPromise = window.apiClient.ranking.getLocationFromCoords(
-                                        position.coords.latitude, 
-                                        position.coords.longitude
-                                    );
-                                    
-                                    const timeoutPromise = new Promise((_, reject) => {
-                                        setTimeout(() => reject(new Error('Reverse geocoding timeout')), 5000);
-                                    });
-                                    
-                                    // Race entre la obtención de ubicación y el timeout
-                                    ubicacion = await Promise.race([locationPromise, timeoutPromise])
-                                        .catch(error => {
-                                            console.warn("Error o timeout en geocodificación inversa:", error);
-                                            return "desconocida";
-                                        });
-                                }
-                            } catch (reverseGeoError) {
-                                console.warn("Error en geocodificación inversa:", reverseGeoError);
-                                ubicacion = "desconocida";
-                            }
-                        } catch (positionError) {
-                            console.warn("Error de geolocalización:", positionError.message);
-                            messageDiv.textContent = "Ubicación no disponible";
+                            ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                            console.log("Ubicación obtenida por IP:", ubicacion);
+                        } catch (geoError) {
+                            console.warn("Error en geolocalización IP:", geoError);
                             ubicacion = "desconocida";
                         }
-                    } catch (geoWrapperError) {
-                        console.warn("Error en wrapper de geolocalización:", geoWrapperError);
-                        ubicacion = "desconocida";
+                    } else if (navigator.geolocation) {
+                        // En producción, usar la API de geolocalización del navegador
+                        console.log("Entorno de producción, usando geolocalización del navegador");
+                        
+                        try {
+                            // Envolver la geolocalización en una promesa para manejarla mejor
+                            const getPosition = () => {
+                                return new Promise((resolve, reject) => {
+                                    const geoTimeout = setTimeout(() => {
+                                        reject(new Error('Geolocation timeout'));
+                                    }, 3000); // Reducido de 5000 a 3000
+                                    
+                                    navigator.geolocation.getCurrentPosition(
+                                        position => {
+                                            clearTimeout(geoTimeout);
+                                            resolve(position);
+                                        },
+                                        error => {
+                                            clearTimeout(geoTimeout);
+                                            reject(error);
+                                        },
+                                        { timeout: 2500, enableHighAccuracy: false } // Reducido de 4000 a 2500
+                                    );
+                                });
+                            };
+                            
+                            try {
+                                messageDiv.textContent = "Solicitando ubicación...";
+                                const position = await getPosition();
+                                
+                                messageDiv.textContent = "Obteniendo nombre de localidad...";
+                                
+                                try {
+                                    // Usar las coordenadas para obtener el nombre de la localidad con un timeout
+                                    if (window.apiClient && window.apiClient.ranking) {
+                                        const locationPromise = window.apiClient.ranking.getLocationFromCoords(
+                                            position.coords.latitude, 
+                                            position.coords.longitude
+                                        );
+                                        
+                                        const timeoutPromise = new Promise((_, reject) => {
+                                            setTimeout(() => reject(new Error('Reverse geocoding timeout')), 3000); // Reducido de 5000 a 3000
+                                        });
+                                        
+                                        // Race entre la obtención de ubicación y el timeout
+                                        ubicacion = await Promise.race([locationPromise, timeoutPromise])
+                                            .catch(error => {
+                                                console.warn("Error o timeout en geocodificación inversa:", error);
+                                                return "desconocida";
+                                            });
+                                    }
+                                } catch (reverseGeoError) {
+                                    console.warn("Error en geocodificación inversa:", reverseGeoError);
+                                    ubicacion = "desconocida";
+                                }
+                            } catch (positionError) {
+                                console.error("Error de geolocalización:", positionError.message);
+                                messageDiv.textContent = "Ubicación no disponible";
+                                ubicacion = "desconocida";
+                            }
+                        } catch (geoWrapperError) {
+                            console.warn("Error en wrapper de geolocalización:", geoWrapperError);
+                            ubicacion = "desconocida";
+                        }
                     }
+                } else {
+                    // En modo reintento, saltamos la geolocalización
+                    console.log("Modo reintento: Saltando geolocalización");
+                    ubicacion = "desconocida";
                 }
             } catch (outerGeoError) {
                 console.warn("Error general al obtener ubicación:", outerGeoError);
@@ -1982,7 +1976,7 @@ function showRankingSubmitForm(panel, score) {
                     
                     // Aplicar un timeout para evitar bloqueos
                     const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => ({ success: false, message: "Timeout al guardar" }), 5000)
+                        setTimeout(() => reject(new Error("Timeout al guardar")), 8000) // Aumentado de 5000 a 8000
                     );
                     
                     const result = await Promise.race([savePromise, timeoutPromise]);
@@ -2004,13 +1998,41 @@ function showRankingSubmitForm(panel, score) {
                 }
             } catch (error) {
                 console.error("Error al guardar puntuación:", error);
-                messageDiv.textContent = "Error al guardar. Intenta de nuevo.";
-                messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
                 
-                // Reactivar botón
-                saveButton.disabled = false;
-                saveButton.textContent = "GUARDAR";
-                saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
+                // Si no es un reintento y el error podría estar relacionado con geolocalización,
+                // ofrecer guardar sin geolocalización
+                if (!isRetryWithoutGeo) {
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(255, 100, 100, 0.9); margin-bottom: 10px;">
+                            Error al guardar. Esto podría deberse a problemas de conexión<br>
+                            o con la geolocalización.
+                        </p>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
+                            ¿Intentar guardar sin ubicación?
+                        </p>
+                    `;
+                    
+                    // Cambiar el botón para permitir reintento sin geolocalización
+                    saveButton.disabled = false;
+                    saveButton.textContent = "GUARDAR SIN UBICACIÓN";
+                    saveButton.style.backgroundColor = "rgba(255, 165, 0, 0.8)"; // Color naranja para diferenciarlo
+                    saveButton.dataset.retryWithoutGeo = 'true';
+                    
+                } else {
+                    // Si ya falló el reintento sin geo, mostrar error final
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(255, 50, 50, 0.9);">
+                            Error persistente al guardar.<br>
+                            <span style="font-size: 0.9em;">Verifica tu conexión e intenta más tarde.</span>
+                        </p>
+                    `;
+                    
+                    // Reactivar botón para otro intento completo
+                    saveButton.disabled = false;
+                    saveButton.textContent = "REINTENTAR";
+                    saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
+                    saveButton.dataset.retryWithoutGeo = 'false';
+                }
             }
         };
         

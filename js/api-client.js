@@ -64,22 +64,56 @@ const apiClient = {
                 
                 console.log("Enviando datos al servidor:", data);
                 
+                // Crear controlador de abort para timeout manual
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    console.log("Request abortado por timeout");
+                }, 7000); // 7 segundos timeout
+                
                 const response = await fetch(`${apiClient.config.getBaseUrl()}/ranking`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
+                    signal: controller.signal
                 });
                 
+                clearTimeout(timeoutId);
+                
+                // Registrar respuesta para debug
+                console.log(`Response status: ${response.status} ${response.statusText}`);
+                
                 if (!response.ok) {
-                    throw new Error('Error al guardar puntaje');
+                    // Intentar obtener el texto del error del servidor
+                    let errorText = 'Error del servidor';
+                    try {
+                        const errorData = await response.text();
+                        errorText = errorData || `HTTP ${response.status}`;
+                        console.log("Error response body:", errorData);
+                    } catch (parseError) {
+                        console.log("No se pudo leer el cuerpo de la respuesta de error");
+                    }
+                    throw new Error(`Error al guardar puntaje: ${errorText}`);
                 }
                 
-                return await response.json();
+                const result = await response.json();
+                console.log("Respuesta exitosa del servidor:", result);
+                return result;
+                
             } catch (error) {
-                console.error('Error al guardar puntaje:', error);
-                throw error;
+                // Mejorar el logging de errores
+                if (error.name === 'AbortError') {
+                    console.error('Error al guardar puntaje: Request timeout');
+                    throw new Error('Timeout al conectar con el servidor');
+                } else if (error.message.includes('Failed to fetch')) {
+                    console.error('Error al guardar puntaje: Network error');
+                    throw new Error('Error de conexión de red');
+                } else {
+                    console.error('Error al guardar puntaje:', error);
+                    throw error;
+                }
             }
         },
         
