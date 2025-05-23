@@ -39,138 +39,249 @@ const shootingSystem = {
         debugElement: null,     // Elemento para mostrar información de debug (opcional)
         performanceTestedOnMobile: false // Indica si ya hemos realizado un test inicial en móvil
     },
-    // Sistema de audio para efectos de sonido
+    // Sistema de audio basado en Howler.js
     audio: {
-        enabled: true,           // Si los efectos de sonido están habilitados
-        shotSound: null,         // Sonido al disparar
-        hitSound: null,          // Sonido al impactar la pelota
-        missSound: null,         // Sonido al fallar el disparo
-        volume: 0.7,             // Volumen predeterminado (0-1)
-        muted: false,            // Si el audio está silenciado
-        durations: {
-            hit: 400,   // 400ms para el sonido de impacto
-            miss: 350   // 350ms para el sonido de fallo
-        },
-        soundPools: {
-            hit: [],
-            miss: []
-        }
+        enabled: true,          // Por defecto, el audio comienza activado
+        muted: false,           // Por defecto, el audio NO está silenciado
+        volume: 0.7,            // Volumen predeterminado (0-1)
+        sounds: {},             // Objeto para almacenar las instancias de Howl
+        manager: null           // Referencia al gestor de audio
     },
     // Variable global para controlar si hay un panel modal abierto
     modalActive: false,
     originalEndPanel: null // Guardar el contenido original del panel
 };
 
-// Sistema de audio para cargar y reproducir efectos de sonido
+// Nuevo sistema de audio basado en Howler.js
 function initAudioSystem() {
-    console.log("Inicializando sistema de audio...");
+    console.log("Inicializando sistema de audio con Howler.js...");
     
-    // Eliminar limitaciones de duración para permitir que los sonidos se reproduzcan completos
-    shootingSystem.audio.durations = null;
-    
-    // Crear pool de sonidos para permitir múltiples reproducciones simultáneas
-    shootingSystem.audio.soundPools = {
-        hit: [],
-        miss: []
+    // Sistema avanzado de gestión de sonido para disparos rápidos
+    const audioManager = {
+        lastSoundTimes: {}, // Tiempo de la última reproducción de cada tipo de sonido
+        cooldowns: {         // Tiempo mínimo entre reproducciones (ms)
+            shoot: 200,      // Cooldown para disparo
+            hit: 300,        // Cooldown para acierto
+            miss: 400        // Cooldown para fallo
+        },
+        queuedSounds: {      // Sonidos en cola para reproducir cuando termine la secuencia
+            hit: false,      // ¿Hay acierto en cola?
+            miss: false      // ¿Hay fallo en cola?
+        },
+        isRapidFiring: false,    // ¿Estamos en modo de disparos rápidos?
+        rapidFireThreshold: 300, // Umbral para considerar disparos rápidos (ms)
+        lastShootTime: 0,        // Último momento de disparo
+        rapidFireTimeout: null   // Temporizador para detectar fin de secuencia de disparos rápidos
     };
     
-    // Cantidad de sonidos en cada pool
-    const poolSize = 3;
+    // Guardar referencia del gestor de audio
+    shootingSystem.audio.manager = audioManager;
     
-    // Crear pool para sonido de impacto
-    for (let i = 0; i < poolSize; i++) {
-        const hitSound = new Audio("assets/audio/Disparo 2.mp3");
-        hitSound.volume = shootingSystem.audio.volume;
-        hitSound.load();
-        shootingSystem.audio.soundPools.hit.push(hitSound);
-    }
+    // Crear instancias de Howl para cada sonido
+    shootingSystem.audio.sounds = {
+        // Sonido de disparo
+        shoot: new Howl({
+            src: ['assets/audio/Disparo Sinte 1.wav'],
+            volume: shootingSystem.audio.volume * 0.9,
+            preload: true,
+            pool: 3
+        }),
+        // Sonido de acierto (ganar puntos)
+        hit: new Howl({
+            src: ['assets/audio/Acierto Sinte 1.wav'],
+            volume: shootingSystem.audio.volume,
+            preload: true,
+            pool: 2
+        }),
+        // Sonido de fallo (golpe en reja)
+        miss: new Howl({
+            src: ['assets/audio/Metal 1.wav'],
+            volume: shootingSystem.audio.volume * 0.7,
+            preload: true,
+            pool: 2
+        })
+    };
     
-    // Crear pool para sonido de fallo
-    for (let i = 0; i < poolSize; i++) {
-        const missSound = new Audio("assets/audio/Zumbido 2 - Corto.mp3");
-        missSound.volume = shootingSystem.audio.volume;
-        missSound.load();
-        shootingSystem.audio.soundPools.miss.push(missSound);
-    }
+    // Cargar preferencias de audio desde localStorage
+    loadAudioPreferences();
     
-    console.log("Sistema de audio inicializado correctamente con pools de sonido");
+    console.log("Sistema de audio con Howler.js inicializado correctamente");
 }
 
-// Reproducir un efecto de sonido específico
+// Cargar preferencias de audio guardadas
+function loadAudioPreferences() {
+    try {
+        // Intentar cargar el estado del audio (muted o no)
+        const audioPrefs = localStorage.getItem('rejasEspacialesAudioPrefs');
+        
+        if (audioPrefs) {
+            const prefs = JSON.parse(audioPrefs);
+            console.log("Preferencias de audio cargadas:", prefs);
+            
+            // Aplicar las preferencias guardadas
+            shootingSystem.audio.muted = !!prefs.muted;
+            shootingSystem.audio.enabled = !prefs.muted; // Habilitar audio si no está muteado
+            
+            // Actualizar el ícono del botón si ya existe
+            if (shootingSystem.audioButton) {
+                shootingSystem.audioButton.innerHTML = shootingSystem.audio.muted ? 
+                    '<span style="color: white; font-size: 30px;">🔇</span>' : 
+                    '<span style="color: white; font-size: 30px;">🔊</span>';
+            }
+        }
+    } catch (error) {
+        console.warn("No se pudieron cargar las preferencias de audio:", error);
+    }
+}
+
+// Guardar preferencias de audio en localStorage
+function saveAudioPreferences() {
+    try {
+        const audioPrefs = {
+            muted: shootingSystem.audio.muted
+        };
+        
+        localStorage.setItem('rejasEspacialesAudioPrefs', JSON.stringify(audioPrefs));
+        console.log("Preferencias de audio guardadas:", audioPrefs);
+    } catch (error) {
+        console.warn("No se pudieron guardar las preferencias de audio:", error);
+    }
+}
+
+// Reproducir un efecto de sonido con gestión inteligente
 function playSound(soundType, delay = 0) {
     // No reproducir si el audio está deshabilitado o silenciado
     if (!shootingSystem.audio.enabled || shootingSystem.audio.muted) {
         return;
     }
     
-    // No hacer nada si se intenta reproducir el sonido de disparo
-    if (soundType === 'shot') {
+    // Verificar que el tipo de sonido existe
+    if (!shootingSystem.audio.sounds || !shootingSystem.audio.sounds[soundType]) {
+        console.warn("Sonido no disponible:", soundType);
         return;
     }
     
-    // Verificar que el tipo de sonido tenga un pool válido
-    if (!shootingSystem.audio.soundPools || !shootingSystem.audio.soundPools[soundType]) {
-        console.warn("Pool de sonido no disponible para:", soundType);
-        return;
-    }
+    // Referencia al gestor de audio
+    const audioManager = shootingSystem.audio.manager;
+    const currentTime = performance.now();
     
-    // Función para reproducir el sonido desde el pool
-    const playSoundFromPool = () => {
-        // Obtener el pool de sonidos correspondiente
-        const soundPool = shootingSystem.audio.soundPools[soundType];
+    // Función para comprobar si estamos en modo de disparos rápidos
+    const checkRapidFire = () => {
+        const timeSinceLastShot = currentTime - audioManager.lastShootTime;
         
-        // Buscar un sonido disponible en el pool (que no se esté reproduciendo)
-        let sound = null;
-        for (let i = 0; i < soundPool.length; i++) {
-            if (soundPool[i].paused || soundPool[i].ended) {
-                sound = soundPool[i];
-                break;
+        // Si estamos disparando rápido
+        if (timeSinceLastShot < audioManager.rapidFireThreshold) {
+            // Activar modo de disparos rápidos si no estaba activado
+            if (!audioManager.isRapidFiring) {
+                console.log("Modo de disparos rápidos activado");
+                audioManager.isRapidFiring = true;
             }
+            
+            // Limpiar timeout anterior si existe
+            if (audioManager.rapidFireTimeout) {
+                clearTimeout(audioManager.rapidFireTimeout);
+            }
+            
+            // Configurar nuevo timeout para detectar fin de secuencia
+            audioManager.rapidFireTimeout = setTimeout(() => {
+                console.log("Fin de secuencia de disparos rápidos");
+                audioManager.isRapidFiring = false;
+                
+                // Reproducir sonidos en cola al terminar la secuencia
+                if (audioManager.queuedSounds.hit) {
+                    shootingSystem.audio.sounds.hit.play();
+                    audioManager.queuedSounds.hit = false;
+                } else if (audioManager.queuedSounds.miss) {
+                    shootingSystem.audio.sounds.miss.play();
+                    audioManager.queuedSounds.miss = false;
+                }
+            }, audioManager.rapidFireThreshold + 100);
         }
         
-        // Si no hay sonidos disponibles, usar el primero del pool (se interrumpirá)
-        if (!sound && soundPool.length > 0) {
-            sound = soundPool[0];
+        // Actualizar tiempo del último disparo
+        audioManager.lastShootTime = currentTime;
+    };
+    
+    // Función específica para reproducir sonido con reglas avanzadas
+    const playSoundWithRules = () => {
+        // Verificar tiempo desde última reproducción de este sonido
+        const lastTime = audioManager.lastSoundTimes[soundType] || 0;
+        const timeSinceLastSound = currentTime - lastTime;
+        
+        // Aplicar reglas según el tipo de sonido
+        switch(soundType) {
+            case 'shoot':
+                // Si es un disparo, siempre reproducirlo pero comprobar modo de disparos rápidos
+                checkRapidFire();
+                
+                // Si estamos en modo de disparos rápidos, reducir volumen y variar tono
+                if (audioManager.isRapidFiring) {
+                    const sound = shootingSystem.audio.sounds[soundType];
+                    sound.volume(shootingSystem.audio.volume * 0.6);
+                    sound.rate(0.9 + Math.random() * 0.2); // Variar tono ligeramente
+                    sound.play();
+                } else {
+                    // Disparo normal a volumen completo
+                    shootingSystem.audio.sounds[soundType].volume(shootingSystem.audio.volume * 0.9);
+                    shootingSystem.audio.sounds[soundType].rate(1.0);
+                    shootingSystem.audio.sounds[soundType].play();
+                }
+                break;
+                
+            case 'hit':
+                // Si estamos en modo de disparos rápidos, encolar sonido de acierto
+                if (audioManager.isRapidFiring) {
+                    audioManager.queuedSounds.hit = true;
+                } 
+                // Si no es disparo rápido o ha pasado suficiente tiempo del último acierto, reproducir
+                else if (timeSinceLastSound >= audioManager.cooldowns[soundType]) {
+                    shootingSystem.audio.sounds[soundType].play();
+                }
+                break;
+                
+            case 'miss':
+                // Si estamos en modo de disparos rápidos, encolar sonido de fallo
+                // (con menor prioridad que el acierto)
+                if (audioManager.isRapidFiring) {
+                    if (!audioManager.queuedSounds.hit) { // Solo si no hay acierto en cola
+                        audioManager.queuedSounds.miss = true;
+                    }
+                } 
+                // Si no es disparo rápido o ha pasado suficiente tiempo, reproducir
+                else if (timeSinceLastSound >= audioManager.cooldowns[soundType]) {
+                    shootingSystem.audio.sounds[soundType].play();
+                }
+                break;
+                
+            default:
+                // Para otros sonidos, aplicar cooldown simple
+                if (timeSinceLastSound >= (audioManager.cooldowns[soundType] || 200)) {
+                    shootingSystem.audio.sounds[soundType].play();
+                }
         }
         
-        // Reproducir el sonido si se encontró uno
-        if (sound) {
-            // Reiniciar el sonido antes de reproducirlo
-            sound.currentTime = 0;
-            
-            // Reproducir a volumen completo
-            sound.volume = shootingSystem.audio.volume;
-            
-            // Intentar reproducir, manejando posibles errores
-            sound.play().catch(err => {
-                console.warn("Error al reproducir sonido:", err);
-            });
-        }
+        // Actualizar tiempo de última reproducción
+        audioManager.lastSoundTimes[soundType] = currentTime;
     };
     
     // Reproducir con o sin retraso
     if (delay > 0) {
-        setTimeout(playSoundFromPool, delay);
+        setTimeout(playSoundWithRules, delay);
     } else {
-        playSoundFromPool();
+        playSoundWithRules();
     }
 }
 
-// Actualizar volumen de todos los sonidos en pools
+// Actualizar volumen de todos los sonidos
 window.setAudioVolume = function(volume) {
     // Asegurar que el volumen esté entre 0 y 1
     volume = Math.max(0, Math.min(1, volume));
     shootingSystem.audio.volume = volume;
     
-    // Actualizar volumen en todos los sonidos de los pools
-    if (shootingSystem.audio.soundPools) {
-        // Recorrer cada pool
-        Object.keys(shootingSystem.audio.soundPools).forEach(poolKey => {
-            const pool = shootingSystem.audio.soundPools[poolKey];
-            // Actualizar cada sonido en el pool
-            pool.forEach(sound => {
-                sound.volume = volume;
-            });
+    // Actualizar volumen en todos los sonidos
+    if (shootingSystem.audio.sounds) {
+        Object.values(shootingSystem.audio.sounds).forEach(sound => {
+            sound.volume(volume);
         });
     }
 };
@@ -706,8 +817,10 @@ function createAudioButton() {
         audioButton.style.cursor = 'pointer';
         audioButton.style.zIndex = '1000';
         
-        // Usar símbolo de audio muteado por defecto
-        audioButton.innerHTML = '<span style="color: white; font-size: 30px;">🔇</span>';
+        // Usar el símbolo correspondiente según el estado actual del audio
+        audioButton.innerHTML = shootingSystem.audio.muted ? 
+            '<span style="color: white; font-size: 30px;">🔇</span>' : 
+            '<span style="color: white; font-size: 30px;">🔊</span>';
         
         // Añadir eventos de toque/clic
         audioButton.addEventListener('touchstart', handleAudioButtonPress);
@@ -737,10 +850,6 @@ function createAudioButton() {
         
         // Guardar referencia
         shootingSystem.audioButton = audioButton;
-        
-        // Inicializar audio como desactivado
-        shootingSystem.audio.enabled = false;
-        shootingSystem.audio.muted = true;
     }
 }
 
@@ -769,6 +878,9 @@ function handleAudioButtonPress(event) {
             '<span style="color: white; font-size: 30px;">🔇</span>' : 
             '<span style="color: white; font-size: 30px;">🔊</span>';
     }
+    
+    // Guardar preferencias en localStorage
+    saveAudioPreferences();
     
     return false;
 }
@@ -963,8 +1075,8 @@ function tryToShoot() {
         return; // Todavía en cooldown, no podemos disparar
     }
     
-    // Ya no reproducimos el sonido de disparo
-    // playSound('shot');
+    // Reproducir sonido de disparo
+    playSound('shoot');
     
     // Crear un nuevo disparo
     createShot();
@@ -1009,7 +1121,7 @@ function checkAndAddPoints() {
     
     // Si la pelota está en estado "descubierto", sumar puntos
     if (detectedState === 'uncovered') {
-        // Reproducir sonido de impacto inmediatamente (ya no hay sonido de disparo que pueda solaparse)
+        // Reproducir sonido de acierto
         playSound('hit');
         
         // Sumar 10 puntos por disparo exitoso
@@ -1042,7 +1154,7 @@ function checkAndAddPoints() {
             }, 200);
         }
     } else {
-        // Reproducir sonido de fallo inmediatamente (ya no hay sonido de disparo que pueda solaparse)
+        // Reproducir sonido de impacto en reja
         playSound('miss');
         
         // La pelota está en estado "cubierto", penalizar si corresponde
@@ -2719,20 +2831,51 @@ window.resetGameTime = resetGameTime;
 window.playSound = playSound;
 window.setAudioEnabled = function(enabled) {
     shootingSystem.audio.enabled = enabled;
+    
+    // Si activamos el audio y estaba muteado, desmutearlo
+    if (enabled && shootingSystem.audio.muted) {
+        shootingSystem.audio.muted = false;
+        
+        // Actualizar el ícono del botón si existe
+        if (shootingSystem.audioButton) {
+            shootingSystem.audioButton.innerHTML = '<span style="color: white; font-size: 30px;">🔊</span>';
+        }
+    }
 };
 window.setAudioVolume = function(volume) {
     // Asegurar que el volumen esté entre 0 y 1
     volume = Math.max(0, Math.min(1, volume));
     shootingSystem.audio.volume = volume;
     
-    // Actualizar volumen en los objetos de audio
-    if (shootingSystem.audio.hitSound) shootingSystem.audio.hitSound.volume = volume;
-    if (shootingSystem.audio.missSound) shootingSystem.audio.missSound.volume = volume;
+    // Actualizar el volumen en todos los sonidos
+    if (shootingSystem.audio.sounds) {
+        Object.values(shootingSystem.audio.sounds).forEach(sound => {
+            sound.volume(volume);
+        });
+    }
 };
+
+// Función para alternar el estado de mute
 window.toggleAudioMute = function() {
+    // Invertir el estado actual
     shootingSystem.audio.muted = !shootingSystem.audio.muted;
+    
+    // Si quitamos el mute, también activamos el audio
+    if (!shootingSystem.audio.muted) {
+        shootingSystem.audio.enabled = true;
+    }
+    
+    // Guardar preferencias en localStorage
+    saveAudioPreferences();
+    
+    // Para pruebas rápidas, reproducir un sonido si acabamos de desmutear
+    if (!shootingSystem.audio.muted) {
+        // Reproducir un sonido corto para comprobar
+        setTimeout(() => playSound('shoot'), 100);
+    }
+    
     return shootingSystem.audio.muted;
-}; 
+};
 
 // Reiniciar el tiempo del juego
 function resetGameTime() {
