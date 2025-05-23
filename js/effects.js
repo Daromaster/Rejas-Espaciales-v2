@@ -1948,11 +1948,34 @@ function showRankingSubmitForm(panel, score) {
                                 }
                             } catch (positionError) {
                                 console.error("Error de geolocalización:", positionError.message);
-                                messageDiv.textContent = "Ubicación no disponible";
-                                ubicacion = "desconocida";
+                                messageDiv.textContent = "Ubicación GPS no disponible, probando método alternativo...";
+                                
+                                // NUEVO: Intentar geolocalización por IP como respaldo
+                                try {
+                                    console.log("Intentando geolocalización por IP como respaldo...");
+                                    if (window.apiClient && window.apiClient.ranking) {
+                                        ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                                        console.log("✅ Ubicación obtenida por IP como respaldo:", ubicacion);
+                                    }
+                                } catch (ipGeoError) {
+                                    console.warn("Error en geolocalización por IP:", ipGeoError);
+                                    ubicacion = "desconocida";
+                                }
                             }
                         } catch (geoWrapperError) {
                             console.warn("Error en wrapper de geolocalización:", geoWrapperError);
+                            ubicacion = "desconocida";
+                        }
+                    } else {
+                        // NUEVO: Si no hay navigator.geolocation, intentar por IP directamente
+                        console.log("Geolocalización no disponible, usando método por IP...");
+                        try {
+                            if (window.apiClient && window.apiClient.ranking) {
+                                ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                                console.log("✅ Ubicación obtenida por IP (navegador sin GPS):", ubicacion);
+                            }
+                        } catch (ipGeoError) {
+                            console.warn("Error en geolocalización por IP:", ipGeoError);
                             ubicacion = "desconocida";
                         }
                     }
@@ -2225,6 +2248,9 @@ async function showRankingList(panel, playerScore, playerName) {
         <div id="ranking-loading" style="margin: 20px 0;">Cargando ranking...</div>
         <div id="ranking-list" style="max-height: ${maxHeight}; overflow-y: auto; margin: 10px 0; display: none; -webkit-overflow-scrolling: touch;"></div>
         <div id="ranking-status" style="display: none; margin: 10px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);"></div>
+        <div id="server-retry-container" style="display: none; margin: 15px 0;">
+            <button id="retry-server-button" style="background-color: rgba(255, 165, 0, 0.8); color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px;">🔄 REINTENTAR SERVIDOR</button>
+        </div>
         <button id="play-again-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin-top: 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">JUGAR DE NUEVO</button>
     `;
     
@@ -2232,10 +2258,90 @@ async function showRankingList(panel, playerScore, playerName) {
     const rankingListDiv = document.getElementById('ranking-list');
     const playAgainButton = document.getElementById('play-again-button');
     const rankingStatusDiv = document.getElementById('ranking-status');
+    const retryServerContainer = document.getElementById('server-retry-container');
+    const retryServerButton = document.getElementById('retry-server-button');
     
     // Configurar bandera para controlar si el juego se ha reiniciado
     // Esto evitará operaciones en componentes que ya no existen
     let panelClosed = false;
+    
+    // Configurar botón de reintentar servidor
+    if (retryServerButton && retryServerContainer) {
+        const handleRetryServer = async function(e) {
+            e.preventDefault();
+            
+            // Cambiar estado del botón
+            retryServerButton.disabled = true;
+            retryServerButton.textContent = '🔄 Conectando...';
+            retryServerButton.style.backgroundColor = 'rgba(150, 150, 150, 0.8)';
+            
+            try {
+                console.log("Reintentando conexión al servidor...");
+                
+                // Intentar obtener datos del servidor
+                const serverData = await window.apiClient.ranking.getAll();
+                
+                // Si llegamos aquí, el servidor respondió
+                if (serverData && !serverData[0]?.local) {
+                    console.log("✅ Servidor reconectado exitosamente");
+                    
+                    // Actualizar la lista con datos del servidor
+                    if (rankingListDiv && rankingStatusDiv) {
+                        loadingDiv.style.display = 'none';
+                        rankingListDiv.style.display = 'block';
+                        rankingStatusDiv.style.display = 'block';
+                        rankingStatusDiv.innerHTML = '🌐 Datos del servidor (reconectado)';
+                        
+                        // Ocultar botón de reintentar
+                        retryServerContainer.style.display = 'none';
+                        
+                        // Actualizar tabla con datos del servidor
+                        updateRankingTable(serverData, playerScore, playerName, tableCellPadding, tableHeaderSize, isMobile);
+                    }
+                } else {
+                    throw new Error("Servidor aún no disponible");
+                }
+                
+            } catch (error) {
+                console.warn("Servidor aún no disponible:", error);
+                
+                // Restaurar botón
+                retryServerButton.disabled = false;
+                retryServerButton.textContent = '🔄 REINTENTAR SERVIDOR';
+                retryServerButton.style.backgroundColor = 'rgba(255, 165, 0, 0.8)';
+                
+                // Mostrar mensaje temporal de error
+                if (rankingStatusDiv) {
+                    const originalText = rankingStatusDiv.innerHTML;
+                    rankingStatusDiv.innerHTML = '❌ Servidor aún no disponible';
+                    rankingStatusDiv.style.color = 'rgba(255, 100, 100, 0.8)';
+                    
+                    // Restaurar mensaje original después de 3 segundos
+                    setTimeout(() => {
+                        rankingStatusDiv.innerHTML = originalText;
+                        rankingStatusDiv.style.color = 'rgba(255, 255, 255, 0.6)';
+                    }, 3000);
+                }
+            }
+        };
+        
+        retryServerButton.addEventListener('click', handleRetryServer);
+        retryServerButton.addEventListener('touchend', handleRetryServer);
+        
+        // Efectos táctiles
+        if (isMobile) {
+            retryServerButton.addEventListener('touchstart', function(e) {
+                if (this.disabled) return;
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+            });
+            
+            retryServerButton.addEventListener('touchend', function(e) {
+                if (this.disabled) return;
+                this.style.transform = 'scale(1)';
+            });
+        }
+    }
     
     // Configurar botón de jugar de nuevo
     if (playAgainButton) {
@@ -2324,73 +2430,22 @@ async function showRankingList(panel, playerScore, playerName) {
                 rankingStatusDiv.style.display = 'block';
                 if (isLocalData) {
                     rankingStatusDiv.innerHTML = '📱 Mostrando datos locales (servidor no disponible)';
+                    // Mostrar botón de reintentar servidor
+                    if (retryServerContainer) {
+                        retryServerContainer.style.display = 'block';
+                    }
                 } else {
                     rankingStatusDiv.innerHTML = '🌐 Datos del servidor';
+                    // Ocultar botón de reintentar servidor
+                    if (retryServerContainer) {
+                        retryServerContainer.style.display = 'none';
+                    }
                 }
             }
             
             // Formatear y mostrar el ranking
             if (rankingData && rankingData.length > 0) {
-                // Construir tabla de ranking
-                let tableHTML = `
-                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                        <tr style="border-bottom: 1px solid rgba(0, 255, 255, 0.5);">
-                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
-                            <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
-                            <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
-                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Dispositivo</th>
-                            <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Ubicación</th>
-                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Versión</th>
-                            <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Fecha/Hora</th>
-                        </tr>
-                `;
-                
-                // Añadir filas
-                rankingData.forEach((entry, index) => {
-                    // Destacar la entrada del jugador actual
-                    const isCurrentPlayer = entry.nombre === playerName && entry.puntaje === playerScore;
-                    let rowStyle = '';
-                    
-                    if (isCurrentPlayer) {
-                        rowStyle = 'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;';
-                    } else if (entry.local) {
-                        // Entradas locales con fondo ligeramente diferente
-                        rowStyle = 'background-color: rgba(255, 165, 0, 0.1);';
-                    } else {
-                        // Entradas del servidor con alternancia normal
-                        rowStyle = (index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '';
-                    }
-                    
-                    // Formatear dispositivo (desktop o mobile)
-                    const deviceIcon = (entry.dispositivo === 'mobile') ? '📱' : '💻';
-                    
-                    // Formatear ubicación (mostrar "desconocida" si no está disponible)
-                    const location = entry.ubicacion || "desconocida";
-                    
-                    // Formatear versión (mostrar "desconocida" si no está disponible)
-                    const version = entry.version || "desconocida";
-                    
-                    // Formatear fecha/hora (mostrar "--" si no está disponible)
-                    const fechaHora = entry.fechaHora || "--";
-                    
-                    // Añadir indicador visual para entradas locales
-                    const localIndicator = entry.local ? ' 📱' : '';
-                    
-                    tableHTML += `
-                        <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
-                            <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
-                            <td style="padding: ${tableCellPadding};">${entry.nombre}${localIndicator}</td>
-                            <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
-                            <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
-                            <td style="padding: ${tableCellPadding};">${location}</td>
-                            <td style="padding: ${tableCellPadding}; text-align: center;">${version}</td>
-                            <td style="padding: ${tableCellPadding}; text-align: center;">${fechaHora}</td>
-                        </tr>
-                    `;
-                });
-                
-                tableHTML += '</table>';
-                rankingListDiv.innerHTML = tableHTML;
+                updateRankingTable(rankingData, playerScore, playerName, tableCellPadding, tableHeaderSize, isMobile);
             } else {
                 rankingListDiv.innerHTML = '<p style="text-align: center;">No hay puntuaciones registradas todavía.</p>';
             }
@@ -3277,34 +3332,6 @@ async function handleFormSubmit(e, nameInput, panel, score) {
                     console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                 }
                 
-                // Mostrar mensaje según el resultado
-                if (result.fallbackUsed) {
-                    // Se usó el respaldo local
-                    messageDiv.innerHTML = `
-                        <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
-                            ⚠️ Servidor no disponible<br>
-                            <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
-                        </p>
-                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
-                            Se sincronizará cuando el servidor esté disponible
-                        </p>
-                    `;
-                } else if (result.serverSave) {
-                    // Guardado exitoso en el servidor
-                    messageDiv.innerHTML = `
-                        <p style="color: rgba(0, 255, 0, 0.9);">
-                            ✅ Puntuación guardada exitosamente
-                        </p>
-                    `;
-                } else {
-                    // Resultado desconocido pero exitoso
-                    messageDiv.innerHTML = `
-                        <p style="color: rgba(0, 255, 0, 0.9);">
-                            ✅ Puntuación guardada
-                        </p>
-                    `;
-                }
-                
                 // Mostrar el ranking inmediatamente sin temporizador
                 showRankingList(panel, score, playerName);
             } catch (saveError) {
@@ -3336,4 +3363,71 @@ async function handleFormSubmit(e, nameInput, panel, score) {
             submitForm.innerHTML = '<div style="color: rgba(255, 100, 100, 0.9); text-align: center; padding: 20px;">No se pudo guardar la puntuación.</div>';
         }
     }
+}
+
+// Función auxiliar para actualizar la tabla de ranking
+function updateRankingTable(rankingData, playerScore, playerName, tableCellPadding, tableHeaderSize, isMobile) {
+    const rankingListDiv = document.getElementById('ranking-list');
+    if (!rankingListDiv) return;
+    
+    // Construir tabla de ranking
+    let tableHTML = `
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <tr style="border-bottom: 1px solid rgba(0, 255, 255, 0.5);">
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
+                <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
+                <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Dispositivo</th>
+                <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Ubicación</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Versión</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Fecha/Hora</th>
+            </tr>
+    `;
+    
+    // Añadir filas
+    rankingData.forEach((entry, index) => {
+        // Destacar la entrada del jugador actual
+        const isCurrentPlayer = entry.nombre === playerName && entry.puntaje === playerScore;
+        let rowStyle = '';
+        
+        if (isCurrentPlayer) {
+            rowStyle = 'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;';
+        } else if (entry.local) {
+            // Entradas locales con fondo ligeramente diferente
+            rowStyle = 'background-color: rgba(255, 165, 0, 0.1);';
+        } else {
+            // Entradas del servidor con alternancia normal
+            rowStyle = (index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '';
+        }
+        
+        // Formatear dispositivo (desktop o mobile)
+        const deviceIcon = (entry.dispositivo === 'mobile') ? '📱' : '💻';
+        
+        // Formatear ubicación (mostrar "desconocida" si no está disponible)
+        const location = entry.ubicacion || "desconocida";
+        
+        // Formatear versión (mostrar "desconocida" si no está disponible)
+        const version = entry.version || "desconocida";
+        
+        // Formatear fecha/hora (mostrar "--" si no está disponible)
+        const fechaHora = entry.fechaHora || "--";
+        
+        // Añadir indicador visual para entradas locales
+        const localIndicator = entry.local ? ' 📱' : '';
+        
+        tableHTML += `
+            <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
+                <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
+                <td style="padding: ${tableCellPadding};">${entry.nombre}${localIndicator}</td>
+                <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
+                <td style="padding: ${tableCellPadding};">${location}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center;">${version}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center;">${fechaHora}</td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += '</table>';
+    rankingListDiv.innerHTML = tableHTML;
 }

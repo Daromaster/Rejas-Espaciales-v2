@@ -96,6 +96,133 @@ const apiClient = {
     
     // Métodos para interactuar con la API
     ranking: {
+        // Verificar estado del servidor y obtener información
+        healthCheck: async function() {
+            try {
+                console.log("🔍 Verificando estado del backend...");
+                const startTime = performance.now();
+                
+                // Intentar varias rutas para verificar si el servidor responde
+                const testRoutes = [
+                    '/health',      // Ruta de health check típica
+                    '/status',      // Ruta de status
+                    '/info',        // Ruta de información
+                    '/ranking',     // Ruta principal
+                    '/'             // Ruta raíz
+                ];
+                
+                let serverInfo = {
+                    isAlive: false,
+                    responseTime: 0,
+                    revision: 'desconocida',
+                    version: 'desconocida',
+                    error: null,
+                    workingEndpoint: null
+                };
+                
+                // Probar cada ruta hasta encontrar una que responda
+                for (const route of testRoutes) {
+                    try {
+                        console.log(`   📡 Probando: ${apiClient.config.getBaseUrl()}${route}`);
+                        
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+                        
+                        const response = await fetch(`${apiClient.config.getBaseUrl()}${route}`, {
+                            method: 'GET',
+                            signal: controller.signal,
+                            headers: {
+                                'Accept': 'application/json',
+                                'User-Agent': 'RejasEspacialesGame/HealthCheck'
+                            }
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        const endTime = performance.now();
+                        serverInfo.responseTime = Math.round(endTime - startTime);
+                        serverInfo.isAlive = true;
+                        serverInfo.workingEndpoint = route;
+                        
+                        console.log(`   ✅ Respuesta de ${route}: ${response.status} ${response.statusText}`);
+                        console.log(`   ⏱️ Tiempo de respuesta: ${serverInfo.responseTime}ms`);
+                        
+                        // Intentar leer headers para información del servidor
+                        const serverHeader = response.headers.get('server') || response.headers.get('x-powered-by');
+                        if (serverHeader) {
+                            console.log(`   🖥️ Servidor: ${serverHeader}`);
+                        }
+                        
+                        // Intentar leer información del cuerpo de la respuesta
+                        try {
+                            const contentType = response.headers.get('content-type');
+                            let responseData = null;
+                            
+                            if (contentType && contentType.includes('application/json')) {
+                                responseData = await response.json();
+                            } else {
+                                const textData = await response.text();
+                                if (textData.length < 500) { // Solo mostrar textos cortos
+                                    responseData = textData;
+                                }
+                            }
+                            
+                            if (responseData) {
+                                console.log(`   📄 Datos del servidor:`, responseData);
+                                
+                                // Buscar información de revisión/versión en la respuesta
+                                if (typeof responseData === 'object') {
+                                    serverInfo.revision = responseData.revision || responseData.build || responseData.commit || 'no encontrada';
+                                    serverInfo.version = responseData.version || responseData.v || 'no encontrada';
+                                } else if (typeof responseData === 'string') {
+                                    // Buscar patrones de versión en texto
+                                    const versionMatch = responseData.match(/version[:\s]+([^\s,}]+)/i);
+                                    const revisionMatch = responseData.match(/revision[:\s]+([^\s,}]+)/i);
+                                    if (versionMatch) serverInfo.version = versionMatch[1];
+                                    if (revisionMatch) serverInfo.revision = revisionMatch[1];
+                                }
+                            }
+                        } catch (parseError) {
+                            console.log(`   ⚠️ No se pudo parsear la respuesta de ${route}`);
+                        }
+                        
+                        break; // Salir del loop si encontramos una ruta que funcione
+                        
+                    } catch (routeError) {
+                        console.log(`   ❌ Error en ${route}:`, routeError.message);
+                        if (routeError.name === 'AbortError') {
+                            console.log(`   ⏱️ Timeout en ${route}`);
+                        }
+                        serverInfo.error = routeError.message;
+                    }
+                }
+                
+                // Resumen final
+                console.log("📊 RESUMEN DEL HEALTH CHECK:");
+                console.log(`   Estado: ${serverInfo.isAlive ? '✅ VIVO' : '❌ NO RESPONDE'}`);
+                if (serverInfo.isAlive) {
+                    console.log(`   Endpoint funcional: ${serverInfo.workingEndpoint}`);
+                    console.log(`   Tiempo de respuesta: ${serverInfo.responseTime}ms`);
+                    console.log(`   Revisión del backend: ${serverInfo.revision}`);
+                    console.log(`   Versión del backend: ${serverInfo.version}`);
+                } else {
+                    console.log(`   Último error: ${serverInfo.error}`);
+                }
+                
+                return serverInfo;
+                
+            } catch (error) {
+                console.error("❌ Error crítico en health check:", error);
+                return {
+                    isAlive: false,
+                    responseTime: 0,
+                    revision: 'error',
+                    version: 'error',
+                    error: error.message,
+                    workingEndpoint: null
+                };
+            }
+        },
+
         // Obtener todos los puntajes ordenados (con fallback local)
         getAll: async function() {
             try {
@@ -205,6 +332,23 @@ const apiClient = {
                     console.error('❌ Error del servidor: Sin conexión de red');
                 } else {
                     console.error('❌ Error del servidor:', error.message);
+                }
+                
+                // NUEVO: Ejecutar health check para obtener más información del error
+                console.log("🔍 Ejecutando health check para diagnosticar el error...");
+                try {
+                    const healthInfo = await apiClient.ranking.healthCheck();
+                    window.serverHealthInfo = healthInfo;
+                    
+                    if (healthInfo.isAlive) {
+                        console.log("📡 El servidor responde pero hay un error en el endpoint de guardado");
+                        console.log(`   Revisión del backend: ${healthInfo.revision}`);
+                        console.log(`   Versión del backend: ${healthInfo.version}`);
+                    } else {
+                        console.log("💀 El servidor no responde en absoluto");
+                    }
+                } catch (healthError) {
+                    console.log("❌ Health check también falló:", healthError.message);
                 }
             }
             
@@ -341,3 +485,43 @@ if (localEntries.length > 0) {
 } else {
     console.log("📊 No hay ranking local guardado");
 }
+
+// Ejecutar health check automático en entorno de producción
+if (!apiClient.config.isLocalEnvironment()) {
+    console.log("🚀 Ejecutando health check automático del backend...");
+    
+    // Ejecutar con un pequeño delay para no interferir con la carga inicial
+    setTimeout(async () => {
+        try {
+            const healthInfo = await apiClient.ranking.healthCheck();
+            
+            // Guardar información del servidor para uso posterior
+            window.serverHealthInfo = healthInfo;
+            
+            if (healthInfo.isAlive) {
+                console.log("✅ Backend operacional - Comunicación establecida");
+            } else {
+                console.log("⚠️ Backend no responde - Se usará modo local");
+            }
+            
+        } catch (error) {
+            console.error("❌ Health check falló:", error);
+        }
+    }, 1000);
+}
+
+// Función auxiliar para ejecutar health check manual
+window.checkBackendHealth = async function() {
+    console.log("🔍 Health check manual solicitado...");
+    return await apiClient.ranking.healthCheck();
+};
+
+// Función auxiliar para mostrar info del servidor
+window.showServerInfo = function() {
+    if (window.serverHealthInfo) {
+        console.log("📋 INFORMACIÓN DEL SERVIDOR ACTUAL:");
+        console.table(window.serverHealthInfo);
+    } else {
+        console.log("❌ No hay información del servidor disponible. Ejecuta checkBackendHealth() primero.");
+    }
+};
