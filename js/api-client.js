@@ -488,24 +488,152 @@ if (localEntries.length > 0) {
 
 // Ejecutar health check automático en entorno de producción
 if (!apiClient.config.isLocalEnvironment()) {
-    console.log("🚀 Ejecutando health check automático del backend...");
+    console.log("🚀 Iniciando sistema de wake-up del backend...");
     
-    // Ejecutar con un pequeño delay para no interferir con la carga inicial
-    setTimeout(async () => {
-        try {
-            const healthInfo = await apiClient.ranking.healthCheck();
+    // Sistema mejorado de wake-up para Render
+    const wakeUpBackend = async () => {
+        let wakeUpAttempts = 0;
+        const maxAttempts = 3;
+        
+        // Función para actualizar el indicador visual
+        const updateBackendStatus = (text, detail = '', isSuccess = false, isError = false) => {
+            const statusDiv = document.getElementById('backend-status');
+            const textDiv = document.getElementById('backend-status-text');
+            const detailDiv = document.getElementById('backend-status-detail');
             
-            // Guardar información del servidor para uso posterior
-            window.serverHealthInfo = healthInfo;
-            
-            if (healthInfo.isAlive) {
-                console.log("✅ Backend operacional - Comunicación establecida");
-            } else {
-                console.log("⚠️ Backend no responde - Se usará modo local");
+            if (statusDiv && textDiv) {
+                statusDiv.style.display = 'block';
+                textDiv.textContent = text;
+                
+                if (detailDiv && detail) {
+                    detailDiv.textContent = detail;
+                    detailDiv.style.display = 'block';
+                } else if (detailDiv) {
+                    detailDiv.style.display = 'none';
+                }
+                
+                // Cambiar colores según el estado
+                if (isSuccess) {
+                    statusDiv.style.background = 'rgba(0, 255, 0, 0.1)';
+                    statusDiv.style.borderColor = 'rgba(0, 255, 0, 0.3)';
+                    statusDiv.style.color = 'rgba(100, 255, 100, 0.9)';
+                } else if (isError) {
+                    statusDiv.style.background = 'rgba(255, 100, 0, 0.1)';
+                    statusDiv.style.borderColor = 'rgba(255, 100, 0, 0.3)';
+                    statusDiv.style.color = 'rgba(255, 150, 100, 0.9)';
+                } else {
+                    // Estado por defecto (preparando)
+                    statusDiv.style.background = 'rgba(0, 100, 255, 0.1)';
+                    statusDiv.style.borderColor = 'rgba(0, 100, 255, 0.3)';
+                    statusDiv.style.color = 'rgba(100, 150, 255, 0.9)';
+                }
+                
+                // Auto-ocultar después de 5 segundos si es éxito
+                if (isSuccess) {
+                    setTimeout(() => {
+                        if (statusDiv) {
+                            statusDiv.style.display = 'none';
+                        }
+                    }, 5000);
+                }
             }
+        };
+        
+        const attemptWakeUp = async () => {
+            wakeUpAttempts++;
+            console.log(`🔄 Intento ${wakeUpAttempts}/${maxAttempts} de wake-up del backend...`);
+            updateBackendStatus(`🔄 Despertando backend...`, `Intento ${wakeUpAttempts}/${maxAttempts}`);
             
-        } catch (error) {
-            console.error("❌ Health check falló:", error);
+            try {
+                const startTime = performance.now();
+                const response = await fetch(`${apiClient.config.getBaseUrl()}/health`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(30000), // 30 segundos timeout para cold start
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'RejasEspacialesGame/WakeUp'
+                    }
+                });
+                
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                if (response.ok) {
+                    console.log(`✅ Backend despierto en ${responseTime}ms`);
+                    if (responseTime > 10000) {
+                        console.log("⏰ Cold start detectado - Backend estaba dormido");
+                        updateBackendStatus('✅ Backend despierto', `Era un cold start (${responseTime}ms)`, true);
+                    } else {
+                        updateBackendStatus('✅ Backend listo', `Respuesta rápida (${responseTime}ms)`, true);
+                    }
+                    
+                    // Health check completo ahora que sabemos que está despierto
+                    try {
+                        const healthInfo = await apiClient.ranking.healthCheck();
+                        window.serverHealthInfo = healthInfo;
+                        
+                        if (healthInfo.isAlive) {
+                            console.log("✅ Backend completamente operacional");
+                            console.log(`   📋 Revisión: ${healthInfo.revision}`);
+                            console.log(`   🔢 Versión: ${healthInfo.version}`);
+                            updateBackendStatus('✅ Backend operacional', `v${healthInfo.version} - ${healthInfo.revision}`, true);
+                        }
+                    } catch (healthError) {
+                        console.log("⚠️ Health check detallado falló, pero el backend responde");
+                        updateBackendStatus('✅ Backend básico OK', 'Health check limitado', true);
+                    }
+                    
+                    return true; // Wake-up exitoso
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                if (error.name === 'TimeoutError') {
+                    console.log(`⏱️ Timeout en intento ${wakeUpAttempts} (normal en cold start)`);
+                    updateBackendStatus('⏱️ Timeout de conexión', 'Normal en cold start, reintentando...');
+                } else {
+                    console.log(`❌ Error en intento ${wakeUpAttempts}: ${error.message}`);
+                    updateBackendStatus('❌ Error de conexión', error.message);
+                }
+                
+                // Si no es el último intento, esperar y reintentar
+                if (wakeUpAttempts < maxAttempts) {
+                    console.log(`⏳ Esperando 5 segundos antes del siguiente intento...`);
+                    updateBackendStatus('⏳ Esperando...', `Próximo intento en 5 segundos`);
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    return await attemptWakeUp();
+                } else {
+                    console.log("❌ Wake-up falló después de todos los intentos");
+                    console.log("🔄 Se usará modo local como respaldo");
+                    updateBackendStatus('❌ Backend no disponible', 'Usando modo local como respaldo', false, true);
+                    return false;
+                }
+            }
+        };
+        
+        return await attemptWakeUp();
+    };
+    
+    // Ejecutar wake-up con un pequeño delay para no interferir con la carga inicial
+    setTimeout(async () => {
+        const wakeUpSuccess = await wakeUpBackend();
+        
+        if (wakeUpSuccess) {
+            // Hacer un segundo ping después de 30 segundos para mantenerlo activo
+            setTimeout(async () => {
+                try {
+                    console.log("🔄 Ping de mantenimiento...");
+                    await fetch(`${apiClient.config.getBaseUrl()}/health`, {
+                        method: 'GET',
+                        signal: AbortSignal.timeout(5000),
+                        headers: { 'User-Agent': 'RejasEspacialesGame/KeepAlive' }
+                    });
+                    console.log("✅ Backend mantenido activo");
+                } catch (error) {
+                    console.log("⚠️ Ping de mantenimiento falló:", error.message);
+                }
+            }, 30000); // 30 segundos después
         }
     }, 1000);
 }

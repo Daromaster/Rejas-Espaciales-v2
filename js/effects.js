@@ -2248,6 +2248,10 @@ async function showRankingList(panel, playerScore, playerName) {
         <div id="ranking-loading" style="margin: 20px 0;">Cargando ranking...</div>
         <div id="ranking-list" style="max-height: ${maxHeight}; overflow-y: auto; margin: 10px 0; display: none; -webkit-overflow-scrolling: touch;"></div>
         <div id="ranking-status" style="display: none; margin: 10px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);"></div>
+        <div id="backend-status" style="display: none; margin: 10px 0; padding: 8px; border-radius: 4px; font-size: 11px; text-align: center; background: rgba(0, 100, 255, 0.1); border: 1px solid rgba(0, 100, 255, 0.3); color: rgba(100, 150, 255, 0.9);">
+            <div id="backend-status-text">🔄 Preparando backend...</div>
+            <div id="backend-status-detail" style="margin-top: 4px; opacity: 0.7; font-size: 10px;"></div>
+        </div>
         <div id="server-retry-container" style="display: none; margin: 15px 0;">
             <button id="retry-server-button" style="background-color: rgba(255, 165, 0, 0.8); color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px;">🔄 REINTENTAR SERVIDOR</button>
         </div>
