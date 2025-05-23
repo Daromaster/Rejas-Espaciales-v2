@@ -3,6 +3,77 @@
 // Configuración para geolocalización
 window.MOCK_GEOLOCATION_ON_LOCALHOST = false; // Permitir geolocalización real en localhost
 
+// Sistema de respaldo local para cuando falle el backend
+const localRanking = {
+    // Guardar puntuación en localStorage
+    saveLocal: function(playerName, score, deviceType, location) {
+        try {
+            // Generar fecha y hora actual en formato YYYYMMDD-HHMMSS
+            const ahora = new Date();
+            const fecha = ahora.getFullYear() +
+                String(ahora.getMonth() + 1).padStart(2, '0') +
+                String(ahora.getDate()).padStart(2, '0');
+            const hora = String(ahora.getHours()).padStart(2, '0') +
+                String(ahora.getMinutes()).padStart(2, '0') +
+                String(ahora.getSeconds()).padStart(2, '0');
+            const fechaHora = `${fecha}-${hora}`;
+            
+            const newEntry = {
+                nombre: playerName,
+                puntaje: score,
+                version: window.GAME_VERSION,
+                dispositivo: deviceType || "unknown",
+                ubicacion: location || "desconocida",
+                fechaHora: fechaHora,
+                local: true // Marcar como entrada local
+            };
+            
+            // Obtener ranking existente
+            let localRankingData = this.getLocal();
+            
+            // Añadir nueva entrada
+            localRankingData.push(newEntry);
+            
+            // Ordenar por puntaje (descendente)
+            localRankingData.sort((a, b) => b.puntaje - a.puntaje);
+            
+            // Limitar a los top 50 para no saturar localStorage
+            localRankingData = localRankingData.slice(0, 50);
+            
+            // Guardar en localStorage
+            localStorage.setItem('rejasEspacialesLocalRanking', JSON.stringify(localRankingData));
+            
+            console.log("Puntuación guardada localmente:", newEntry);
+            return { success: true, message: "Guardado localmente", local: true };
+            
+        } catch (error) {
+            console.error("Error al guardar localmente:", error);
+            return { success: false, message: "Error al guardar localmente" };
+        }
+    },
+    
+    // Obtener ranking local
+    getLocal: function() {
+        try {
+            const data = localStorage.getItem('rejasEspacialesLocalRanking');
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error("Error al obtener ranking local:", error);
+            return [];
+        }
+    },
+    
+    // Limpiar ranking local
+    clearLocal: function() {
+        try {
+            localStorage.removeItem('rejasEspacialesLocalRanking');
+            console.log("Ranking local limpiado");
+        } catch (error) {
+            console.error("Error al limpiar ranking local:", error);
+        }
+    }
+};
+
 // Objeto principal del cliente API
 const apiClient = {
     // Configuración del cliente
@@ -25,24 +96,46 @@ const apiClient = {
     
     // Métodos para interactuar con la API
     ranking: {
-        // Obtener todos los puntajes ordenados
+        // Obtener todos los puntajes ordenados (con fallback local)
         getAll: async function() {
             try {
+                console.log("Intentando obtener ranking desde el servidor...");
                 const response = await fetch(`${apiClient.config.getBaseUrl()}/ranking`);
                 
                 if (!response.ok) {
-                    throw new Error('Error al obtener ranking');
+                    throw new Error(`HTTP ${response.status}: Error al obtener ranking del servidor`);
                 }
-                return await response.json();
+                
+                const serverData = await response.json();
+                console.log("Ranking obtenido del servidor exitosamente");
+                return serverData;
+                
             } catch (error) {
-                console.error('Error al cargar el ranking:', error);
-                throw error;
+                console.warn('Error al cargar ranking del servidor:', error);
+                console.log("Usando ranking local como respaldo...");
+                
+                // Respaldo: usar datos locales
+                const localData = localRanking.getLocal();
+                
+                // Añadir información sobre el estado del respaldo
+                if (localData.length > 0) {
+                    console.log(`Ranking local cargado: ${localData.length} entradas`);
+                } else {
+                    console.log("No hay datos locales disponibles");
+                }
+                
+                return localData;
             }
         },
         
-        // Guardar un nuevo puntaje
+        // Guardar un nuevo puntaje (con fallback local)
         save: async function(playerName, score, deviceType, location) {
+            let serverError = null;
+            
+            // Intentar guardar en el servidor
             try {
+                console.log("Intentando guardar en el servidor...");
+                
                 // Generar fecha y hora actual en formato YYYYMMDD-HHMMSS
                 const ahora = new Date();
                 const fecha = ahora.getFullYear() +
@@ -95,25 +188,40 @@ const apiClient = {
                     } catch (parseError) {
                         console.log("No se pudo leer el cuerpo de la respuesta de error");
                     }
-                    throw new Error(`Error al guardar puntaje: ${errorText}`);
+                    throw new Error(`Error del servidor (${response.status}): ${errorText}`);
                 }
                 
                 const result = await response.json();
-                console.log("Respuesta exitosa del servidor:", result);
-                return result;
+                console.log("✅ Puntuación guardada en el servidor exitosamente:", result);
+                return { ...result, serverSave: true };
                 
             } catch (error) {
+                serverError = error;
+                
                 // Mejorar el logging de errores
                 if (error.name === 'AbortError') {
-                    console.error('Error al guardar puntaje: Request timeout');
-                    throw new Error('Timeout al conectar con el servidor');
+                    console.error('❌ Error del servidor: Timeout al conectar');
                 } else if (error.message.includes('Failed to fetch')) {
-                    console.error('Error al guardar puntaje: Network error');
-                    throw new Error('Error de conexión de red');
+                    console.error('❌ Error del servidor: Sin conexión de red');
                 } else {
-                    console.error('Error al guardar puntaje:', error);
-                    throw error;
+                    console.error('❌ Error del servidor:', error.message);
                 }
+            }
+            
+            // Si falló el servidor, usar respaldo local
+            console.log("🔄 Servidor no disponible, guardando localmente...");
+            const localResult = localRanking.saveLocal(playerName, score, deviceType, location);
+            
+            if (localResult.success) {
+                console.log("✅ Puntuación guardada localmente como respaldo");
+                return {
+                    ...localResult,
+                    serverError: serverError?.message || 'Error desconocido del servidor',
+                    fallbackUsed: true
+                };
+            } else {
+                // Si tanto el servidor como local fallan
+                throw new Error(`Error del servidor: ${serverError?.message || 'Error desconocido'}. También falló el respaldo local.`);
             }
         },
         
@@ -216,11 +324,20 @@ const apiClient = {
     }
 };
 
-// Exponer el cliente API globalmente
+// Exponer el cliente API y el sistema local globalmente
 window.apiClient = apiClient;
+window.localRanking = localRanking;
 
 // Registrar el entorno detectado en la consola
 console.log(`API Client inicializado en entorno: ${apiClient.config.isLocalEnvironment() ? 'Local' : 'Producción'}`);
 console.log(`Versión del juego: ${window.GAME_VERSION}`);
 console.log(`URL del backend: ${apiClient.config.getBaseUrl()}`);
 console.log(`Geolocalización en localhost: ${window.MOCK_GEOLOCATION_ON_LOCALHOST ? 'SIMULADA' : 'REAL'}`);
+
+// Mostrar estado del ranking local
+const localEntries = localRanking.getLocal();
+if (localEntries.length > 0) {
+    console.log(`📊 Ranking local disponible: ${localEntries.length} entradas`);
+} else {
+    console.log("📊 No hay ranking local guardado");
+}

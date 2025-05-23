@@ -1991,6 +1991,34 @@ function showRankingSubmitForm(panel, score) {
                         console.warn("No se pudo guardar el nombre en localStorage:", storageError);
                     }
                     
+                    // Mostrar mensaje según el resultado
+                    if (result.fallbackUsed) {
+                        // Se usó el respaldo local
+                        messageDiv.innerHTML = `
+                            <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                                ⚠️ Servidor no disponible<br>
+                                <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
+                            </p>
+                            <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
+                                Se sincronizará cuando el servidor esté disponible
+                            </p>
+                        `;
+                    } else if (result.serverSave) {
+                        // Guardado exitoso en el servidor
+                        messageDiv.innerHTML = `
+                            <p style="color: rgba(0, 255, 0, 0.9);">
+                                ✅ Puntuación guardada exitosamente
+                            </p>
+                        `;
+                    } else {
+                        // Resultado desconocido pero exitoso
+                        messageDiv.innerHTML = `
+                            <p style="color: rgba(0, 255, 0, 0.9);">
+                                ✅ Puntuación guardada
+                            </p>
+                        `;
+                    }
+                    
                     // Mostrar el ranking inmediatamente sin temporizador
                     showRankingList(panel, score, playerName);
                 } else {
@@ -2196,12 +2224,14 @@ async function showRankingList(panel, playerScore, playerName) {
         <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 15px 0; font-size: 24px;">Ranking de Puntuaciones</h2>
         <div id="ranking-loading" style="margin: 20px 0;">Cargando ranking...</div>
         <div id="ranking-list" style="max-height: ${maxHeight}; overflow-y: auto; margin: 10px 0; display: none; -webkit-overflow-scrolling: touch;"></div>
+        <div id="ranking-status" style="display: none; margin: 10px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);"></div>
         <button id="play-again-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin-top: 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">JUGAR DE NUEVO</button>
     `;
     
     const loadingDiv = document.getElementById('ranking-loading');
     const rankingListDiv = document.getElementById('ranking-list');
     const playAgainButton = document.getElementById('play-again-button');
+    const rankingStatusDiv = document.getElementById('ranking-status');
     
     // Configurar bandera para controlar si el juego se ha reiniciado
     // Esto evitará operaciones en componentes que ya no existen
@@ -2244,6 +2274,7 @@ async function showRankingList(panel, playerScore, playerName) {
     if (rankingListDiv && loadingDiv) {
         try {
             let rankingData = [];
+            let isLocalData = false;
             
             if (window.apiClient && window.apiClient.ranking && !panelClosed) {
                 
@@ -2255,8 +2286,13 @@ async function showRankingList(panel, playerScore, playerName) {
                 
                 try {
                     rankingData = await Promise.race([fetchPromise, timeoutPromise]);
+                    
+                    // Verificar si son datos locales
+                    isLocalData = rankingData.length > 0 && rankingData[0].local === true;
+                    
                 } catch (fetchError) {
                     console.error("Error o timeout al obtener ranking:", fetchError);
+                    isLocalData = true;
                     // Continuar con rankingData vacío
                 }
             }
@@ -2283,6 +2319,16 @@ async function showRankingList(panel, playerScore, playerName) {
             loadingDiv.style.display = 'none';
             rankingListDiv.style.display = 'block';
             
+            // Mostrar estado del ranking
+            if (rankingStatusDiv) {
+                rankingStatusDiv.style.display = 'block';
+                if (isLocalData) {
+                    rankingStatusDiv.innerHTML = '📱 Mostrando datos locales (servidor no disponible)';
+                } else {
+                    rankingStatusDiv.innerHTML = '🌐 Datos del servidor';
+                }
+            }
+            
             // Formatear y mostrar el ranking
             if (rankingData && rankingData.length > 0) {
                 // Construir tabla de ranking
@@ -2303,9 +2349,17 @@ async function showRankingList(panel, playerScore, playerName) {
                 rankingData.forEach((entry, index) => {
                     // Destacar la entrada del jugador actual
                     const isCurrentPlayer = entry.nombre === playerName && entry.puntaje === playerScore;
-                    const rowStyle = isCurrentPlayer ? 
-                        'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;' : 
-                        ((index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '');
+                    let rowStyle = '';
+                    
+                    if (isCurrentPlayer) {
+                        rowStyle = 'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;';
+                    } else if (entry.local) {
+                        // Entradas locales con fondo ligeramente diferente
+                        rowStyle = 'background-color: rgba(255, 165, 0, 0.1);';
+                    } else {
+                        // Entradas del servidor con alternancia normal
+                        rowStyle = (index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '';
+                    }
                     
                     // Formatear dispositivo (desktop o mobile)
                     const deviceIcon = (entry.dispositivo === 'mobile') ? '📱' : '💻';
@@ -2319,10 +2373,13 @@ async function showRankingList(panel, playerScore, playerName) {
                     // Formatear fecha/hora (mostrar "--" si no está disponible)
                     const fechaHora = entry.fechaHora || "--";
                     
+                    // Añadir indicador visual para entradas locales
+                    const localIndicator = entry.local ? ' 📱' : '';
+                    
                     tableHTML += `
                         <tr style="border-bottom: 1px solid rgba(100, 100, 100, 0.3); ${rowStyle}">
                             <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
-                            <td style="padding: ${tableCellPadding};">${entry.nombre}</td>
+                            <td style="padding: ${tableCellPadding};">${entry.nombre}${localIndicator}</td>
                             <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
                             <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
                             <td style="padding: ${tableCellPadding};">${location}</td>
@@ -3218,6 +3275,34 @@ async function handleFormSubmit(e, nameInput, panel, score) {
                     console.log("Nombre del jugador guardado en localStorage:", playerName);
                 } catch(storageError) {
                     console.warn("No se pudo guardar el nombre en localStorage:", storageError);
+                }
+                
+                // Mostrar mensaje según el resultado
+                if (result.fallbackUsed) {
+                    // Se usó el respaldo local
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                            ⚠️ Servidor no disponible<br>
+                            <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
+                        </p>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
+                            Se sincronizará cuando el servidor esté disponible
+                        </p>
+                    `;
+                } else if (result.serverSave) {
+                    // Guardado exitoso en el servidor
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(0, 255, 0, 0.9);">
+                            ✅ Puntuación guardada exitosamente
+                        </p>
+                    `;
+                } else {
+                    // Resultado desconocido pero exitoso
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(0, 255, 0, 0.9);">
+                            ✅ Puntuación guardada
+                        </p>
+                    `;
                 }
                 
                 // Mostrar el ranking inmediatamente sin temporizador
