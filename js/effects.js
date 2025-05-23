@@ -1548,6 +1548,59 @@ function startGameTimer() {
         shootingSystem.gameStarted = true;
         shootingSystem.gameStartTime = Date.now();
         
+        // 🚀 WAKE-UP CRÍTICO: Despertar backend al iniciar el juego
+        console.log("🎮 Juego iniciado - Despertando backend para asegurar disponibilidad...");
+        
+        // Solo hacer wake-up en producción (GitHub Pages)
+        if (window.apiClient && !window.apiClient.config.isLocalEnvironment()) {
+            // Wake-up asíncrono sin bloquear el inicio del juego
+            (async () => {
+                try {
+                    console.log("🔄 Wake-up del backend al iniciar juego...");
+                    const startTime = performance.now();
+                    
+                    const response = await fetch(`${window.apiClient.config.getBaseUrl()}/health`, {
+                        method: 'GET',
+                        signal: AbortSignal.timeout(15000), // 15 segundos timeout
+                        headers: {
+                            'Accept': 'application/json',
+                            'User-Agent': 'RejasEspacialesGame/GameStart'
+                        }
+                    });
+                    
+                    const endTime = performance.now();
+                    const responseTime = Math.round(endTime - startTime);
+                    
+                    if (response.ok) {
+                        console.log(`✅ Backend despertado exitosamente en ${responseTime}ms`);
+                        // Actualizar indicador si existe
+                        const statusDiv = document.getElementById('backend-status');
+                        if (statusDiv) {
+                            statusDiv.style.display = 'block';
+                            statusDiv.innerHTML = `
+                                <div style="color: rgba(100, 255, 100, 0.9);">
+                                    ✅ Backend listo para guardar ranking
+                                </div>
+                                <div style="font-size: 10px; margin-top: 2px;">
+                                    Tiempo de respuesta: ${responseTime}ms
+                                </div>
+                            `;
+                            
+                            // Ocultar después de 3 segundos
+                            setTimeout(() => {
+                                statusDiv.style.display = 'none';
+                            }, 3000);
+                        }
+                    } else {
+                        console.warn(`⚠️ Backend respondió con status ${response.status}`);
+                    }
+                } catch (error) {
+                    console.log(`⚠️ Error al despertar backend en inicio de juego: ${error.message}`);
+                    // No es crítico si falla, el juego continúa
+                }
+            })();
+        }
+        
         // Actualizar el tiempo cada 100ms
         shootingSystem.gameTimer = setInterval(updateGameTime, 100);
         
