@@ -1,5 +1,5 @@
 // Constante de versión del juego
-const GAME_VERSION = "2.1.3";
+const GAME_VERSION = "2.1.4";
 window.GAME_VERSION = GAME_VERSION;
 
 // Test de edición - Comentario simple
