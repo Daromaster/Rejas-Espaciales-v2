@@ -769,7 +769,7 @@ function createShootButton() {
         if (shootingSystem.isMobile) {
             const label = document.createElement('div');
             label.style.position = 'absolute';
-            label.style.bottom = '12vh';
+            label.style.bottom = '15vh'; // Aumentado de 12vh para más separación
             label.style.right = '5vh';
             label.style.color = 'white';
             label.style.fontWeight = 'bold';
@@ -835,7 +835,7 @@ function createAudioButton() {
         if (shootingSystem.isMobile) {
             const label = document.createElement('div');
             label.style.position = 'absolute';
-            label.style.bottom = '12vh';
+            label.style.bottom = '15vh'; // Aumentado de 12vh para más separación
             label.style.left = 'calc(5vh + 20vmin)'; // Alineado con el botón de audio
             label.style.color = 'white';
             label.style.fontWeight = 'bold';
@@ -922,7 +922,7 @@ function createResetButton() {
         if (shootingSystem.isMobile) {
             const label = document.createElement('div');
             label.style.position = 'absolute';
-            label.style.bottom = '12vh';
+            label.style.bottom = '15vh'; // Aumentado de 12vh para más separación
             label.style.left = '5vh';
             label.style.color = 'white';
             label.style.fontWeight = 'bold';
