@@ -58,13 +58,16 @@ function dibujarGrid() {
     // Obtener el offset del movimiento
     const offset = gridMovement.update();
     
+    // 🎨 SISTEMA DE COLORES POR NIVEL - Switch/Case
+    let gradientColors = getGridColorsForLevel();
+    
     // Dibujar líneas horizontales
     for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
         const y = baseY + i * tamCuadrado + offset.y;
         const grad = ctxGrid.createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
-        grad.addColorStop(0, "rgba(0, 64, 80, 1)");
-        grad.addColorStop(0.5, "rgba(0, 255, 255, 1)");
-        grad.addColorStop(1, "rgba(0, 64, 80, 1)");
+        grad.addColorStop(0, gradientColors.dark);
+        grad.addColorStop(0.5, gradientColors.bright);
+        grad.addColorStop(1, gradientColors.dark);
         ctxGrid.strokeStyle = grad;
         ctxGrid.beginPath();
         ctxGrid.moveTo(baseX + offset.x, y);
@@ -76,14 +79,67 @@ function dibujarGrid() {
     for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
         const x = baseX + j * tamCuadrado + offset.x;
         const grad = ctxGrid.createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
-        grad.addColorStop(0, "rgba(0, 64, 80, 1)");
-        grad.addColorStop(0.5, "rgba(0, 255, 255, 1)");
-        grad.addColorStop(1, "rgba(0, 64, 80, 1)");
+        grad.addColorStop(0, gradientColors.dark);
+        grad.addColorStop(0.5, gradientColors.bright);
+        grad.addColorStop(1, gradientColors.dark);
         ctxGrid.strokeStyle = grad;
         ctxGrid.beginPath();
         ctxGrid.moveTo(x, baseY + offset.y);
         ctxGrid.lineTo(x, baseY + 4 * tamCuadrado + offset.y);
         ctxGrid.stroke();
+    }
+}
+
+// 🎨 NUEVA FUNCIÓN: Obtener colores de gradiente según el nivel actual
+function getGridColorsForLevel() {
+    // Obtener nivel actual del LevelManager
+    let currentLevel = 1; // Valor por defecto
+    
+    if (window.LevelManager) {
+        const levelInfo = window.LevelManager.getCurrentLevelInfo();
+        currentLevel = levelInfo.level;
+    } else if (window.gameState && window.gameState.currentLevel) {
+        // Fallback si LevelManager no está disponible
+        currentLevel = window.gameState.currentLevel;
+    }
+    
+    // Sistema switch/case para colores por nivel
+    switch(currentLevel) {
+        case 1:
+            // Nivel 1 - Básico: Colores cyan clásicos (original)
+            return {
+                dark: "rgba(0, 64, 80, 1)",        // Azul oscuro
+                bright: "rgba(0, 255, 255, 1)"     // Cyan brillante
+            };
+            
+        case 2:
+            // Nivel 2 - Intermedio: Tonalidad más verde-azulada
+            return {
+                dark: "rgba(0, 80, 64, 1)",        // Verde-azul oscuro
+                bright: "rgba(0, 255, 180, 1)"     // Verde-cyan brillante
+            };
+            
+        case 3:
+            // Nivel 3 - Avanzado: Tonalidad púrpura-azul
+            return {
+                dark: "rgba(64, 0, 80, 1)",        // Púrpura oscuro
+                bright: "rgba(180, 0, 255, 1)"     // Púrpura brillante
+            };
+            
+        case 4:
+            // Nivel 4 - Experto: Tonalidad roja-naranja
+            return {
+                dark: "rgba(80, 32, 0, 1)",        // Naranja oscuro
+                bright: "rgba(255, 128, 0, 1)"     // Naranja brillante
+            };
+            
+        default:
+            // Fallback: usar colores del nivel 1
+            console.warn(`⚠️ Nivel desconocido (${currentLevel}), usando colores por defecto`);
+            return {
+                dark: "rgba(0, 64, 80, 1)",
+                bright: "rgba(0, 255, 255, 1)"
+            };
     }
 }
 
@@ -121,6 +177,7 @@ function obtenerCelda(x, y) {
 window.dibujarGrid = dibujarGrid;
 window.obtenerCelda = obtenerCelda;
 window.initGrid = initGrid;
+window.getGridColorsForLevel = getGridColorsForLevel;
 
 // === Sistema de coordenadas de reja ===
 

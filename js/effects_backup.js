@@ -3509,12 +3509,7 @@ async function handleFormSubmit(e, nameInput, panel, score) {
         // Guardar la puntuación en el ranking
         if (window.apiClient && window.apiClient.ranking) {
             try {
-                                // Obtener el nivel actual
-                const currentLevel = window.LevelManager ? 
-                    `${window.LevelManager.current.level}` : "1";
-                
-                // Guardar la puntuación
-                const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion, currentLevel);
+                // Guardar la puntuación                const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion);
                 
                 // Aplicar un timeout para evitar bloqueos
                 const timeoutPromise = new Promise((_, reject) => 
@@ -3923,4 +3918,3 @@ function restartCurrentLevel() {
 }
 
 // Finalizar el juego al llegar a 0
-

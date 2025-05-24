@@ -47,11 +47,11 @@ let ballStateDetector = {
             return;
         }
 
-        // Calcular posiciones centrales
-        const canvasMiddle = canvasBorrador.width / 2;
-        const mathCenter = canvasMiddle - this.config.indicatorSpacing;
-        const pixelCenter = canvasMiddle + this.config.indicatorSpacing;
-        const indicatorY = 40; // Una sola posición Y para los indicadores
+        // 🎯 NUEVA POSICIÓN: Debajo de los botones de borrador
+        const leftStart = 20; // Alineado con el margen izquierdo de los botones
+        const mathCenter = leftStart + 50; // Primer cuadrado 
+        const pixelCenter = leftStart + 120; // Segundo cuadrado (separados por 70px)
+        const indicatorY = 190; // Debajo de los botones (botones van de 70 a 170, más margen)
         
         // Limpiar áreas donde se dibujarán los indicadores
         // Área para método matemático
@@ -119,12 +119,12 @@ let ballStateDetector = {
             );
         }
         
-        // Etiquetas para cada método
-        ctxBorrador.font = "bold 12px Arial";
+        // 🏷️ Etiquetas reposicionadas para la nueva ubicación (debajo de los botones)
+        ctxBorrador.font = "bold 10px Arial"; // Fuente más pequeña para mejor ajuste
         ctxBorrador.textAlign = "center";
         ctxBorrador.fillStyle = "rgba(255, 255, 255, 1)";
-        ctxBorrador.fillText("Geométrico", mathCenter, 20);
-        ctxBorrador.fillText("Píxeles", pixelCenter, 20);
+        ctxBorrador.fillText("Geom", mathCenter, indicatorY - 25); // Texto arriba de los cuadrados
+        ctxBorrador.fillText("Pixel", pixelCenter, indicatorY - 25); // Texto arriba de los cuadrados
     },
     
     // Limpiar una pequeña área alrededor de un indicador

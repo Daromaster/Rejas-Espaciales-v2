@@ -6,7 +6,7 @@ window.MOCK_GEOLOCATION_ON_LOCALHOST = false; // Permitir geolocalización real 
 // Sistema de respaldo local para cuando falle el backend
 const localRanking = {
     // Guardar puntuación en localStorage
-    saveLocal: function(playerName, score, deviceType, location) {
+    saveLocal: function(playerName, score, deviceType, location, nivel) {
         try {
             // Generar fecha y hora actual en formato YYYYMMDD-HHMMSS
             const ahora = new Date();
@@ -25,6 +25,7 @@ const localRanking = {
                 dispositivo: deviceType || "unknown",
                 ubicacion: location || "desconocida",
                 fechaHora: fechaHora,
+                nivel: nivel || "1",  // 🎯 NUEVO: Campo nivel con fallback a "1"
                 local: true // Marcar como entrada local
             };
             
@@ -257,7 +258,7 @@ const apiClient = {
         },
         
         // Guardar un nuevo puntaje (con fallback local)
-        save: async function(playerName, score, deviceType, location) {
+        save: async function(playerName, score, deviceType, location, nivel) {
             let serverError = null;
             
             // Intentar guardar en el servidor
@@ -280,7 +281,8 @@ const apiClient = {
                     version: window.GAME_VERSION,
                     dispositivo: deviceType || "unknown",
                     ubicacion: location || "desconocida",
-                    fechaHora: fechaHora
+                    fechaHora: fechaHora,
+                    nivel: nivel || "1"  // 🎯 NUEVO: Campo nivel con fallback a "1"
                 };
                 
                 console.log("Enviando datos al servidor:", data);
@@ -355,7 +357,7 @@ const apiClient = {
             
             // Si falló el servidor, usar respaldo local
             console.log("🔄 Servidor no disponible, guardando localmente...");
-            const localResult = localRanking.saveLocal(playerName, score, deviceType, location);
+            const localResult = localRanking.saveLocal(playerName, score, deviceType, location, nivel);
             
             if (localResult.success) {
                 console.log("✅ Puntuación guardada localmente como respaldo");
