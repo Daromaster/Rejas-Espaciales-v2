@@ -49,7 +49,8 @@ const shootingSystem = {
     },
     // Variable global para controlar si hay un panel modal abierto
     modalActive: false,
-    originalEndPanel: null // Guardar el contenido original del panel
+    originalEndPanel: null, // Guardar el contenido original del panel
+    completedLevel: null    // 🎯 NUEVO: Guardar el nivel completado para el ranking
 };
 
 // Nuevo sistema de audio basado en Howler.js
@@ -2182,9 +2183,13 @@ function showRankingSubmitForm(panel, score) {
             try {
                 // Usar el cliente API para guardar la puntuación
                 if (window.apiClient && window.apiClient.ranking) {
-                    // Obtener el nivel actual para guardar en el ranking
-                    const currentLevel = window.LevelManager ? 
-                        `${window.LevelManager.current.level}` : "1";
+                    // 🎯 CORRECCIÓN: Usar el nivel completado, no el nivel actual
+                    // Si hay un nivel completado guardado (desde transición), usarlo
+                    // Si no, usar el nivel actual (para partidas normales que terminan por tiempo)
+                    const currentLevel = shootingSystem.completedLevel || 
+                        (window.LevelManager ? `${window.LevelManager.current.level}` : "1");
+                    
+                    console.log(`🎯 Guardando ranking con nivel: ${currentLevel}`);
                     
                     // Guardar la puntuación
                     const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion, currentLevel);
@@ -2236,6 +2241,9 @@ function showRankingSubmitForm(panel, score) {
                     
                     // Mostrar el ranking inmediatamente sin temporizador
                     showRankingList(panel, score, playerName);
+                    
+                    // 🎯 LIMPIAR el nivel completado después de guardar
+                    shootingSystem.completedLevel = null;
                 } else {
                     throw new Error("API Client no disponible");
                 }
@@ -2646,6 +2654,9 @@ async function showRankingList(panel, playerScore, playerName) {
                 rankingListDiv.innerHTML = '<p style="text-align: center;">No hay puntuaciones registradas todavía.</p>';
             }
             
+            // 🎯 LIMPIAR el nivel completado después de mostrar ranking
+            shootingSystem.completedLevel = null;
+            console.log("📝 Nivel completado limpiado después de mostrar ranking");
             
         } catch (error) {            console.error("Error al cargar el ranking:", error);                        // Si el panel fue cerrado durante la carga, abortar
             if (panelClosed) {
@@ -3222,6 +3233,9 @@ function resetGameTime() {
     shootingSystem.gameEnded = false;
     shootingSystem.gameStartTime = 0;
     
+    // 🎯 LIMPIAR el nivel completado en reinicios
+    shootingSystem.completedLevel = null;
+    
     // Actualizar el display a 1 minuto inicial
     if (shootingSystem.timeDisplay) {
         shootingSystem.timeDisplay.textContent = 'Tiempo: 01:00.0';
@@ -3509,9 +3523,13 @@ async function handleFormSubmit(e, nameInput, panel, score) {
         // Guardar la puntuación en el ranking
         if (window.apiClient && window.apiClient.ranking) {
             try {
-                                // Obtener el nivel actual
-                const currentLevel = window.LevelManager ? 
-                    `${window.LevelManager.current.level}` : "1";
+                // 🎯 CORRECCIÓN: Usar el nivel completado, no el nivel actual
+                // Si hay un nivel completado guardado (desde transición), usarlo
+                // Si no, usar el nivel actual (para partidas normales que terminan por tiempo)
+                const currentLevel = shootingSystem.completedLevel || 
+                    (window.LevelManager ? `${window.LevelManager.current.level}` : "1");
+                
+                console.log(`🎯 Guardando ranking con nivel: ${currentLevel}`);
                 
                 // Guardar la puntuación
                 const savePromise = window.apiClient.ranking.save(playerName, score, deviceType, ubicacion, currentLevel);
@@ -3578,6 +3596,7 @@ function updateRankingTable(rankingData, playerScore, playerName, tableCellPaddi
                 <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
                 <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
                 <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Nivel</th>
                 <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Dispositivo</th>
                 <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Ubicación</th>
                 <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Versión</th>
@@ -3604,6 +3623,9 @@ function updateRankingTable(rankingData, playerScore, playerName, tableCellPaddi
         // Formatear dispositivo (desktop o mobile)
         const deviceIcon = (entry.dispositivo === 'mobile') ? '📱' : '💻';
         
+        // Formatear nivel (mostrar "1" si no está disponible)
+        const nivel = entry.nivel || "1";
+        
         // Formatear ubicación (mostrar "desconocida" si no está disponible)
         const location = entry.ubicacion || "desconocida";
         
@@ -3621,6 +3643,7 @@ function updateRankingTable(rankingData, playerScore, playerName, tableCellPaddi
                 <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
                 <td style="padding: ${tableCellPadding};">${entry.nombre}${localIndicator}</td>
                 <td style="padding: ${tableCellPadding}; text-align: right; color: ${isCurrentPlayer ? 'rgba(0, 255, 255, 1)' : 'white'};">${entry.puntaje}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center;">${nivel}</td>
                 <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
                 <td style="padding: ${tableCellPadding};">${location}</td>
                 <td style="padding: ${tableCellPadding}; text-align: center;">${version}</td>
@@ -3687,6 +3710,10 @@ function handleTimeExpired() {
 // Mostrar pantalla de transición entre niveles
 function showLevelTransitionScreen(levelResult) {
     console.log("🎮 Mostrando pantalla de transición entre niveles");
+    
+    // 🎯 GUARDAR el nivel completado ANTES de avanzar al siguiente
+    shootingSystem.completedLevel = window.LevelManager ? window.LevelManager.current.level : 1;
+    console.log(`📝 Nivel completado guardado: ${shootingSystem.completedLevel}`);
     
     // Activar el bloqueo modal
     setModalActive(true);
