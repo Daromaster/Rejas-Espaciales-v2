@@ -80,7 +80,8 @@ const apiClient = {
     config: {
         // URLs de los entornos
         urls: {
-            local: 'http://localhost:3000',
+            // local: 'http://localhost:3000',  // COMENTADO: Usar solo cuando necesites backend local
+            local: 'https://rejas-espaciales-backend-v2.onrender.com',  // Live Server → Backend Render
             production: 'https://rejas-espaciales-backend-v2.onrender.com'
         },
         // Determinar el entorno actual

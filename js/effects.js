@@ -1952,9 +1952,20 @@ function showRankingSubmitForm(panel, score) {
                             // Envolver la geolocalización en una promesa para manejarla mejor
                             const getPosition = () => {
                                 return new Promise((resolve, reject) => {
+                                    // MEJORA: Timeouts diferenciados por dispositivo
+                                    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+                                    const timeoutMs = isMobile ? 3000 : 8000; // Móvil: 3s, Desktop: 8s
+                                    
+                                    console.log(`Detectado dispositivo: ${isMobile ? 'móvil' : 'desktop'}, timeout: ${timeoutMs}ms`);
+                                    
                                     const geoTimeout = setTimeout(() => {
                                         reject(new Error('Geolocation timeout'));
-                                    }, 3000); // Reducido de 5000 a 3000
+                                    }, timeoutMs);
+                                    
+                                    const geoOptions = { 
+                                        timeout: isMobile ? 2500 : 6000,        // Móvil: 2.5s, Desktop: 6s
+                                        enableHighAccuracy: isMobile            // Solo alta precisión en móvil
+                                    };
                                     
                                     navigator.geolocation.getCurrentPosition(
                                         position => {
@@ -1965,7 +1976,7 @@ function showRankingSubmitForm(panel, score) {
                                             clearTimeout(geoTimeout);
                                             reject(error);
                                         },
-                                        { timeout: 2500, enableHighAccuracy: false } // Reducido de 4000 a 2500
+                                        geoOptions
                                     );
                                 });
                             };
