@@ -20,6 +20,16 @@ let borradorElements = {
         text: "FINALIZAR JUEGO",    // Todo mayúsculas
         color: "rgba(255, 50, 50, 0.9)", // Más opaco
         hovered: false
+    },
+    // Botón de ver ranking (solo para admin en Live Server)
+    viewRankingButton: {
+        visible: false,
+        position: { x: 20, y: 80 }, // Debajo del botón de finalizar
+        width: 150,                 
+        height: 50,                 
+        text: "VER RANKING",        
+        color: "rgba(50, 255, 50, 0.9)", // Verde para diferenciarlo
+        hovered: false
     }
 };
 
@@ -35,11 +45,15 @@ function initBorrador() {
     borradorElements.targetPoint.visible = window.IS_LOCAL_ENVIRONMENT;
     borradorElements.stateIndicators.visible = window.IS_LOCAL_ENVIRONMENT;
     borradorElements.endGameButton.visible = window.IS_LOCAL_ENVIRONMENT;
+    borradorElements.viewRankingButton.visible = window.IS_LOCAL_ENVIRONMENT;
     
     // Inicialización diferida para asegurarnos que canvasBorrador esté disponible
     setTimeout(() => {
         // Crear botón real en HTML en lugar de dibujarlo en el canvas
         createRealEndGameButton();
+        
+        // Crear botón de ver ranking para admin
+        createRealViewRankingButton();
         
         // Configurar eventos en el canvas para otros elementos de borrador
         setupBorradorEventListeners();
@@ -141,6 +155,78 @@ function createRealEndGameButton() {
         if (typeof window.endGame === 'function') {
             console.log("Llamando a la función endGame()");
             window.endGame();
+        }
+    };
+    
+    // Añadir el botón al DOM - dentro del mismo contenedor que el canvas
+    const canvas = document.getElementById('canvas-juego');
+    if (canvas && canvas.parentNode) {
+        canvas.parentNode.appendChild(button);
+        console.log("Botón real HTML creado y añadido al DOM");
+    } else {
+        // Si no encuentra el canvas o su padre, añadirlo directamente al body
+        document.body.appendChild(button);
+        console.log("Botón real HTML añadido al body (no se encontró el contenedor del canvas)");
+    }
+}
+
+// Función para crear un botón HTML real para ver ranking
+function createRealViewRankingButton() {
+    if (!window.IS_LOCAL_ENVIRONMENT) return;
+    
+    // Eliminar el botón anterior si existe
+    const existingButton = document.getElementById('view-ranking-real-button');
+    if (existingButton) {
+        existingButton.parentNode.removeChild(existingButton);
+    }
+    
+    // Crear el botón real como elemento HTML
+    const button = document.createElement('button');
+    button.id = 'view-ranking-real-button';
+    button.textContent = 'VER RANKING';
+    
+    // Estilos para el botón
+    button.style.position = 'absolute';
+    button.style.top = '120px'; // Movido más abajo para no tapar el puntaje
+    button.style.left = '20px';
+    button.style.width = '150px';
+    button.style.height = '50px';
+    button.style.backgroundColor = 'rgba(50, 255, 50, 0.9)';
+    button.style.color = 'white';
+    button.style.border = '2px solid white';
+    button.style.borderRadius = '8px';
+    button.style.fontSize = '16px';
+    button.style.fontWeight = 'bold';
+    button.style.cursor = 'pointer';
+    button.style.zIndex = '9999'; // Asegurar que esté por encima de todo
+    button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
+    
+    // Efectos de hover
+    button.onmouseover = function() {
+        this.style.backgroundColor = 'rgba(0, 255, 0, 1)';
+        this.style.transform = 'scale(1.05)';
+        console.log("Cursor sobre el botón VER RANKING (botón real)");
+    };
+    
+    button.onmouseout = function() {
+        this.style.backgroundColor = 'rgba(50, 255, 50, 0.9)';
+        this.style.transform = 'scale(1)';
+    };
+    
+    // Manejar el clic
+    button.onclick = function() {
+        // No permitir ver ranking si hay un panel modal activo
+        if (window.shootingSystem && window.shootingSystem.modalActive) {
+            console.log("No se puede ver ranking mientras hay un panel abierto");
+            return;
+        }
+        
+        console.log("¡Ver ranking! (botón real clickeado)");
+        
+        // Si existe la función viewRanking, llamarla
+        if (typeof window.viewRanking === 'function') {
+            console.log("Llamando a la función viewRanking()");
+            window.viewRanking();
         }
     };
     
@@ -422,8 +508,305 @@ function setBorradorTargetPoint(targetInfo, color) {
     }
 }
 
-// Exportar funciones al scope global
+// Exportar funciones al scope global (FUNCIONES DEL SISTEMA DE BORRADOR - NO CONFUNDIR CON DEBUGGING)
 window.initBorrador = initBorrador;
 window.dibujarBorrador = dibujarBorrador;
 window.setBorradorTargetPoint = setBorradorTargetPoint;
-window.setBorradorStateIndicators = setBorradorStateIndicators; 
+window.setBorradorStateIndicators = setBorradorStateIndicators;
+
+// NUEVA FUNCIÓN DE ADMIN: Ver ranking de debugging (solo en Live Server)
+async function viewRanking() {
+    if (!window.IS_LOCAL_ENVIRONMENT) {
+        console.log("Función viewRanking solo disponible en entorno local");
+        return;
+    }
+    
+    console.log("🔍 Abriendo panel de ranking de admin...");
+    
+    // Crear panel modal
+    const adminPanel = createAdminRankingPanel();
+    document.body.appendChild(adminPanel);
+    
+    // Activar modo modal
+    setModalActive(true);
+    
+    // Cargar datos del ranking directo desde Render
+    await loadAdminRankingData(adminPanel);
+}
+
+// Función para crear el panel de ranking de admin
+function createAdminRankingPanel() {
+    const panel = document.createElement('div');
+    panel.id = 'admin-ranking-panel';
+    panel.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 20, 0.95);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        border: 2px solid rgba(0, 255, 255, 0.8);
+        box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+        z-index: 10000;
+        max-width: 80vw;
+        max-height: 80vh;
+        overflow-y: auto;
+        font-family: Arial, sans-serif;
+    `;
+    
+    panel.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: rgba(50, 255, 50, 1); margin: 0; font-size: 24px;">🔧 Admin - Ranking Real</h2>
+            <button id="admin-close-btn" style="background: rgba(255, 50, 50, 0.8); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">✕ CERRAR</button>
+        </div>
+        <div id="admin-loading" style="margin: 20px 0; text-align: center;">
+            <div style="color: rgba(255, 255, 0, 0.9);">🔄 Conectando al backend de Render...</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6); margin-top: 5px;">URL: https://rejas-espaciales-backend-v2.onrender.com</div>
+        </div>
+        <div id="admin-ranking-content" style="display: none;">
+            <div id="admin-server-info" style="margin-bottom: 15px; padding: 10px; background: rgba(0, 100, 255, 0.1); border-radius: 5px; font-size: 12px;"></div>
+            <div id="admin-ranking-table" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+        <div id="admin-error" style="display: none; color: rgba(255, 100, 100, 0.9); margin: 20px 0;"></div>
+        <div style="margin-top: 20px; text-align: center;">
+            <button id="admin-refresh-btn" style="background: rgba(0, 255, 255, 0.8); color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 10px;">🔄 ACTUALIZAR</button>
+        </div>
+    `;
+    
+    // Configurar botón de cerrar
+    const closeBtn = panel.querySelector('#admin-close-btn');
+    closeBtn.onclick = () => {
+        panel.remove();
+        setModalActive(false);
+    };
+    
+    // Configurar botón de actualizar
+    const refreshBtn = panel.querySelector('#admin-refresh-btn');
+    refreshBtn.onclick = () => {
+        loadAdminRankingData(panel);
+    };
+    
+    return panel;
+}
+
+// Función para cargar datos usando el mismo sistema que el panel de fin de juego
+async function loadAdminRankingData(panel) {
+    const loadingDiv = panel.querySelector('#admin-loading');
+    const contentDiv = panel.querySelector('#admin-ranking-content');
+    const errorDiv = panel.querySelector('#admin-error');
+    const serverInfoDiv = panel.querySelector('#admin-server-info');
+    const tableDiv = panel.querySelector('#admin-ranking-table');
+    
+    // Mostrar loading
+    loadingDiv.style.display = 'block';
+    contentDiv.style.display = 'none';
+    errorDiv.style.display = 'none';
+    
+    try {
+        console.log("🌐 [ADMIN DEBUG] Obteniendo datos del ranking desde PRODUCCIÓN...");
+        
+        let rankingData = [];
+        let isLocalData = false;
+        let serverInfo = {
+            version: 'N/A',
+            revision: 'N/A',
+            totalScores: 0,
+            lastUpdate: Date.now()
+        };
+        
+        // IMPORTANTE: Para admin, SIEMPRE usar la URL de producción
+        // No usar apiClient.ranking.getAll() porque eso usa URL local desde localhost
+        const PRODUCTION_URL = 'https://rejas-espaciales-backend-v2.onrender.com';
+        
+        // Aplicar timeout para prevenir bloqueos
+        const fetchPromise = fetch(`${PRODUCTION_URL}/ranking`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'RejasEspacialesGame/AdminDebug'
+            }
+        });
+        
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Timeout obteniendo ranking')), 6000);
+        });
+        
+        try {
+            console.log(`🌐 [ADMIN DEBUG] Conectando a: ${PRODUCTION_URL}/ranking`);
+            
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            rankingData = await response.json();
+            console.log(`✅ [ADMIN DEBUG] Datos obtenidos exitosamente: ${rankingData.length} entradas`);
+            
+            // Verificar si son datos locales (no deberían serlo desde producción)
+            isLocalData = rankingData.length > 0 && rankingData[0].local === true;
+            
+            // Intentar obtener info del servidor
+            try {
+                const infoResponse = await fetch(`${PRODUCTION_URL}/info`);
+                if (infoResponse.ok) {
+                    serverInfo = await infoResponse.json();
+                }
+            } catch (infoError) {
+                console.warn("No se pudo obtener info del servidor:", infoError);
+            }
+            
+            serverInfo.totalScores = rankingData.length;
+            
+        } catch (fetchError) {
+            console.error("❌ [ADMIN DEBUG] Error al obtener ranking:", fetchError);
+            
+            // Para admin debug, NO usar fallback local, mostrar el error real
+            throw new Error(`Error de conexión a producción: ${fetchError.message}`);
+        }
+        
+        console.log("✅ [ADMIN DEBUG] Datos obtenidos:", {
+            totalEntries: rankingData.length,
+            isLocal: isLocalData,
+            serverInfo: serverInfo,
+            source: 'PRODUCCIÓN'
+        });
+        
+        // Ocultar loading y mostrar contenido
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        
+        // Mostrar info del servidor/local
+        const dataSource = "🌐 Servidor Render (PRODUCCIÓN)";
+        const urlDisplay = PRODUCTION_URL;
+        
+        serverInfoDiv.innerHTML = `
+            <strong>📊 Información del Ranking:</strong><br>
+            🔄 Fuente: ${dataSource}<br>
+            🌐 URL: ${urlDisplay}<br>
+            📦 Versión: ${serverInfo.version}<br>
+            🔧 Revisión: ${serverInfo.revision}<br>
+            📈 Total de scores: ${serverInfo.totalScores}<br>
+            🕒 Última actualización: ${new Date(serverInfo.lastUpdate).toLocaleString()}<br>
+            ⚠️ <strong style="color: rgba(255, 165, 0, 0.9);">MODO DEBUG - SOLO LECTURA</strong>
+        `;
+        
+        // Usar la misma función que el panel de fin de juego real
+        if (rankingData && rankingData.length > 0) {
+            // IMPORTANTE: No cambiar el ID, usar la función directamente con el contenedor actual
+            
+            // Usar la función updateRankingTable de effects.js si está disponible
+            if (typeof window.updateRankingTable === 'function') {
+                // Parámetros similares a los del panel de fin de juego
+                const tableCellPadding = '8px';
+                const tableHeaderSize = '14px';
+                const isMobile = false; // Admin siempre en desktop
+                
+                // Temporalmente cambiar el ID para que updateRankingTable funcione
+                const originalId = tableDiv.id;
+                tableDiv.id = 'ranking-list';
+                
+                window.updateRankingTable(rankingData, null, null, tableCellPadding, tableHeaderSize, isMobile);
+                
+                // Restaurar el ID original
+                tableDiv.id = originalId;
+            } else {
+                // Fallback si la función no está disponible
+                createAdminRankingTable(tableDiv, rankingData);
+            }
+        } else {
+            tableDiv.innerHTML = `
+                <div style="text-align: center; color: rgba(255, 255, 255, 0.6);">
+                    <h3>No hay datos en el ranking de producción</h3>
+                    <p>El servidor responde pero el ranking está vacío</p>
+                    <p style="font-size: 12px;">URL verificada: ${PRODUCTION_URL}/ranking</p>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error("❌ [ADMIN DEBUG] Error al obtener datos:", error);
+        
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.innerHTML = `
+            <strong>❌ Error de conexión:</strong><br>
+            ${error.message}<br><br>
+            <strong>URL intentada:</strong> https://rejas-espaciales-backend-v2.onrender.com/ranking<br>
+            <em>Verifica que el servidor de producción esté funcionando</em><br><br>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+                <strong>Nota:</strong> Esta función solo lee datos del servidor de producción.<br>
+                No usa datos locales de simulación.
+            </div>
+        `;
+    }
+}
+
+// Función para crear la tabla de ranking
+function createAdminRankingTable(container, data) {
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: rgba(255, 255, 255, 0.6);">No hay datos en el ranking</div>';
+        return;
+    }
+    
+    let tableHTML = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+                <tr style="background: rgba(0, 255, 255, 0.2);">
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: left;">#</th>
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: left;">Nombre</th>
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: right;">Puntaje</th>
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: left;">Dispositivo</th>
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: left;">Ubicación</th>
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: left;">Fecha</th>
+                    <th style="padding: 8px; border: 1px solid rgba(255,255,255,0.3); text-align: left;">Versión</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    data.forEach((entry, index) => {
+        const rowColor = index % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)';
+        const fechaDisplay = entry.fechaHora || entry.fecha || 'N/A';
+        
+        tableHTML += `
+            <tr style="background: ${rowColor};">
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2);">${index + 1}</td>
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2);">${entry.nombre || 'N/A'}</td>
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2); text-align: right; font-weight: bold;">${entry.puntaje || 0}</td>
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2);">${entry.dispositivo || 'N/A'}</td>
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2);">${entry.ubicacion || 'N/A'}</td>
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2);">${fechaDisplay}</td>
+                <td style="padding: 6px; border: 1px solid rgba(255,255,255,0.2);">${entry.version || 'N/A'}</td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = tableHTML;
+}
+
+// Función auxiliar para activar/desactivar modo modal (si no existe)
+function setModalActive(active) {
+    // Verificar si existe una función setModalActive diferente en window
+    // que no sea esta misma función para evitar recursión
+    if (window.setModalActive && window.setModalActive !== setModalActive) {
+        window.setModalActive(active);
+    } else {
+        // Fallback simple - usar nuestra propia implementación
+        if (active) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    }
+}
+
+// Exportar funciones al scope global
+window.viewRanking = viewRanking; 

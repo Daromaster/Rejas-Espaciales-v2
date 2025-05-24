@@ -3488,3 +3488,6 @@ function updateRankingTable(rankingData, playerScore, playerName, tableCellPaddi
     tableHTML += '</table>';
     rankingListDiv.innerHTML = tableHTML;
 }
+
+// Exportar función para uso en otros módulos
+window.updateRankingTable = updateRankingTable;
