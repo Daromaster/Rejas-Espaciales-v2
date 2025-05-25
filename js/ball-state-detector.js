@@ -51,7 +51,7 @@ let ballStateDetector = {
         const leftStart = 20; // Alineado con el margen izquierdo de los botones
         const mathCenter = leftStart + 50; // Primer cuadrado 
         const pixelCenter = leftStart + 120; // Segundo cuadrado (separados por 70px)
-        const indicatorY = 190; // Debajo de los botones (botones van de 70 a 170, más margen)
+        const indicatorY = 260; // Bajado para no solaparse con botones reposicionados
         
         // Limpiar áreas donde se dibujarán los indicadores
         // Área para método matemático

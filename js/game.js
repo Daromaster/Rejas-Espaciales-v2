@@ -1,5 +1,5 @@
 // Constante de versión del juego
-const GAME_VERSION = "2.1.41";
+const GAME_VERSION = "2.1.44";
 window.GAME_VERSION = GAME_VERSION;
 
 // Test de edición - Comentario simple
@@ -29,6 +29,11 @@ function initGame() {
     gameState.stateTime = 0;
     
     // Inicializar posición de la pelota en el centro del canvas (o donde se decida)
+    // Verificar que canvasBall esté disponible antes de usarlo
+    if (!window.canvasBall) {
+        console.error("canvasBall no está disponible. Verificar que renderer.js se haya cargado correctamente.");
+        return;
+    }
     const centerX = canvasBall.width / 2;
     const centerY = canvasBall.height / 2;
     ballMovement.config.currentPosition = { x: centerX, y: centerY };
@@ -99,6 +104,10 @@ function resetGame() {
         gameState.frameCount = 0;
         
         // Reiniciar posición de la pelota
+        if (!window.canvasBall) {
+            console.error("canvasBall no está disponible en resetGame.");
+            return;
+        }
         const centerX = canvasBall.width / 2;
         const centerY = canvasBall.height / 2;
         ballMovement.config.currentPosition = { x: centerX, y: centerY };

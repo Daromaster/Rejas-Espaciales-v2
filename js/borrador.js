@@ -1,3 +1,18 @@
+// ===== BOTÓN TOGGLE BORRADOR (SIEMPRE VISIBLE) =====
+// Este botón controla la visibilidad de todos los demás elementos de debug
+let borradorToggleState = {
+    enabled: localStorage.getItem('borrador-enabled') === 'true' || false,
+    button: {
+        position: { x: 20, y: 20 },
+        width: 120,
+        height: 35,
+        text: "🔧 DEBUG",
+        color: "rgba(100, 100, 255, 0.8)",
+        hovered: false
+    }
+};
+
+// ===== RESTO DE ELEMENTOS BORRADOR (CONTROLADOS POR TOGGLE) =====
 // Sistema para manejar la capa de borrador (depuración)
 let borradorElements = {
     targetPoint: {
@@ -14,21 +29,21 @@ let borradorElements = {
     // Botón de fin de juego
     endGameButton: {
         visible: false,
-        position: { x: 20, y: 20 }, // Movido más a la esquina
-        width: 150,                 // Más ancho
-        height: 50,                 // Más alto
-        text: "FINALIZAR JUEGO",    // Todo mayúsculas
-        color: "rgba(255, 50, 50, 0.9)", // Más opaco
+        position: { x: 20, y: 70 }, // Movido más abajo para dejar espacio al toggle
+        width: 150,                 
+        height: 50,                 
+        text: "FINALIZAR JUEGO",    
+        color: "rgba(255, 50, 50, 0.9)", 
         hovered: false
     },
     // Botón de ver ranking (solo para admin en Live Server)
     viewRankingButton: {
         visible: false,
-        position: { x: 20, y: 80 }, // Debajo del botón de finalizar
+        position: { x: 20, y: 130 }, // Movido más abajo 
         width: 150,                 
         height: 50,                 
         text: "VER RANKING",        
-        color: "rgba(50, 255, 50, 0.9)", // Verde para diferenciarlo
+        color: "rgba(50, 255, 50, 0.9)", 
         hovered: false
     }
 };
@@ -41,66 +56,211 @@ function initBorrador() {
     window.IS_LOCAL_ENVIRONMENT = isLocalEnv; // Asegurar que esté correctamente establecido
     
     console.log("IS_LOCAL_ENVIRONMENT =", window.IS_LOCAL_ENVIRONMENT);
-    
-    borradorElements.targetPoint.visible = window.IS_LOCAL_ENVIRONMENT;
-    borradorElements.stateIndicators.visible = window.IS_LOCAL_ENVIRONMENT;
-    borradorElements.endGameButton.visible = window.IS_LOCAL_ENVIRONMENT;
-    borradorElements.viewRankingButton.visible = window.IS_LOCAL_ENVIRONMENT;
+    console.log("Borrador toggle enabled =", borradorToggleState.enabled);
     
     // Inicialización diferida para asegurarnos que canvasBorrador esté disponible
     setTimeout(() => {
-        // Crear botón real en HTML en lugar de dibujarlo en el canvas
-        createRealEndGameButton();
+        // SIEMPRE crear el botón toggle HTML (igual que los otros botones que funcionan)
+        createRealToggleButton();
         
-        // Crear botón de ver ranking para admin
-        createRealViewRankingButton();
-        
-        // Configurar eventos en el canvas para otros elementos de borrador
+        // SIEMPRE configurar event listeners para canvas (para otros elementos de debug)
         setupBorradorEventListeners();
         
-        // Forzar redibujado inicial
+        // ===== SOLO SI ESTÁ HABILITADO EL TOGGLE =====
+        if (borradorToggleState.enabled) {
+            borradorElements.targetPoint.visible = true;
+            borradorElements.stateIndicators.visible = true;
+            borradorElements.endGameButton.visible = true;
+            borradorElements.viewRankingButton.visible = true;
+            
+            // Crear botón real en HTML en lugar de dibujarlo en el canvas
+            createRealEndGameButton();
+            
+            // Crear botón de ver ranking para admin
+            createRealViewRankingButton();
+        } else {
+            // Si no está habilitado, asegurar que todo esté oculto
+            borradorElements.targetPoint.visible = false;
+            borradorElements.stateIndicators.visible = false;
+            borradorElements.endGameButton.visible = false;
+            borradorElements.viewRankingButton.visible = false;
+        }
+        
+        // Forzar redibujado inicial (solo para elementos de canvas, no botones HTML)
         dibujarBorrador();
     }, 500);
 }
 
+// ===== FUNCIÓN PARA MANEJAR EL TOGGLE =====
+function toggleBorradorMode() {
+    borradorToggleState.enabled = !borradorToggleState.enabled;
+    localStorage.setItem('borrador-enabled', borradorToggleState.enabled.toString());
+    
+    console.log("🔧 Toggle borrador:", borradorToggleState.enabled ? "ACTIVADO" : "DESACTIVADO");
+    
+    if (borradorToggleState.enabled) {
+        // Activar modo debug
+        borradorElements.targetPoint.visible = true;
+        borradorElements.stateIndicators.visible = true;
+        borradorElements.endGameButton.visible = true;
+        borradorElements.viewRankingButton.visible = true;
+        
+        // Crear botones HTML
+        createRealEndGameButton();
+        createRealViewRankingButton();
+    } else {
+        // Desactivar modo debug
+        borradorElements.targetPoint.visible = false;
+        borradorElements.stateIndicators.visible = false;
+        borradorElements.endGameButton.visible = false;
+        borradorElements.viewRankingButton.visible = false;
+        
+        // Remover botones HTML
+        removeRealButtons();
+    }
+    
+    // Forzar redibujado para elementos del canvas
+    dibujarBorrador();
+}
+
+// ===== FUNCIÓN PARA CREAR BOTÓN TOGGLE COMO HTML REAL =====
+function createRealToggleButton() {
+    if (!window.IS_LOCAL_ENVIRONMENT) return;
+    
+    // Eliminar el botón anterior si existe
+    const existingButton = document.getElementById('toggle-debug-real-button');
+    if (existingButton) {
+        existingButton.parentNode.removeChild(existingButton);
+    }
+    
+    // Crear el botón real como elemento HTML
+    const button = document.createElement('button');
+    button.id = 'toggle-debug-real-button';
+    
+    // Texto según estado actual
+    const statusText = borradorToggleState.enabled ? "ON" : "OFF";
+    button.textContent = `🔧 DEBUG ${statusText}`;
+    
+    // Estilos para el botón
+    button.style.position = 'absolute';
+    button.style.top = '80px'; // Bajado para no tapar puntaje
+    button.style.left = '20px';
+    button.style.width = '120px';
+    button.style.height = '35px';
+    
+    // Color según estado
+    const bgColor = borradorToggleState.enabled ? 
+        'rgba(100, 255, 100, 0.9)' : // Verde si activo
+        'rgba(100, 100, 255, 0.9)';  // Azul si inactivo
+    
+    button.style.backgroundColor = bgColor;
+    button.style.color = 'white';
+    button.style.border = '2px solid white';
+    button.style.borderRadius = '8px';
+    button.style.fontSize = '11px';
+    button.style.fontWeight = 'bold';
+    button.style.cursor = 'pointer';
+    button.style.zIndex = '9999'; // Asegurar que esté por encima de todo
+    button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
+    
+    // Efectos de hover
+    button.onmouseover = function() {
+        const hoverColor = borradorToggleState.enabled ? 
+            'rgba(100, 255, 100, 1)' : 
+            'rgba(100, 100, 255, 1)';
+        this.style.backgroundColor = hoverColor;
+        this.style.transform = 'scale(1.05)';
+        console.log("Cursor sobre el botón TOGGLE DEBUG (botón real)");
+    };
+    
+    button.onmouseout = function() {
+        this.style.backgroundColor = bgColor;
+        this.style.transform = 'scale(1)';
+    };
+    
+    // Manejar el clic - ESTA ES LA PARTE CLAVE QUE FUNCIONA
+    button.onclick = function() {
+        console.log("¡Clic en botón toggle! (botón real HTML)");
+        toggleBorradorMode();
+        
+        // Actualizar el texto del botón inmediatamente
+        const newStatusText = borradorToggleState.enabled ? "ON" : "OFF";
+        this.textContent = `🔧 DEBUG ${newStatusText}`;
+        
+        // Actualizar color del botón
+        const newBgColor = borradorToggleState.enabled ? 
+            'rgba(100, 255, 100, 0.9)' : 
+            'rgba(100, 100, 255, 0.9)';
+        this.style.backgroundColor = newBgColor;
+    };
+    
+    // Añadir el botón al DOM - dentro del mismo contenedor que el canvas
+    const canvas = document.getElementById('canvas-juego');
+    if (canvas && canvas.parentNode) {
+        canvas.parentNode.appendChild(button);
+        console.log("Botón TOGGLE DEBUG real HTML creado y añadido al DOM");
+    } else {
+        // Si no encuentra el canvas o su padre, añadirlo directamente al body
+        document.body.appendChild(button);
+        console.log("Botón TOGGLE DEBUG real HTML añadido al body (no se encontró el contenedor del canvas)");
+    }
+}
+
+// ===== FUNCIÓN PARA REMOVER BOTONES HTML =====
+function removeRealButtons() {
+    const endGameButton = document.getElementById('end-game-real-button');
+    const viewRankingButton = document.getElementById('view-ranking-real-button');
+    
+    if (endGameButton) {
+        endGameButton.parentNode.removeChild(endGameButton);
+        console.log("Botón FINALIZAR JUEGO removido");
+    }
+    
+    if (viewRankingButton) {
+        viewRankingButton.parentNode.removeChild(viewRankingButton);
+        console.log("Botón VER RANKING removido");
+    }
+}
+
 // Configurar event listeners para la capa borrador
 function setupBorradorEventListeners() {
-    if (window.IS_LOCAL_ENVIRONMENT) {
-        if (!canvasBorrador) {
-            console.error("Error: canvasBorrador no está disponible para registrar eventos");
-            return;
-        }
-        
-        console.log("Configurando event listeners para la capa borrador");
-        
-        // Remover listeners previos si existieran
-        canvasBorrador.removeEventListener('click', handleBorradorClick);
-        canvasBorrador.removeEventListener('mousemove', handleBorradorMouseMove);
-        document.removeEventListener('click', checkGlobalClick);
-        document.removeEventListener('mousemove', checkGlobalMouseMove);
-        
-        // Añadir nuevos listeners con logging
-        canvasBorrador.addEventListener('click', function(e) {
-            console.log("Clic detectado en capa borrador");
-            handleBorradorClick(e);
-        });
-        
-        canvasBorrador.addEventListener('mousemove', function(e) {
-            // Sin log para evitar saturar la consola
-            handleBorradorMouseMove(e);
-        });
-        
-        // Agregar listeners globales como respaldo
-        document.addEventListener('click', checkGlobalClick);
-        document.addEventListener('mousemove', checkGlobalMouseMove);
-        
-        console.log("Event listeners configurados correctamente");
+    // SIEMPRE configurar event listeners para que el toggle button funcione
+    if (!window.IS_LOCAL_ENVIRONMENT) return;
+    
+    if (!canvasBorrador) {
+        console.error("Error: canvasBorrador no está disponible para registrar eventos");
+        return;
     }
+    
+    console.log("Configurando event listeners para la capa borrador");
+    
+    // Remover listeners previos si existieran
+    canvasBorrador.removeEventListener('click', handleBorradorClick);
+    canvasBorrador.removeEventListener('mousemove', handleBorradorMouseMove);
+    document.removeEventListener('click', checkGlobalClick);
+    document.removeEventListener('mousemove', checkGlobalMouseMove);
+    
+    // Añadir nuevos listeners con logging
+    canvasBorrador.addEventListener('click', function(e) {
+        console.log("Clic detectado en capa borrador");
+        handleBorradorClick(e);
+    });
+    
+    canvasBorrador.addEventListener('mousemove', function(e) {
+        // Sin log para evitar saturar la consola
+        handleBorradorMouseMove(e);
+    });
+    
+    // Agregar listeners globales como respaldo
+    document.addEventListener('click', checkGlobalClick);
+    document.addEventListener('mousemove', checkGlobalMouseMove);
+    
+    console.log("Event listeners configurados correctamente");
 }
 
 // Función para crear un botón HTML real para finalizar el juego
 function createRealEndGameButton() {
-    if (!window.IS_LOCAL_ENVIRONMENT) return;
+    if (!borradorToggleState.enabled || !window.IS_LOCAL_ENVIRONMENT) return;
     
     // Eliminar el botón anterior si existe
     const existingButton = document.getElementById('end-game-real-button');
@@ -115,7 +275,7 @@ function createRealEndGameButton() {
     
     // Estilos para el botón
     button.style.position = 'absolute';
-    button.style.top = '70px'; // Movido más abajo para no tapar el puntaje
+    button.style.top = '130px'; // Bajado por reposición del toggle
     button.style.left = '20px';
     button.style.width = '150px';
     button.style.height = '50px';
@@ -172,7 +332,7 @@ function createRealEndGameButton() {
 
 // Función para crear un botón HTML real para ver ranking
 function createRealViewRankingButton() {
-    if (!window.IS_LOCAL_ENVIRONMENT) return;
+    if (!borradorToggleState.enabled || !window.IS_LOCAL_ENVIRONMENT) return;
     
     // Eliminar el botón anterior si existe
     const existingButton = document.getElementById('view-ranking-real-button');
@@ -187,7 +347,7 @@ function createRealViewRankingButton() {
     
     // Estilos para el botón
     button.style.position = 'absolute';
-    button.style.top = '120px'; // Movido más abajo para no tapar el puntaje
+    button.style.top = '190px'; // Bajado por reposición del toggle
     button.style.left = '20px';
     button.style.width = '150px';
     button.style.height = '50px';
@@ -215,18 +375,14 @@ function createRealViewRankingButton() {
     
     // Manejar el clic
     button.onclick = function() {
-        // No permitir ver ranking si hay un panel modal activo
-        if (window.shootingSystem && window.shootingSystem.modalActive) {
-            console.log("No se puede ver ranking mientras hay un panel abierto");
-            return;
-        }
+        console.log("¡Ver Ranking clickeado! (botón real)");
         
-        console.log("¡Ver ranking! (botón real clickeado)");
-        
-        // Si existe la función viewRanking, llamarla
-        if (typeof window.viewRanking === 'function') {
+        // Llamar a la función viewRanking
+        if (typeof viewRanking === 'function') {
             console.log("Llamando a la función viewRanking()");
-            window.viewRanking();
+            viewRanking();
+        } else {
+            console.error("La función viewRanking no está disponible");
         }
     };
     
@@ -234,11 +390,11 @@ function createRealViewRankingButton() {
     const canvas = document.getElementById('canvas-juego');
     if (canvas && canvas.parentNode) {
         canvas.parentNode.appendChild(button);
-        console.log("Botón real HTML creado y añadido al DOM");
+        console.log("Botón VIEW RANKING real HTML creado y añadido al DOM");
     } else {
         // Si no encuentra el canvas o su padre, añadirlo directamente al body
         document.body.appendChild(button);
-        console.log("Botón real HTML añadido al body (no se encontró el contenedor del canvas)");
+        console.log("Botón VIEW RANKING real HTML añadido al body (no se encontró el contenedor del canvas)");
     }
 }
 
@@ -258,21 +414,65 @@ function dibujarBorrador() {
         return;
     }
 
-    // Dibujar el punto de destino si está visible
-    if (borradorElements.targetPoint.visible) {
-        dibujarPuntoDestino();
-    }
+    // ===== DIBUJAR ELEMENTOS DE CANVAS (SOLO SI TOGGLE ESTÁ ACTIVO) =====
+    if (borradorToggleState.enabled) {
+        // Dibujar el punto de destino si está visible
+        if (borradorElements.targetPoint.visible) {
+            dibujarPuntoDestino();
+        }
 
-    // Dibujar los indicadores de estado si están visibles
-    if (borradorElements.stateIndicators.visible && window.ballStateDetector) {
-        // Obtener la posición actual de la pelota (asumiendo que está disponible globalmente)
-        const ballPosition = ballMovement?.config?.currentPosition;
-        if (ballPosition) {
-            window.ballStateDetector.drawAllStateIndicators(ballPosition);
+        // Dibujar los indicadores de estado si están visibles
+        if (borradorElements.stateIndicators.visible && window.ballStateDetector) {
+            // Obtener la posición actual de la pelota (asumiendo que está disponible globalmente)
+            const ballPosition = ballMovement?.config?.currentPosition;
+            if (ballPosition) {
+                window.ballStateDetector.drawAllStateIndicators(ballPosition);
+            }
         }
     }
+}
+
+// ===== FUNCIÓN PARA DIBUJAR EL BOTÓN TOGGLE =====
+function dibujarToggleButton() {
+    if (!ctxBorrador) return;
     
-    // Ya no dibujamos el botón en el canvas, ahora usamos un elemento HTML real
+    const btn = borradorToggleState.button;
+    
+    // Color del botón según estado
+    const baseColor = borradorToggleState.enabled ? 
+        "rgba(100, 255, 100, 0.8)" : // Verde si activo
+        "rgba(100, 100, 255, 0.8)";  // Azul si inactivo
+    
+    const hoverColor = borradorToggleState.enabled ? 
+        "rgba(100, 255, 100, 1)" : 
+        "rgba(100, 100, 255, 1)";
+    
+    // Aplicar hover
+    ctxBorrador.fillStyle = btn.hovered ? hoverColor : baseColor;
+    
+    // Dibujar fondo del botón
+    ctxBorrador.fillRect(btn.position.x, btn.position.y, btn.width, btn.height);
+    
+    // Dibujar borde
+    ctxBorrador.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctxBorrador.lineWidth = 2;
+    ctxBorrador.strokeRect(btn.position.x, btn.position.y, btn.width, btn.height);
+    
+    // Dibujar texto
+    ctxBorrador.fillStyle = "rgba(255, 255, 255, 1)";
+    ctxBorrador.font = "bold 11px Arial";
+    ctxBorrador.textAlign = "center";
+    ctxBorrador.textBaseline = "middle";
+    
+    const centerX = btn.position.x + btn.width / 2;
+    const centerY = btn.position.y + btn.height / 2;
+    
+    const statusText = borradorToggleState.enabled ? "ON" : "OFF";
+    ctxBorrador.fillText(`${btn.text} ${statusText}`, centerX, centerY);
+    
+    // Resetear align
+    ctxBorrador.textAlign = "start";
+    ctxBorrador.textBaseline = "alphabetic";
 }
 
 // Función para manejar clics en la capa borrador
@@ -291,6 +491,19 @@ function handleBorradorClick(event) {
     const y = event.clientY - rect.top;
     
     console.log(`Clic en coordenadas: (${x}, ${y})`);
+    
+    // ===== VERIFICAR CLIC EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
+    const toggleBtn = borradorToggleState.button;
+    if (x >= toggleBtn.position.x && x <= toggleBtn.position.x + toggleBtn.width &&
+        y >= toggleBtn.position.y && y <= toggleBtn.position.y + toggleBtn.height) {
+        
+        console.log("¡Clic en botón toggle!");
+        toggleBorradorMode();
+        return; // No procesar otros clics
+    }
+    
+    // ===== VERIFICAR CLICS EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
+    if (!borradorToggleState.enabled) return;
     
     // Verificar si el clic fue sobre el botón de fin de juego
     const btn = borradorElements.endGameButton;
@@ -333,27 +546,64 @@ function handleBorradorMouseMove(event) {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     
-    // Verificar si el ratón está sobre el botón de fin de juego
-    const btn = borradorElements.endGameButton;
-    const isHovered = (
-        btn.visible && 
-        x >= btn.position.x && 
-        x <= btn.position.x + btn.width && 
-        y >= btn.position.y && 
-        y <= btn.position.y + btn.height
+    let isAnyButtonHovered = false;
+    let needsRedraw = false;
+    
+    // ===== VERIFICAR HOVER EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
+    const toggleBtn = borradorToggleState.button;
+    const isToggleHovered = (
+        x >= toggleBtn.position.x && 
+        x <= toggleBtn.position.x + toggleBtn.width && 
+        y >= toggleBtn.position.y && 
+        y <= toggleBtn.position.y + toggleBtn.height
     );
     
-    // Actualizar el estado del hover y el cursor
-    if (isHovered !== btn.hovered) {
-        btn.hovered = isHovered;
-        canvasBorrador.style.cursor = isHovered ? 'pointer' : 'default';
+    if (isToggleHovered !== toggleBtn.hovered) {
+        toggleBtn.hovered = isToggleHovered;
+        needsRedraw = true;
         
-        // Log para debugging cuando cambia el estado hover
-        if (isHovered) {
-            console.log("Cursor sobre el botón Finalizar Juego");
+        if (isToggleHovered) {
+            console.log("Cursor sobre el botón Toggle Debug");
+        }
+    }
+    
+    if (isToggleHovered) {
+        isAnyButtonHovered = true;
+    }
+    
+    // ===== VERIFICAR HOVER EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
+    if (borradorToggleState.enabled) {
+        // Verificar si el ratón está sobre el botón de fin de juego
+        const btn = borradorElements.endGameButton;
+        const isHovered = (
+            btn.visible && 
+            x >= btn.position.x && 
+            x <= btn.position.x + btn.width && 
+            y >= btn.position.y && 
+            y <= btn.position.y + btn.height
+        );
+        
+        // Actualizar el estado del hover del botón de fin de juego
+        if (isHovered !== btn.hovered) {
+            btn.hovered = isHovered;
+            needsRedraw = true;
+            
+            // Log para debugging cuando cambia el estado hover
+            if (isHovered) {
+                console.log("Cursor sobre el botón Finalizar Juego");
+            }
         }
         
-        // Redibujar para actualizar la apariencia del botón
+        if (isHovered) {
+            isAnyButtonHovered = true;
+        }
+    }
+    
+    // Actualizar cursor
+    canvasBorrador.style.cursor = isAnyButtonHovered ? 'pointer' : 'default';
+    
+    // Redibujar si es necesario
+    if (needsRedraw) {
         dibujarBorrador();
     }
 }
@@ -407,6 +657,19 @@ function checkGlobalClick(event) {
 
 // Verificar si un clic en las coordenadas x,y está sobre el botón
 function checkButtonClick(x, y) {
+    // ===== VERIFICAR CLIC EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
+    const toggleBtn = borradorToggleState.button;
+    if (x >= toggleBtn.position.x && x <= toggleBtn.position.x + toggleBtn.width &&
+        y >= toggleBtn.position.y && y <= toggleBtn.position.y + toggleBtn.height) {
+        
+        console.log("¡Clic en botón toggle! (sistema global)");
+        toggleBorradorMode();
+        return;
+    }
+    
+    // ===== VERIFICAR CLICS EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
+    if (!borradorToggleState.enabled) return;
+    
     const btn = borradorElements.endGameButton;
     if (!btn.visible) return;
     
@@ -457,29 +720,66 @@ function checkGlobalMouseMove(event) {
 
 // Actualizar el estado hover del botón
 function updateButtonHoverState(x, y) {
-    const btn = borradorElements.endGameButton;
-    if (!btn.visible) return;
+    let isAnyButtonHovered = false;
+    let needsRedraw = false;
     
-    const isHovered = (
-        x >= btn.position.x && 
-        x <= btn.position.x + btn.width && 
-        y >= btn.position.y && 
-        y <= btn.position.y + btn.height
+    // ===== VERIFICAR HOVER EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
+    const toggleBtn = borradorToggleState.button;
+    const isToggleHovered = (
+        x >= toggleBtn.position.x && 
+        x <= toggleBtn.position.x + toggleBtn.width && 
+        y >= toggleBtn.position.y && 
+        y <= toggleBtn.position.y + toggleBtn.height
     );
     
-    // Actualizar el estado del hover y el cursor solo si cambió
-    if (isHovered !== btn.hovered) {
-        btn.hovered = isHovered;
-        if (canvasBorrador) {
-            canvasBorrador.style.cursor = isHovered ? 'pointer' : 'default';
-        }
+    if (isToggleHovered !== toggleBtn.hovered) {
+        toggleBtn.hovered = isToggleHovered;
+        needsRedraw = true;
         
-        // Log para debugging cuando cambia el estado hover
-        if (isHovered) {
-            console.log("Cursor sobre el botón FINALIZAR JUEGO (sistema alternativo)");
+        if (isToggleHovered) {
+            console.log("Cursor sobre el botón Toggle Debug (sistema alternativo)");
         }
-        
-        // Redibujar para actualizar la apariencia del botón
+    }
+    
+    if (isToggleHovered) {
+        isAnyButtonHovered = true;
+    }
+    
+    // ===== VERIFICAR HOVER EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
+    if (borradorToggleState.enabled) {
+        const btn = borradorElements.endGameButton;
+        if (btn.visible) {
+            const isHovered = (
+                x >= btn.position.x && 
+                x <= btn.position.x + btn.width && 
+                y >= btn.position.y && 
+                y <= btn.position.y + btn.height
+            );
+            
+            // Actualizar el estado del hover y el cursor solo si cambió
+            if (isHovered !== btn.hovered) {
+                btn.hovered = isHovered;
+                needsRedraw = true;
+                
+                // Log para debugging cuando cambia el estado hover
+                if (isHovered) {
+                    console.log("Cursor sobre el botón FINALIZAR JUEGO (sistema alternativo)");
+                }
+            }
+            
+            if (isHovered) {
+                isAnyButtonHovered = true;
+            }
+        }
+    }
+    
+    // Actualizar cursor
+    if (canvasBorrador) {
+        canvasBorrador.style.cursor = isAnyButtonHovered ? 'pointer' : 'default';
+    }
+    
+    // Redibujar si es necesario
+    if (needsRedraw) {
         dibujarBorrador();
     }
 }
