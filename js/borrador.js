@@ -1,15 +1,14 @@
 // ===== BOTÓN TOGGLE BORRADOR (SIEMPRE VISIBLE) =====
 // Este botón controla la visibilidad de todos los demás elementos de debug
 let borradorToggleState = {
-    enabled: localStorage.getItem('borrador-enabled') === 'true' || false,
-    button: {
-        position: { x: 20, y: 20 },
-        width: 120,
-        height: 35,
-        text: "🔧 DEBUG",
-        color: "rgba(100, 100, 255, 0.8)",
-        hovered: false
-    }
+    enabled: localStorage.getItem('borrador-enabled') === 'true' || false
+    // Ya no necesitamos las propiedades del botón canvas porque ahora es HTML
+};
+
+// ===== BOTÓN TOGGLE MÓVIL SIMULADO (SOLO PARA DEBUG) =====
+let debugMobileState = {
+    enabled: false, // Siempre empieza en modo desktop
+    // Ya no necesitamos las propiedades del botón canvas porque será HTML
 };
 
 // ===== RESTO DE ELEMENTOS BORRADOR (CONTROLADOS POR TOGGLE) =====
@@ -108,6 +107,7 @@ function toggleBorradorMode() {
         // Crear botones HTML
         createRealEndGameButton();
         createRealViewRankingButton();
+        createRealDebugMobileButton();
     } else {
         // Desactivar modo debug
         borradorElements.targetPoint.visible = false;
@@ -210,6 +210,7 @@ function createRealToggleButton() {
 function removeRealButtons() {
     const endGameButton = document.getElementById('end-game-real-button');
     const viewRankingButton = document.getElementById('view-ranking-real-button');
+    const debugMobileButton = document.getElementById('debug-mobile-real-button');
     
     if (endGameButton) {
         endGameButton.parentNode.removeChild(endGameButton);
@@ -219,6 +220,11 @@ function removeRealButtons() {
     if (viewRankingButton) {
         viewRankingButton.parentNode.removeChild(viewRankingButton);
         console.log("Botón VER RANKING removido");
+    }
+    
+    if (debugMobileButton) {
+        debugMobileButton.parentNode.removeChild(debugMobileButton);
+        console.log("Botón DEBUG MÓVIL removido");
     }
 }
 
@@ -398,6 +404,82 @@ function createRealViewRankingButton() {
     }
 }
 
+// Función para crear un botón HTML real para debug móvil
+function createRealDebugMobileButton() {
+    if (!borradorToggleState.enabled || !window.IS_LOCAL_ENVIRONMENT) return;
+    
+    // Eliminar el botón anterior si existe
+    const existingButton = document.getElementById('debug-mobile-real-button');
+    if (existingButton) {
+        existingButton.parentNode.removeChild(existingButton);
+    }
+    
+    // Crear el botón real como elemento HTML
+    const button = document.createElement('button');
+    button.id = 'debug-mobile-real-button';
+    
+    // Establecer texto inicial según estado actual
+    const statusText = debugMobileState.enabled ? "ON" : "OFF";
+    button.textContent = `📱 MÓVIL ${statusText}`;
+    
+    // Estilos para el botón
+    button.style.position = 'absolute';
+    button.style.top = '250px'; // Posicionado debajo de VER RANKING
+    button.style.left = '20px';
+    button.style.width = '150px';
+    button.style.height = '50px';
+    
+    // Color inicial según estado
+    const initialColor = debugMobileState.enabled ? 
+        'rgba(255, 100, 150, 1)' : 
+        'rgba(255, 100, 150, 0.6)';
+    button.style.backgroundColor = initialColor;
+    
+    button.style.color = 'white';
+    button.style.border = '2px solid white';
+    button.style.borderRadius = '8px';
+    button.style.fontSize = '16px';
+    button.style.fontWeight = 'bold';
+    button.style.cursor = 'pointer';
+    button.style.zIndex = '9999'; // Asegurar que esté por encima de todo
+    button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
+    
+    // Efectos de hover
+    button.onmouseover = function() {
+        const hoverColor = debugMobileState.enabled ? 
+            'rgba(255, 120, 170, 1)' : 
+            'rgba(255, 120, 170, 0.8)';
+        this.style.backgroundColor = hoverColor;
+        this.style.transform = 'scale(1.05)';
+        console.log("Cursor sobre el botón DEBUG MÓVIL (botón real)");
+    };
+    
+    button.onmouseout = function() {
+        const normalColor = debugMobileState.enabled ? 
+            'rgba(255, 100, 150, 1)' : 
+            'rgba(255, 100, 150, 0.6)';
+        this.style.backgroundColor = normalColor;
+        this.style.transform = 'scale(1)';
+    };
+    
+    // Manejar el clic
+    button.onclick = function() {
+        console.log("¡Clic en botón debug móvil! (botón real HTML)");
+        toggleDebugMobile();
+    };
+    
+    // Añadir el botón al DOM - dentro del mismo contenedor que el canvas
+    const canvas = document.getElementById('canvas-juego');
+    if (canvas && canvas.parentNode) {
+        canvas.parentNode.appendChild(button);
+        console.log("Botón DEBUG MÓVIL real HTML creado y añadido al DOM");
+    } else {
+        // Si no encuentra el canvas o su padre, añadirlo directamente al body
+        document.body.appendChild(button);
+        console.log("Botón DEBUG MÓVIL real HTML añadido al body (no se encontró el contenedor del canvas)");
+    }
+}
+
 // Función principal para dibujar todos los elementos de la capa borrador
 function dibujarBorrador() {
     // Si no estamos en entorno local, no dibujar nada
@@ -414,8 +496,12 @@ function dibujarBorrador() {
         return;
     }
 
+    // Ya no dibujamos el botón toggle aquí porque ahora es HTML
+
     // ===== DIBUJAR ELEMENTOS DE CANVAS (SOLO SI TOGGLE ESTÁ ACTIVO) =====
     if (borradorToggleState.enabled) {
+        // Ya no dibujamos el botón debug móvil aquí porque ahora es HTML
+        
         // Dibujar el punto de destino si está visible
         if (borradorElements.targetPoint.visible) {
             dibujarPuntoDestino();
@@ -432,47 +518,44 @@ function dibujarBorrador() {
     }
 }
 
-// ===== FUNCIÓN PARA DIBUJAR EL BOTÓN TOGGLE =====
-function dibujarToggleButton() {
-    if (!ctxBorrador) return;
+// ===== FUNCIÓN PARA ALTERNAR DEBUG MÓVIL =====
+function toggleDebugMobile() {
+    debugMobileState.enabled = !debugMobileState.enabled;
     
-    const btn = borradorToggleState.button;
+    console.log(`Debug móvil ${debugMobileState.enabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
     
-    // Color del botón según estado
-    const baseColor = borradorToggleState.enabled ? 
-        "rgba(100, 255, 100, 0.8)" : // Verde si activo
-        "rgba(100, 100, 255, 0.8)";  // Azul si inactivo
+    // Actualizar el texto del botón HTML
+    const debugMobileButton = document.getElementById('debug-mobile-real-button');
+    if (debugMobileButton) {
+        const statusText = debugMobileState.enabled ? "ON" : "OFF";
+        debugMobileButton.textContent = `📱 MÓVIL ${statusText}`;
+        
+        // Actualizar color del botón según estado
+        if (debugMobileState.enabled) {
+            debugMobileButton.style.backgroundColor = 'rgba(255, 100, 150, 1)';
+        } else {
+            debugMobileButton.style.backgroundColor = 'rgba(255, 100, 150, 0.6)';
+        }
+    }
     
-    const hoverColor = borradorToggleState.enabled ? 
-        "rgba(100, 255, 100, 1)" : 
-        "rgba(100, 100, 255, 1)";
+    // Actualizar la detección de móvil en shootingSystem si existe
+    if (window.shootingSystem) {
+        // Forzar recalculo de isMobile con la nueva función
+        window.shootingSystem.isMobile = window.checkIfMobileWithDebug();
+        console.log(`shootingSystem.isMobile actualizado a: ${window.shootingSystem.isMobile}`);
+        
+        // Forzar actualización de elementos de interfaz
+        if (typeof window.updateInstructions === 'function') {
+            window.updateInstructions();
+        }
+        
+        // Forzar actualización de la UI para móvil
+        if (typeof window.adjustUIForMobile === 'function') {
+            window.adjustUIForMobile();
+        }
+    }
     
-    // Aplicar hover
-    ctxBorrador.fillStyle = btn.hovered ? hoverColor : baseColor;
-    
-    // Dibujar fondo del botón
-    ctxBorrador.fillRect(btn.position.x, btn.position.y, btn.width, btn.height);
-    
-    // Dibujar borde
-    ctxBorrador.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctxBorrador.lineWidth = 2;
-    ctxBorrador.strokeRect(btn.position.x, btn.position.y, btn.width, btn.height);
-    
-    // Dibujar texto
-    ctxBorrador.fillStyle = "rgba(255, 255, 255, 1)";
-    ctxBorrador.font = "bold 11px Arial";
-    ctxBorrador.textAlign = "center";
-    ctxBorrador.textBaseline = "middle";
-    
-    const centerX = btn.position.x + btn.width / 2;
-    const centerY = btn.position.y + btn.height / 2;
-    
-    const statusText = borradorToggleState.enabled ? "ON" : "OFF";
-    ctxBorrador.fillText(`${btn.text} ${statusText}`, centerX, centerY);
-    
-    // Resetear align
-    ctxBorrador.textAlign = "start";
-    ctxBorrador.textBaseline = "alphabetic";
+    // Ya no necesitamos redibujar el borrador porque el botón es HTML
 }
 
 // Función para manejar clics en la capa borrador
@@ -492,15 +575,7 @@ function handleBorradorClick(event) {
     
     console.log(`Clic en coordenadas: (${x}, ${y})`);
     
-    // ===== VERIFICAR CLIC EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
-    const toggleBtn = borradorToggleState.button;
-    if (x >= toggleBtn.position.x && x <= toggleBtn.position.x + toggleBtn.width &&
-        y >= toggleBtn.position.y && y <= toggleBtn.position.y + toggleBtn.height) {
-        
-        console.log("¡Clic en botón toggle!");
-        toggleBorradorMode();
-        return; // No procesar otros clics
-    }
+    // Ya no verificamos clics en botón toggle porque ahora es HTML
     
     // ===== VERIFICAR CLICS EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
     if (!borradorToggleState.enabled) return;
@@ -549,27 +624,7 @@ function handleBorradorMouseMove(event) {
     let isAnyButtonHovered = false;
     let needsRedraw = false;
     
-    // ===== VERIFICAR HOVER EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
-    const toggleBtn = borradorToggleState.button;
-    const isToggleHovered = (
-        x >= toggleBtn.position.x && 
-        x <= toggleBtn.position.x + toggleBtn.width && 
-        y >= toggleBtn.position.y && 
-        y <= toggleBtn.position.y + toggleBtn.height
-    );
-    
-    if (isToggleHovered !== toggleBtn.hovered) {
-        toggleBtn.hovered = isToggleHovered;
-        needsRedraw = true;
-        
-        if (isToggleHovered) {
-            console.log("Cursor sobre el botón Toggle Debug");
-        }
-    }
-    
-    if (isToggleHovered) {
-        isAnyButtonHovered = true;
-    }
+    // Ya no verificamos hover en botón toggle porque ahora es HTML
     
     // ===== VERIFICAR HOVER EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
     if (borradorToggleState.enabled) {
@@ -657,15 +712,7 @@ function checkGlobalClick(event) {
 
 // Verificar si un clic en las coordenadas x,y está sobre el botón
 function checkButtonClick(x, y) {
-    // ===== VERIFICAR CLIC EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
-    const toggleBtn = borradorToggleState.button;
-    if (x >= toggleBtn.position.x && x <= toggleBtn.position.x + toggleBtn.width &&
-        y >= toggleBtn.position.y && y <= toggleBtn.position.y + toggleBtn.height) {
-        
-        console.log("¡Clic en botón toggle! (sistema global)");
-        toggleBorradorMode();
-        return;
-    }
+    // Ya no verificamos clics en botón toggle porque ahora es HTML
     
     // ===== VERIFICAR CLICS EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
     if (!borradorToggleState.enabled) return;
@@ -723,27 +770,7 @@ function updateButtonHoverState(x, y) {
     let isAnyButtonHovered = false;
     let needsRedraw = false;
     
-    // ===== VERIFICAR HOVER EN BOTÓN TOGGLE (SIEMPRE ACTIVO) =====
-    const toggleBtn = borradorToggleState.button;
-    const isToggleHovered = (
-        x >= toggleBtn.position.x && 
-        x <= toggleBtn.position.x + toggleBtn.width && 
-        y >= toggleBtn.position.y && 
-        y <= toggleBtn.position.y + toggleBtn.height
-    );
-    
-    if (isToggleHovered !== toggleBtn.hovered) {
-        toggleBtn.hovered = isToggleHovered;
-        needsRedraw = true;
-        
-        if (isToggleHovered) {
-            console.log("Cursor sobre el botón Toggle Debug (sistema alternativo)");
-        }
-    }
-    
-    if (isToggleHovered) {
-        isAnyButtonHovered = true;
-    }
+    // Ya no verificamos hover en botón toggle porque ahora es HTML
     
     // ===== VERIFICAR HOVER EN OTROS ELEMENTOS (SOLO SI TOGGLE ACTIVO) =====
     if (borradorToggleState.enabled) {
@@ -807,6 +834,26 @@ function setBorradorTargetPoint(targetInfo, color) {
         borradorElements.targetPoint.position = puntoActualizado;
     }
 }
+
+// ===== FUNCIÓN PARA SIMULAR MÓVIL EN DEBUG =====
+function isDebugMobileEnabled() {
+    // Solo está disponible en entorno local Y si la capa borrador está activa
+    return window.IS_LOCAL_ENVIRONMENT && borradorToggleState.enabled && debugMobileState.enabled;
+}
+
+// Función global que modifica la detección de móvil original
+window.checkIfMobileWithDebug = function() {
+    // Detectar móvil real usando la función original
+    const realMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+    
+    // Si estamos en debug móvil, devolver true
+    if (isDebugMobileEnabled()) {
+        return true;
+    }
+    
+    // Si no, devolver la detección real
+    return realMobile;
+};
 
 // Exportar funciones al scope global (FUNCIONES DEL SISTEMA DE BORRADOR - NO CONFUNDIR CON DEBUGGING)
 window.initBorrador = initBorrador;

@@ -25,33 +25,89 @@ const shootingSystem = {
     activeParticles: [],        // Array para almacenar todas las partículas activas
     infoShown: false,           // Indica si ya se mostró el panel de información inicial
     infoPanel: null,            // Referencia al panel de información
+    modalActive: false,         // Indica si hay un modal activo
+    audio: {                    // Configuración de audio
+        muted: false,
+        volume: 0.3
+    },
     // Sistema de detección de rendimiento
     performanceMonitor: {
         frameRates: [],         // Historial de framerates recientes
         lastFrameTime: 0,       // Tiempo del último frame para calcular FPS
         lowPerformanceMode: false, // Indicador de modo de bajo rendimiento
-        frameRateThreshold: 50, // Umbral de FPS para considerar bajo rendimiento (ahora más alto para ser más estrictos)
-        samplingSize: 30,       // Cantidad de muestras para promedio (reducido para decisiones más rápidas)
-        checkInterval: 1000,    // Intervalo para comprobar rendimiento (ms) - más frecuente
+        frameRateThreshold: 50, // Umbral de FPS para considerar bajo rendimiento
+        samplingSize: 30,       // Cantidad de muestras para promedio
+        checkInterval: 1000,    // Intervalo para comprobar rendimiento (ms)
         lastCheckTime: 0,       // Último momento en que se comprobó el rendimiento
         consecutiveLowFPS: 0,   // Contador de frames consecutivos con bajo FPS
         forceCheckAfterShot: true, // Forzar comprobación después de cada disparo
-        debugElement: null,     // Elemento para mostrar información de debug (opcional)
+        debugElement: null,     // Elemento para mostrar información de debug
         performanceTestedOnMobile: false // Indica si ya hemos realizado un test inicial en móvil
     },
-    // Sistema de audio basado en Howler.js
-    audio: {
-        enabled: true,          // Por defecto, el audio comienza activado
-        muted: false,           // Por defecto, el audio NO está silenciado
-        volume: 0.7,            // Volumen predeterminado (0-1)
-        sounds: {},             // Objeto para almacenar las instancias de Howl
-        manager: null           // Referencia al gestor de audio
-    },
-    // Variable global para controlar si hay un panel modal abierto
-    modalActive: false,
-    originalEndPanel: null, // Guardar el contenido original del panel
-    completedLevel: null    // 🎯 NUEVO: Guardar el nivel completado para el ranking
+    levelDisplay: null,         // Elemento para mostrar el nivel actual
+    completedLevel: null        // Guardar el nivel completado para el ranking
 };
+
+// ===== CONFIGURACIÓN CENTRALIZADA DE BOTONES MÓVILES =====
+// Esta configuración controla el posicionamiento de botones y etiquetas en dispositivos móviles
+// Interactúa con: adjustUIForMobile(), createShootButton(), createResetButton(), createAudioButton()
+const mobileButtonConfig = {
+    // Posiciones de botones según orientación
+    buttons: {
+        landscape: {
+            bottom: '5vh',      // Posición de botones en horizontal
+            labelOffset: '2vh'  // Separación hacia abajo desde el botón (5vh - 2vh = 3vh desde bottom)
+        },
+        portrait: {
+            bottom: '12vh',     // Posición de botones en vertical
+            labelOffset: '6vh'  // Separación hacia abajo desde el botón (12vh - 6vh = 6vh desde bottom)
+        }
+    },
+    
+    // Función para calcular posición de etiquetas automáticamente
+    getLabelPosition: function(isPortrait) {
+        const config = isPortrait ? this.buttons.portrait : this.buttons.landscape;
+        const buttonBottom = parseInt(config.bottom);
+        const labelOffset = parseInt(config.labelOffset);
+        
+        // Para que aparezcan DEBAJO, restamos el offset del bottom del botón
+        // (menor valor de bottom = más cerca del borde inferior = más abajo)
+        const labelBottom = buttonBottom - labelOffset;
+        return labelBottom + 'vh';
+    },
+    
+    // Función para obtener posición de botones
+    getButtonPosition: function(isPortrait) {
+        return isPortrait ? this.buttons.portrait.bottom : this.buttons.landscape.bottom;
+    }
+};
+
+// ===== FUNCIÓN CENTRALIZADA PARA ACTUALIZAR ETIQUETAS DE BOTONES =====
+// Esta función actualiza las posiciones de todas las etiquetas según la orientación actual
+function updateButtonLabels() {
+    const isPortrait = window.innerHeight > window.innerWidth;
+    const labelBottom = mobileButtonConfig.getLabelPosition(isPortrait);
+    
+    console.log(`Actualizando etiquetas de botones - Orientación: ${isPortrait ? 'vertical' : 'horizontal'}, Posición: ${labelBottom}`);
+    
+    // Actualizar etiqueta del botón de disparar
+    const shootLabel = document.querySelector('[data-button-label="shoot"]');
+    if (shootLabel) {
+        shootLabel.style.bottom = labelBottom;
+    }
+    
+    // Actualizar etiqueta del botón de reiniciar
+    const resetLabel = document.querySelector('[data-button-label="reset"]');
+    if (resetLabel) {
+        resetLabel.style.bottom = labelBottom;
+    }
+    
+    // Actualizar etiqueta del botón de audio
+    const audioLabel = document.querySelector('[data-button-label="audio"]');
+    if (audioLabel) {
+        audioLabel.style.bottom = labelBottom;
+    }
+}
 
 // Nuevo sistema de audio basado en Howler.js
 function initAudioSystem() {
@@ -730,6 +786,12 @@ function createParticleEffect(position) {
 
 // Detectar si es un dispositivo móvil
 function detectMobileDevice() {
+    // Si existe la función de debug móvil, usarla
+    if (typeof window.checkIfMobileWithDebug === 'function') {
+        return window.checkIfMobileWithDebug();
+    }
+    
+    // Fallback a detección tradicional
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
 }
 
@@ -738,7 +800,10 @@ function updateInstructions() {
     const zonaInferior = document.getElementById('zona-inferior');
     if (zonaInferior) {
         if (shootingSystem.isMobile) {
-            zonaInferior.innerHTML = '<p>Toca el botón <span style="color: #FF9500;">⚡</span> para Disparar | <span style="color: #FFA500;">🔇</span> para Audio | <span style="color: #5F9EA0;">↺</span> para Reiniciar</p>';
+            // COMENTADO: Instrucciones de modo móvil eliminadas por solicitud del usuario
+            // Las etiquetas junto a los botones (Disparar, Audio, Reiniciar) se mantienen
+            // zonaInferior.innerHTML = '<p>Toca el botón <span style="color: #FF9500;">⚡</span> para Disparar | <span style="color: #FFA500;">🔇</span> para Audio | <span style="color: #5F9EA0;">↺</span> para Reiniciar</p>';
+            zonaInferior.innerHTML = ''; // Limpiar instrucciones en modo móvil
         } else {
             zonaInferior.innerHTML = '<p>Presiona <span style="background: #333; padding: 2px 5px; border-radius: 3px;">Space</span> para Disparar | <span style="background: #333; padding: 2px 5px; border-radius: 3px;">M</span> para Audio | <span style="background: #333; padding: 2px 5px; border-radius: 3px;">R</span> para Reiniciar</p>';
         }
@@ -752,9 +817,13 @@ function createShootButton() {
         const shootButton = document.createElement('div');
         shootButton.id = 'shoot-button';
         
+        // Obtener posición inicial según orientación
+        const isPortrait = window.innerHeight > window.innerWidth;
+        const buttonBottom = mobileButtonConfig.getButtonPosition(isPortrait);
+        
         // Estilos del botón
         shootButton.style.position = 'absolute';
-        shootButton.style.bottom = '5vh';
+        shootButton.style.bottom = buttonBottom;
         shootButton.style.right = '5vh';
         shootButton.style.width = '15vmin';
         shootButton.style.height = '15vmin';
@@ -769,19 +838,19 @@ function createShootButton() {
         // Usar emoji o caracter unicode como alternativa
         shootButton.innerHTML = '<span style="color: white; font-size: 24px; transform: rotate(45deg);">⚡</span>';
         
-        // Mostrar etiqueta "Disparar" junto al botón en dispositivos móviles
-        if (shootingSystem.isMobile) {
-            const label = document.createElement('div');
-            label.style.position = 'absolute';
-            label.style.bottom = '15vh'; // Aumentado de 12vh para más separación
-            label.style.right = '5vh';
-            label.style.color = 'white';
-            label.style.fontWeight = 'bold';
-            label.style.textShadow = '0 0 5px #000';
-            label.style.zIndex = '1000';
-            label.innerHTML = 'Disparar';
-            document.body.appendChild(label);
-        }
+        // Mostrar etiqueta "Disparar" junto al botón SIEMPRE
+        const label = document.createElement('div');
+        label.setAttribute('data-button-label', 'shoot'); // Identificador para actualización automática
+        label.style.position = 'absolute';
+        label.style.bottom = mobileButtonConfig.getLabelPosition(isPortrait);
+        label.style.right = '5vh';
+        label.style.color = 'white';
+        label.style.fontWeight = 'bold';
+        label.style.textShadow = '0 0 5px #000';
+        label.style.zIndex = '1000';
+        label.style.fontSize = '14px'; // Tamaño de fuente apropiado
+        label.innerHTML = 'Disparar';
+        document.body.appendChild(label);
         
         // Añadir eventos de toque/clic
         shootButton.addEventListener('touchstart', handleShootButtonPress);
@@ -807,9 +876,13 @@ function createAudioButton() {
         const audioButton = document.createElement('div');
         audioButton.id = 'audio-button';
         
+        // Obtener posición inicial según orientación
+        const isPortrait = window.innerHeight > window.innerWidth;
+        const buttonBottom = mobileButtonConfig.getButtonPosition(isPortrait);
+        
         // Estilos del botón (similar al botón de reinicio pero con color diferente)
         audioButton.style.position = 'absolute';
-        audioButton.style.bottom = '5vh';
+        audioButton.style.bottom = buttonBottom;
         audioButton.style.left = 'calc(5vh + 20vmin)'; // Posicionado relativo al botón de reinicio
         audioButton.style.width = '15vmin';
         audioButton.style.height = '15vmin';
@@ -835,19 +908,19 @@ function createAudioButton() {
             e.preventDefault();
         }, { passive: false });
         
-        // Mostrar etiqueta "Audio" junto al botón en dispositivos móviles
-        if (shootingSystem.isMobile) {
-            const label = document.createElement('div');
-            label.style.position = 'absolute';
-            label.style.bottom = '15vh'; // Aumentado de 12vh para más separación
-            label.style.left = 'calc(5vh + 20vmin)'; // Alineado con el botón de audio
-            label.style.color = 'white';
-            label.style.fontWeight = 'bold';
-            label.style.textShadow = '0 0 5px #000';
-            label.style.zIndex = '1000';
-            label.innerHTML = 'Audio';
-            document.body.appendChild(label);
-        }
+        // Mostrar etiqueta "Audio" junto al botón SIEMPRE
+        const label = document.createElement('div');
+        label.setAttribute('data-button-label', 'audio'); // Identificador para actualización automática
+        label.style.position = 'absolute';
+        label.style.bottom = mobileButtonConfig.getLabelPosition(isPortrait);
+        label.style.left = 'calc(5vh + 20vmin)'; // Alineado con el botón de audio
+        label.style.color = 'white';
+        label.style.fontWeight = 'bold';
+        label.style.textShadow = '0 0 5px #000';
+        label.style.zIndex = '1000';
+        label.style.fontSize = '14px'; // Tamaño de fuente apropiado
+        label.innerHTML = 'Audio';
+        document.body.appendChild(label);
         
         // Añadir al DOM
         document.body.appendChild(audioButton);
@@ -896,9 +969,13 @@ function createResetButton() {
         const resetButton = document.createElement('div');
         resetButton.id = 'reset-button';
         
+        // Obtener posición inicial según orientación
+        const isPortrait = window.innerHeight > window.innerWidth;
+        const buttonBottom = mobileButtonConfig.getButtonPosition(isPortrait);
+        
         // Estilos del botón (similar al botón de disparo pero del lado izquierdo)
         resetButton.style.position = 'absolute';
-        resetButton.style.bottom = '5vh';
+        resetButton.style.bottom = buttonBottom;
         resetButton.style.left = '5vh';
         resetButton.style.width = '15vmin';
         resetButton.style.height = '15vmin';
@@ -922,19 +999,19 @@ function createResetButton() {
             e.preventDefault();
         }, { passive: false });
         
-        // Mostrar etiqueta "Reiniciar" junto al botón en dispositivos móviles
-        if (shootingSystem.isMobile) {
-            const label = document.createElement('div');
-            label.style.position = 'absolute';
-            label.style.bottom = '15vh'; // Aumentado de 12vh para más separación
-            label.style.left = '5vh';
-            label.style.color = 'white';
-            label.style.fontWeight = 'bold';
-            label.style.textShadow = '0 0 5px #000';
-            label.style.zIndex = '1000';
-            label.innerHTML = 'Reiniciar';
-            document.body.appendChild(label);
-        }
+        // Mostrar etiqueta "Reiniciar" junto al botón SIEMPRE
+        const label = document.createElement('div');
+        label.setAttribute('data-button-label', 'reset'); // Identificador para actualización automática
+        label.style.position = 'absolute';
+        label.style.bottom = mobileButtonConfig.getLabelPosition(isPortrait);
+        label.style.left = '5vh';
+        label.style.color = 'white';
+        label.style.fontWeight = 'bold';
+        label.style.textShadow = '0 0 5px #000';
+        label.style.zIndex = '1000';
+        label.style.fontSize = '14px'; // Tamaño de fuente apropiado
+        label.innerHTML = 'Reiniciar';
+        document.body.appendChild(label);
         
         // Añadir al DOM
         document.body.appendChild(resetButton);
@@ -3028,6 +3105,9 @@ function adjustUIForMobile() {
         return;
     }
     
+    // Obtener posición de botones según orientación usando configuración centralizada
+    const buttonBottom = mobileButtonConfig.getButtonPosition(isPortrait);
+    
     if (isPortrait) {
         // Modo vertical (portrait)
         console.log("Ajustando interfaz para modo vertical");
@@ -3084,17 +3164,17 @@ function adjustUIForMobile() {
             }
         }
         
-        // Ajustar botones de juego
+        // Ajustar botones de juego usando configuración centralizada
         if (shootingSystem.shootButton) {
-            shootingSystem.shootButton.style.bottom = '12vh';
+            shootingSystem.shootButton.style.bottom = buttonBottom;
         }
         
         if (shootingSystem.resetButton) {
-            shootingSystem.resetButton.style.bottom = '12vh';
+            shootingSystem.resetButton.style.bottom = buttonBottom;
         }
         
         if (shootingSystem.audioButton) {
-            shootingSystem.audioButton.style.bottom = '12vh';
+            shootingSystem.audioButton.style.bottom = buttonBottom;
             shootingSystem.audioButton.style.left = 'calc(5vh + 20vmin)'; // Mantiene relación con el botón de reset
         }
     } else {
@@ -3142,20 +3222,24 @@ function adjustUIForMobile() {
             shootingSystem.timeDisplay.style.right = '10px';
         }
         
-        // Restaurar botones
+        // Restaurar botones usando configuración centralizada
         if (shootingSystem.shootButton) {
-            shootingSystem.shootButton.style.bottom = '5vh';
+            shootingSystem.shootButton.style.bottom = buttonBottom;
         }
         
         if (shootingSystem.resetButton) {
-            shootingSystem.resetButton.style.bottom = '5vh';
+            shootingSystem.resetButton.style.bottom = buttonBottom;
         }
         
         if (shootingSystem.audioButton) {
-            shootingSystem.audioButton.style.bottom = '5vh';
+            shootingSystem.audioButton.style.bottom = buttonBottom;
             shootingSystem.audioButton.style.left = 'calc(5vh + 20vmin)'; // Mantiene relación con el botón de reset
         }
     }
+    
+    // ===== ACTUALIZAR ETIQUETAS DE BOTONES MÓVILES =====
+    // Esta llamada sincroniza automáticamente las posiciones de las etiquetas con los botones
+    updateButtonLabels();
     
     // Ajustar canvas
     if (typeof ajustarCanvasYCapas === 'function') {
