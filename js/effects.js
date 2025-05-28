@@ -1915,132 +1915,20 @@ function endGameVoluntarily(finalScore) {
 function showGameEndMessage() {
     console.log("Mostrando panel de fin de juego");
     
-    // Activar el bloqueo modal
-    setModalActive(true);
-    
-    // Crear panel de resultados
-    const endPanel = document.createElement('div');
-    endPanel.id = 'game-end-panel';
-    
-    // Estilos similares al panel de información inicial
-    endPanel.style.position = 'fixed';
-    endPanel.style.top = '50%';
-    endPanel.style.left = '50%';
-    endPanel.style.transform = 'translate(-50%, -50%)';
-    endPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-    endPanel.style.color = 'white';
-    endPanel.style.padding = '25px';
-    endPanel.style.borderRadius = '10px';
-    endPanel.style.boxShadow = '0 0 25px rgba(255, 50, 50, 0.7)';
-    endPanel.style.textAlign = 'center';
-    endPanel.style.zIndex = '3000';
-    endPanel.style.minWidth = '300px';
-    endPanel.style.maxWidth = '90%'; // Limitado al 90% del ancho para dispositivos móviles
-    endPanel.style.maxHeight = '80%'; // Limitado al 80% de la altura para dispositivos móviles
-    endPanel.style.overflowY = 'auto'; // Permitir scroll si es necesario
-    
     // Obtener puntuación final
     const finalScore = window.gameState ? window.gameState.score : 0;
     
-    // Determinar tamaños y espaciado basados en si es dispositivo móvil
-    const isMobile = shootingSystem.isMobile;
-    const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
-    const buttonMargin = isMobile ? '10px 0' : '5px 0';
-    const buttonSize = isMobile ? '20px' : '18px';
-    
-    // Contenido del panel
-    const panelContent = `
-        <h2 style="color: rgba(255, 50, 50, 1); margin: 0 0 20px 0; font-size: 28px;">¡Tiempo Finalizado!</h2>
-        <p style="font-size: 22px; margin: 15px 0;">Tu puntuación final es:</p>
-        <p style="font-size: 42px; margin: 20px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${finalScore} puntos</p>
-        
-        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
-            <button id="submit-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR EN RANKING</button>
-            <button id="restart-game-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">JUGAR DE NUEVO</button>
-        </div>
-    `;
-    
-    // Guardar el contenido original para poder restaurarlo
-    shootingSystem.originalEndPanel = {
-        content: panelContent,
-        score: finalScore
+    // Crear levelResult para compatibilidad con el modal unificado
+    const levelResult = {
+        levelCompleted: true,
+        isLastLevel: true,
+        levelScore: finalScore,
+        totalScore: finalScore,
+        nextLevel: null
     };
     
-    endPanel.innerHTML = panelContent;
-    
-    // Añadir al DOM
-    document.body.appendChild(endPanel);
-    
-    // Configurar botón de reinicio
-    const restartButton = document.getElementById('restart-game-button');
-    if (restartButton) {
-        // Configurar handlers para eventos de ratón y táctiles
-        const handleRestart = function(e) {
-            e.preventDefault(); // Prevenir comportamiento predeterminado
-            console.log("Botón JUGAR DE NUEVO clickeado");
-            
-            // Desactivar el modo modal
-            setModalActive(false);
-            
-            // Usar la función unificada para reiniciar, pasando el panel para cerrarlo
-            window.completeGameReset(endPanel);
-        };
-        
-        restartButton.addEventListener('click', handleRestart);
-        restartButton.addEventListener('touchend', handleRestart); // Añadir soporte táctil
-        
-        // Efectos visuales para dispositivos táctiles
-        if (isMobile) {
-            restartButton.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                this.style.transform = 'scale(0.95)';
-                this.style.opacity = '0.9';
-            });
-            
-            restartButton.addEventListener('touchend', function(e) {
-                this.style.transform = 'scale(1)';
-                this.style.opacity = '1';
-            });
-            
-            restartButton.addEventListener('touchcancel', function(e) {
-                this.style.transform = 'scale(1)';
-                this.style.opacity = '1';
-            });
-        }
-    }
-    
-    // Configurar botón de enviar al ranking
-    const submitButton = document.getElementById('submit-score-button');
-    if (submitButton) {
-        // Configurar handlers para eventos de ratón y táctiles
-        const handleSubmit = function(e) {
-            e.preventDefault(); // Prevenir comportamiento predeterminado
-            // Cambiar el panel para mostrar el formulario de envío
-            showRankingSubmitForm(endPanel, finalScore);
-        };
-        
-        submitButton.addEventListener('click', handleSubmit);
-        submitButton.addEventListener('touchend', handleSubmit); // Añadir soporte táctil
-        
-        // Efectos visuales para dispositivos táctiles
-        if (isMobile) {
-            submitButton.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                this.style.transform = 'scale(0.95)';
-                this.style.opacity = '0.9';
-            });
-            
-            submitButton.addEventListener('touchend', function(e) {
-                this.style.transform = 'scale(1)';
-                this.style.opacity = '1';
-            });
-            
-            submitButton.addEventListener('touchcancel', function(e) {
-                this.style.transform = 'scale(1)';
-                this.style.opacity = '1';
-            });
-        }
-    }
+    // Usar el modal unificado en modo fin de juego
+    showUnifiedGameModal(levelResult, true);
 }
 
 // Mostrar formulario para enviar puntuación al ranking
@@ -3783,7 +3671,9 @@ function handleTimeExpired() {
     if (levelResult.isLastLevel) {
         console.log("🏁 Último nivel completado - terminando juego");
         shootingSystem.gameEnded = true;
-        endGame();
+        
+        // Llamar al modal unificado en modo fin de juego
+        showUnifiedGameModal(levelResult, true);
     } else {
         console.log("📈 Nivel completado - mostrando pausa entre niveles");
         shootingSystem.gameEnded = false; // No es fin del juego, solo pausa
@@ -4034,4 +3924,259 @@ function restartCurrentLevel() {
 }
 
 // Finalizar el juego al llegar a 0
+
+// Mostrar modal unificado para transiciones de nivel y fin de juego
+function showUnifiedGameModal(levelResult = null, isGameEnd = false) {
+    console.log(`🎮 Mostrando modal unificado - ${isGameEnd ? 'Fin de juego' : 'Transición de nivel'}`);
+    
+    // Activar el bloqueo modal
+    setModalActive(true);
+    
+    // Si es fin de juego, crear levelResult básico
+    if (isGameEnd && !levelResult) {
+        const finalScore = window.gameState ? window.gameState.score : 0;
+        levelResult = {
+            levelCompleted: true,
+            isLastLevel: true,
+            levelScore: finalScore,
+            totalScore: finalScore,
+            nextLevel: null
+        };
+    }
+    
+    // 🎯 GUARDAR el nivel completado ANTES de avanzar al siguiente (solo si no es fin de juego)
+    if (!isGameEnd) {
+        shootingSystem.completedLevel = window.LevelManager ? window.LevelManager.current.level : 1;
+        console.log(`📝 Nivel completado guardado: ${shootingSystem.completedLevel}`);
+    }
+    
+    // Obtener información del siguiente nivel (solo si no es fin de juego)
+    let hasAdvanced = false;
+    let nextLevelInfo = null;
+    
+    if (!isGameEnd && window.LevelManager) {
+        hasAdvanced = window.LevelManager.advanceLevel();
+        nextLevelInfo = window.LevelManager.getCurrentLevelInfo();
+    }
+    
+    // Crear panel
+    const modalPanel = document.createElement('div');
+    modalPanel.id = isGameEnd ? 'game-end-panel' : 'level-transition-panel';
+    
+    // Estilos del panel
+    modalPanel.style.position = 'fixed';
+    modalPanel.style.top = '50%';
+    modalPanel.style.left = '50%';
+    modalPanel.style.transform = 'translate(-50%, -50%)';
+    modalPanel.style.color = 'white';
+    modalPanel.style.padding = '30px';
+    modalPanel.style.borderRadius = '15px';
+    modalPanel.style.textAlign = 'center';
+    modalPanel.style.zIndex = '3000';
+    modalPanel.style.minWidth = '350px';
+    modalPanel.style.maxWidth = '90%';
+    modalPanel.style.maxHeight = '80%';
+    modalPanel.style.overflowY = 'auto';
+    
+    // Estilos específicos según el contexto
+    if (isGameEnd) {
+        modalPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        modalPanel.style.boxShadow = '0 0 25px rgba(255, 50, 50, 0.7)';
+    } else {
+        modalPanel.style.backgroundColor = 'rgba(0, 40, 80, 0.95)';
+        modalPanel.style.boxShadow = '0 0 30px rgba(0, 255, 255, 0.6)';
+    }
+    
+    // Determinar tamaños basados en dispositivo
+    const isMobile = shootingSystem.isMobile;
+    const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
+    const buttonMargin = isMobile ? '10px 0' : '5px 0';
+    const buttonSize = isMobile ? '20px' : '18px';
+    
+    // Contenido del panel según el contexto
+    let panelContent;
+    
+    if (isGameEnd) {
+        // Contenido para fin de juego
+        panelContent = `
+            <h2 style="color: rgba(255, 50, 50, 1); margin: 0 0 20px 0; font-size: 28px;">¡Tiempo Finalizado!</h2>
+            <p style="font-size: 22px; margin: 15px 0;">Tu puntuación final es:</p>
+            <p style="font-size: 42px; margin: 20px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${levelResult.totalScore} puntos</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
+                <button id="end-game-now-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR EN RANKING</button>
+                <button id="restart-from-level1-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">JUGAR DE NUEVO</button>
+            </div>
+        `;
+        
+        // Guardar el contenido original para compatibilidad con funciones existentes
+        shootingSystem.originalEndPanel = {
+            content: panelContent,
+            score: levelResult.totalScore
+        };
+    } else {
+        // Contenido para transición de nivel
+        const progressSummary = window.LevelManager.getProgressSummary();
+        
+        panelContent = `
+            <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 28px;">¡Nivel Completado!</h2>
+            
+            <div style="margin: 20px 0;">
+                <p style="font-size: 20px; margin: 10px 0;">Puntuación del nivel:</p>
+                <p style="font-size: 36px; margin: 10px 0; color: rgba(50, 255, 50, 1); font-weight: bold;">${levelResult.levelScore} puntos</p>
+            </div>
+            
+            <div style="margin: 20px 0; padding: 15px; background-color: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                <p style="font-size: 18px; margin: 5px 0;">Puntuación total: <span style="color: rgba(255, 255, 0, 1); font-weight: bold;">${levelResult.totalScore} puntos</span></p>
+                <p style="font-size: 16px; margin: 5px 0;">Nivel actual: ${progressSummary.currentLevel} de ${progressSummary.totalLevels}</p>
+            </div>
+            
+            ${hasAdvanced ? `
+            <div style="margin: 25px 0;">
+                <h3 style="color: rgba(255, 255, 255, 0.9); margin: 15px 0;">Siguiente Nivel:</h3>
+                <p style="font-size: 22px; margin: 10px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${nextLevelInfo.name}</p>
+                <p style="font-size: 16px; margin: 10px 0; color: rgba(255, 255, 255, 0.8);">${nextLevelInfo.description}</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 30px;">
+                <button id="continue-next-level-button" style="background-color: rgba(0, 255, 0, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">CONTINUAR SIGUIENTE NIVEL</button>
+                <button id="end-game-now-button" style="background-color: rgba(255, 165, 0, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">FINALIZAR Y GUARDAR EN RANKING</button>
+                <button id="restart-from-level1-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">EMPEZAR DE NUEVO</button>
+            </div>
+            ` : `
+            <div style="margin: 25px 0;">
+                <p style="font-size: 18px; color: rgba(255, 255, 0, 1);">No se pudo avanzar al siguiente nivel.</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 30px;">
+                <button id="end-game-now-button" style="background-color: rgba(255, 165, 0, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">FINALIZAR Y GUARDAR EN RANKING</button>
+                <button id="restart-from-level1-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">EMPEZAR DE NUEVO</button>
+            </div>
+            `}
+        `;
+    }
+    
+    modalPanel.innerHTML = panelContent;
+    document.body.appendChild(modalPanel);
+    
+    // Configurar botón de continuar siguiente nivel (solo para transiciones)
+    const continueButton = document.getElementById('continue-next-level-button');
+    if (continueButton) {
+        const handleContinue = function(e) {
+            e.preventDefault();
+            console.log("🚀 Continuando al siguiente nivel");
+            
+            // Cerrar panel
+            setModalActive(false);
+            document.body.removeChild(modalPanel);
+            
+            // Reiniciar el nivel (pero mantener progreso total)
+            restartCurrentLevel();
+        };
+        
+        continueButton.addEventListener('click', handleContinue);
+        continueButton.addEventListener('touchend', handleContinue);
+        
+        // Efectos táctiles para móvil
+        if (isMobile) {
+            continueButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+            });
+            continueButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+            });
+            continueButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+            });
+        }
+    }
+    
+    // Configurar botón de finalizar juego / guardar en ranking
+    const endGameButton = document.getElementById('end-game-now-button');
+    if (endGameButton) {
+        const handleEndGame = function(e) {
+            e.preventDefault();
+            
+            if (isGameEnd) {
+                console.log("📝 Guardando puntuación en ranking");
+                // Para fin de juego, mostrar directamente el formulario de ranking
+                showRankingSubmitForm(modalPanel, levelResult.totalScore);
+            } else {
+                console.log("🏁 Finalizando juego voluntariamente y guardando puntuación total");
+                // Cerrar panel de transición
+                setModalActive(false);
+                document.body.removeChild(modalPanel);
+                
+                // Terminar juego voluntariamente con la puntuación total
+                endGameVoluntarily(levelResult.totalScore);
+            }
+        };
+        
+        endGameButton.addEventListener('click', handleEndGame);
+        endGameButton.addEventListener('touchend', handleEndGame);
+        
+        // Efectos táctiles para móvil
+        if (isMobile) {
+            endGameButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+            });
+            endGameButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+            });
+            endGameButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+            });
+        }
+    }
+    
+    // Configurar botón de empezar de nuevo
+    const restartButton = document.getElementById('restart-from-level1-button');
+    if (restartButton) {
+        const handleRestart = function(e) {
+            e.preventDefault();
+            console.log("🔄 Empezando de nuevo desde nivel 1");
+            
+            // Cerrar panel
+            setModalActive(false);
+            document.body.removeChild(modalPanel);
+            
+            if (isGameEnd) {
+                // Para fin de juego, usar la función completa de reset
+                window.completeGameReset();
+            } else {
+                // Para transición de nivel, resetear completamente el LevelManager
+                if (window.LevelManager && typeof window.LevelManager.reset === 'function') {
+                    window.LevelManager.reset();
+                }
+                // Usar la función completa de reset
+                window.completeGameReset();
+            }
+        };
+        
+        restartButton.addEventListener('click', handleRestart);
+        restartButton.addEventListener('touchend', handleRestart);
+        
+        // Efectos táctiles para móvil
+        if (isMobile) {
+            restartButton.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.transform = 'scale(0.95)';
+            });
+            restartButton.addEventListener('touchend', function(e) {
+                this.style.transform = 'scale(1)';
+            });
+            restartButton.addEventListener('touchcancel', function(e) {
+                this.style.transform = 'scale(1)';
+            });
+        }
+    }
+}
+
+// Función legacy para compatibilidad - redirige al modal unificado
+function showLevelTransitionScreen(levelResult) {
+    console.log("🔄 Redirigiendo showLevelTransitionScreen al modal unificado");
+    showUnifiedGameModal(levelResult, false);
+}
 

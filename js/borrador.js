@@ -277,7 +277,7 @@ function createRealEndGameButton() {
     // Crear el botón real como elemento HTML
     const button = document.createElement('button');
     button.id = 'end-game-real-button';
-    button.textContent = 'FINALIZAR JUEGO';
+    button.textContent = 'FINALIZAR NIVEL';
     
     // Estilos para el botón
     button.style.position = 'absolute';
@@ -285,7 +285,7 @@ function createRealEndGameButton() {
     button.style.left = '20px';
     button.style.width = '150px';
     button.style.height = '50px';
-    button.style.backgroundColor = 'rgba(255, 50, 50, 0.9)';
+    button.style.backgroundColor = 'rgba(255, 165, 0, 0.9)'; // Naranja para diferenciar de finalizar juego
     button.style.color = 'white';
     button.style.border = '2px solid white';
     button.style.borderRadius = '8px';
@@ -297,30 +297,36 @@ function createRealEndGameButton() {
     
     // Efectos de hover
     button.onmouseover = function() {
-        this.style.backgroundColor = 'rgba(255, 0, 0, 1)';
+        this.style.backgroundColor = 'rgba(255, 165, 0, 1)';
         this.style.transform = 'scale(1.05)';
-        console.log("Cursor sobre el botón FINALIZAR JUEGO (botón real)");
+        console.log("Cursor sobre el botón FINALIZAR NIVEL (botón real)");
     };
     
     button.onmouseout = function() {
-        this.style.backgroundColor = 'rgba(255, 50, 50, 0.9)';
+        this.style.backgroundColor = 'rgba(255, 165, 0, 0.9)';
         this.style.transform = 'scale(1)';
     };
     
     // Manejar el clic
     button.onclick = function() {
-        // No permitir finalizar el juego si hay un panel modal activo
+        // No permitir finalizar el nivel si hay un panel modal activo
         if (window.shootingSystem && window.shootingSystem.modalActive) {
-            console.log("No se puede finalizar el juego mientras hay un panel abierto");
+            console.log("No se puede finalizar el nivel mientras hay un panel abierto");
             return;
         }
         
-        console.log("¡Fin del juego! (botón real clickeado)");
+        console.log("¡Finalizando nivel actual! (botón debug clickeado)");
         
-        // Si existe la función endGame, llamarla
-        if (typeof window.endGame === 'function') {
-            console.log("Llamando a la función endGame()");
-            window.endGame();
+        // Obtener la puntuación actual del juego
+        const currentScore = window.gameState ? window.gameState.score : 0;
+        console.log(`Puntuación actual del nivel: ${currentScore}`);
+        
+        // Usar la función handleTimeExpired que maneja correctamente las transiciones
+        if (typeof window.handleTimeExpired === 'function') {
+            console.log("Llamando a handleTimeExpired() para completar el nivel");
+            window.handleTimeExpired();
+        } else {
+            console.error("La función handleTimeExpired no está disponible");
         }
     };
     
@@ -790,7 +796,7 @@ function updateButtonHoverState(x, y) {
                 
                 // Log para debugging cuando cambia el estado hover
                 if (isHovered) {
-                    console.log("Cursor sobre el botón FINALIZAR JUEGO (sistema alternativo)");
+                    console.log("Cursor sobre el botón FINALIZAR NIVEL (sistema alternativo)");
                 }
             }
             

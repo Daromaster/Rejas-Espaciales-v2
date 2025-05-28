@@ -4,7 +4,7 @@ const LevelManager = {
     current: {
         level: 1,
         subLevel: null,
-        totalLevels: 4,
+        totalLevels: 2,
         isLastLevel: false
     },
     
