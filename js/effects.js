@@ -3929,6 +3929,127 @@ function restartCurrentLevel() {
 function showUnifiedGameModal(levelResult = null, isGameEnd = false) {
     console.log(`🎮 Mostrando modal unificado - ${isGameEnd ? 'Fin de juego' : 'Transición de nivel'}`);
     
+    // ✨ Mostrar animación de puntos si hay puntos que mostrar
+    const scoreToAnimate = isGameEnd ? 
+        (levelResult && levelResult.totalScore > 0 ? levelResult.totalScore : 0) : 
+        (levelResult && levelResult.levelScore > 0 ? levelResult.levelScore : 0);
+    
+    if (scoreToAnimate > 0) {
+        showScoreAnimation(levelResult, isGameEnd, () => {
+            // Callback: mostrar el modal después de la animación
+            showActualUnifiedModal(levelResult, isGameEnd);
+        });
+        return;
+    }
+    
+    // Si no hay puntos, mostrar modal directamente
+    showActualUnifiedModal(levelResult, isGameEnd);
+}
+
+// 🎰 ANIMACIÓN TIPO TRAGAMONEDAS para mostrar puntos
+function showScoreAnimation(levelResult, isGameEnd, callback) {
+    console.log(`🎰 Iniciando animación de puntos tipo tragamonedas - ${isGameEnd ? 'Fin de juego' : 'Transición de nivel'}`);
+    
+    // Activar el bloqueo modal
+    setModalActive(true);
+    
+    // Crear panel de animación
+    const animationPanel = document.createElement('div');
+    animationPanel.id = 'score-animation-panel';
+    
+    // Estilos del panel de animación
+    animationPanel.style.position = 'fixed';
+    animationPanel.style.top = '0';
+    animationPanel.style.left = '0';
+    animationPanel.style.width = '100%';
+    animationPanel.style.height = '100%';
+    animationPanel.style.display = 'flex';
+    animationPanel.style.flexDirection = 'column';
+    animationPanel.style.justifyContent = 'center';
+    animationPanel.style.alignItems = 'center';
+    animationPanel.style.zIndex = '2999'; // Justo debajo del modal principal
+    animationPanel.style.color = 'white';
+    animationPanel.style.textAlign = 'center';
+    
+    // Estilos específicos según el contexto
+    if (isGameEnd) {
+        animationPanel.style.backgroundColor = 'rgba(20, 0, 40, 0.95)'; // Más oscuro para fin de juego
+    } else {
+        animationPanel.style.backgroundColor = 'rgba(0, 20, 40, 0.95)'; // Azul para transición
+    }
+    
+    // Contenido del panel de animación
+    const isMobile = shootingSystem.isMobile;
+    const titleSize = isMobile ? '24px' : '32px';
+    const scoreSize = isMobile ? '60px' : '80px';
+    
+    // Definir título y texto según el contexto
+    const title = isGameEnd ? '¡Juego Finalizado!' : '¡Nivel Completado!';
+    const scoreLabel = isGameEnd ? 'Tu puntuación total:' : 'Puntuación del nivel:';
+    const titleColor = isGameEnd ? 'rgba(255, 100, 100, 1)' : 'rgba(0, 255, 255, 1)';
+    
+    animationPanel.innerHTML = `
+        <h1 style="font-size: ${titleSize}; margin: 0 0 30px 0; color: ${titleColor};">${title}</h1>
+        <p style="font-size: 20px; margin: 0 0 20px 0; color: rgba(255, 255, 255, 0.8);">${scoreLabel}</p>
+        <div id="animated-score" style="font-size: ${scoreSize}; font-weight: bold; color: rgba(50, 255, 50, 1); margin: 20px 0; font-family: 'Courier New', monospace;">0</div>
+        <p style="font-size: 18px; margin: 0; color: rgba(255, 255, 255, 0.6);">puntos</p>
+    `;
+    
+    document.body.appendChild(animationPanel);
+    
+    // Configurar la animación
+    const scoreElement = document.getElementById('animated-score');
+    
+    // Determinar qué puntaje animar según el contexto
+    const targetScore = isGameEnd ? levelResult.totalScore : levelResult.levelScore;
+    let currentScore = 0;
+    
+    // Duración total de la animación: 2 segundos
+    const animationDuration = 2000;
+    const updateInterval = 50; // Actualizar cada 50ms
+    const totalUpdates = animationDuration / updateInterval;
+    const increment = targetScore / totalUpdates;
+    
+    console.log(`🎰 Animando de 0 a ${targetScore} puntos en ${animationDuration}ms`);
+    
+    // Función de animación
+    const animateScore = () => {
+        currentScore += increment;
+        
+        if (currentScore >= targetScore) {
+            // Llegamos al objetivo
+            currentScore = targetScore;
+            scoreElement.textContent = Math.floor(currentScore);
+            
+            console.log("🎰 Animación de puntos completada, esperando 1 segundo...");
+            
+            // Esperar 1 segundo más antes de continuar
+            setTimeout(() => {
+                // Remover panel de animación
+                setModalActive(false); // Temporalmente desactivar modal
+                document.body.removeChild(animationPanel);
+                
+                console.log("🎰 Animación finalizada, mostrando modal de transición");
+                
+                // Llamar al callback para mostrar el modal real
+                callback();
+            }, 1000);
+            
+        } else {
+            // Continuar animación
+            scoreElement.textContent = Math.floor(currentScore);
+            setTimeout(animateScore, updateInterval);
+        }
+    };
+    
+    // Iniciar la animación después de un pequeño delay
+    setTimeout(animateScore, 200);
+}
+
+// Función que contiene la lógica original del modal (separada para reutilizar)
+function showActualUnifiedModal(levelResult = null, isGameEnd = false) {
+    console.log(`🎮 Mostrando modal real - ${isGameEnd ? 'Fin de juego' : 'Transición de nivel'}`);
+    
     // Activar el bloqueo modal
     setModalActive(true);
     
