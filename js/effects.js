@@ -1,4 +1,4 @@
-// Sistema de efectos y disparos
+﻿// Sistema de efectos y disparos
 
 // Configuración del sistema de disparos
 const shootingSystem = {
@@ -2077,15 +2077,16 @@ function showRankingSubmitForm(panel, score) {
     if (saveButton && nameInput && messageDiv) {
         // Si hay un nombre guardado, seleccionarlo para facilitar edición
         if (savedPlayerName) {
-            setTimeout(() => {
-                nameInput.focus();
-                nameInput.select();
-            }, 100);
+            // ❌ AUTO-FOCUS REMOVIDO: No dar foco ni seleccionar automáticamente
+            // Anteriormente: nameInput.focus() y nameInput.select()
+            // Ahora: El nombre se muestra automáticamente pero sin foco
         } else {
-            // Auto-focus en el campo de nombre (excepto en iOS donde puede causar problemas)
-            if (!(/iPad|iPhone|iPod/.test(navigator.userAgent))) {
-                nameInput.focus();
-            }
+            // ❌ AUTO-FOCUS REMOVIDO: No dar foco automático para evitar teclado móvil
+            // Anteriormente se daba foco automático en ambos casos:
+            // 1. Si había nombre guardado: nameInput.focus() y nameInput.select()
+            // 2. Si no había nombre: nameInput.focus() (excepto iOS)
+            // Ahora el usuario debe hacer clic manualmente en el campo si quiere editarlo
+            // El nombre por defecto se mostrará automáticamente pero sin foco
         }
         
         // Handler para guardar
@@ -4454,4 +4455,5 @@ function showLevelTransitionScreen(levelResult) {
     console.log("🔄 Redirigiendo showLevelTransitionScreen al modal unificado");
     showUnifiedGameModal(levelResult, false);
 }
+
 
