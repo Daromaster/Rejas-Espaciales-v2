@@ -15,6 +15,7 @@ const shootingSystem = {
     shootButton: null,          // Referencia al botón de disparo
     isMobile: false,            // Indicador si es dispositivo móvil
     scoreDisplay: null,         // Elemento para mostrar la puntuación
+    totalScoreDisplay: null,    // Elemento para mostrar la puntuación total acumulada
     resetButton: null,          // Referencia al botón de reinicio
     audioButton: null,          // Referencia al botón de audio
     timeDisplay: null,          // Elemento para mostrar el tiempo
@@ -396,6 +397,14 @@ function initEffects() {
     
     // Ajustar la interfaz para dispositivos móviles
     adjustUIForMobile();
+    
+    // 🔄 Llamada adicional con delay para reorganizar si ya estamos en nivel 2+
+    setTimeout(() => {
+        if (shootingSystem.isMobile && window.LevelManager && window.LevelManager.current.level >= 2) {
+            console.log("🔄 Reorganización adicional para nivel 2+ en carga inicial...");
+            adjustUIForMobile();
+        }
+    }, 200);
     
     // Configurar detector de cambio de orientación
     window.addEventListener('resize', function() {
@@ -1223,7 +1232,7 @@ function checkAndAddPoints() {
         
         // Efecto adicional de éxito (destello en el elemento de puntuación)
         if (shootingSystem.scoreDisplay) {
-            // Destello del marcador
+            // Destello del marcador del nivel
             shootingSystem.scoreDisplay.style.transition = 'all 0.2s ease-in-out';
             shootingSystem.scoreDisplay.style.transform = 'scale(1.2)';
             shootingSystem.scoreDisplay.style.backgroundColor = 'rgba(0, 255, 0, 0.5)';
@@ -1232,6 +1241,20 @@ function checkAndAddPoints() {
             setTimeout(() => {
                 shootingSystem.scoreDisplay.style.transform = 'scale(1)';
                 shootingSystem.scoreDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            }, 200);
+        }
+        
+        // Efecto adicional en el display de puntuación total (si está visible)
+        if (shootingSystem.totalScoreDisplay && shootingSystem.totalScoreDisplay.style.display === 'block') {
+            // Destello del marcador total
+            shootingSystem.totalScoreDisplay.style.transition = 'all 0.2s ease-in-out';
+            shootingSystem.totalScoreDisplay.style.transform = 'scale(1.2)';
+            shootingSystem.totalScoreDisplay.style.backgroundColor = 'rgba(255, 255, 0, 0.5)'; // Color dorado
+            
+            // Volver al estado normal
+            setTimeout(() => {
+                shootingSystem.totalScoreDisplay.style.transform = 'scale(1)';
+                shootingSystem.totalScoreDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
             }, 200);
         }
     } else {
@@ -1274,6 +1297,20 @@ function checkAndAddPoints() {
                 setTimeout(() => {
                     shootingSystem.scoreDisplay.style.transform = 'scale(1)';
                     shootingSystem.scoreDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                }, 200);
+            }
+            
+            // Efecto adicional en el display de puntuación total (si está visible)
+            if (shootingSystem.totalScoreDisplay && shootingSystem.totalScoreDisplay.style.display === 'block') {
+                // Destello del marcador total (penalización)
+                shootingSystem.totalScoreDisplay.style.transition = 'all 0.2s ease-in-out';
+                shootingSystem.totalScoreDisplay.style.transform = 'scale(1.2)';
+                shootingSystem.totalScoreDisplay.style.backgroundColor = 'rgba(255, 0, 0, 0.5)'; // Color rojo para penalización
+                
+                // Volver al estado normal
+                setTimeout(() => {
+                    shootingSystem.totalScoreDisplay.style.transform = 'scale(1)';
+                    shootingSystem.totalScoreDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
                 }, 200);
             }
         } else {
@@ -1551,7 +1588,7 @@ function drawShot(shot) {
 
 // Crear y configurar el elemento de puntuación
 function createScoreDisplay() {
-    // Crear el elemento si no existe
+    // Crear el elemento de puntuación del nivel actual si no existe
     if (!shootingSystem.scoreDisplay) {
         const scoreElement = document.createElement('div');
         scoreElement.id = 'score-display';
@@ -1571,23 +1608,85 @@ function createScoreDisplay() {
         scoreElement.style.textShadow = '1px 1px 2px #000';
         
         // Contenido inicial
-        scoreElement.textContent = 'Puntos: 0';
+        scoreElement.textContent = 'Puntaje: 0';
         
         // Añadir al DOM
         document.body.appendChild(scoreElement);
         
         // Guardar referencia
         shootingSystem.scoreDisplay = scoreElement;
+    }
+    
+    // Crear el elemento de puntuación total si no existe
+    if (!shootingSystem.totalScoreDisplay) {
+        const totalScoreElement = document.createElement('div');
+        totalScoreElement.id = 'total-score-display';
         
-        // Configurar actualización periódica de la puntuación
-        setInterval(updateScoreDisplay, 500); // Actualizar cada 500ms
+        // Estilos del elemento (debajo del puntaje del nivel)
+        totalScoreElement.style.position = 'absolute';
+        totalScoreElement.style.top = '45px'; // Debajo del puntaje del nivel
+        totalScoreElement.style.left = '10px';
+        totalScoreElement.style.color = 'rgba(255, 255, 0, 1)'; // Color dorado para diferenciarlo
+        totalScoreElement.style.fontFamily = 'Arial, sans-serif';
+        totalScoreElement.style.fontSize = '14px'; // Ligeramente más pequeño
+        totalScoreElement.style.fontWeight = 'bold';
+        totalScoreElement.style.padding = '4px 8px';
+        totalScoreElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        totalScoreElement.style.borderRadius = '5px';
+        totalScoreElement.style.zIndex = '1000';
+        totalScoreElement.style.textShadow = '1px 1px 2px #000';
+        totalScoreElement.style.display = 'none'; // Oculto inicialmente
+        
+        // Contenido inicial
+        totalScoreElement.textContent = 'Total: 0';
+        
+        // Añadir al DOM
+        document.body.appendChild(totalScoreElement);
+        
+        // Guardar referencia
+        shootingSystem.totalScoreDisplay = totalScoreElement;
+    }
+    
+    // Configurar actualización periódica de la puntuación
+    if (!shootingSystem.scoreUpdateInterval) {
+        shootingSystem.scoreUpdateInterval = setInterval(updateScoreDisplay, 500); // Actualizar cada 500ms
     }
 }
 
 // Actualizar el elemento de puntuación
 function updateScoreDisplay() {
     if (shootingSystem.scoreDisplay && window.gameState) {
-        shootingSystem.scoreDisplay.textContent = 'Puntos: ' + window.gameState.score;
+        // Actualizar puntaje del nivel actual
+        shootingSystem.scoreDisplay.textContent = 'Puntaje: ' + window.gameState.score;
+    }
+    
+    if (shootingSystem.totalScoreDisplay && window.LevelManager) {
+        // Obtener nivel actual
+        const currentLevel = window.LevelManager.current.level;
+        
+        // Calcular puntuación total: puntuación acumulada + puntuación del nivel actual
+        const accumulatedScore = window.LevelManager.progress.totalScore;
+        const currentLevelScore = window.gameState ? window.gameState.score : 0;
+        const totalScore = accumulatedScore + currentLevelScore;
+        
+        // Actualizar display de puntuación total
+        shootingSystem.totalScoreDisplay.textContent = 'Total: ' + totalScore;
+        
+        // Guardar el estado actual de visibilidad antes del cambio
+        const wasVisible = shootingSystem.totalScoreDisplay.style.display === 'block';
+        
+        // Mostrar el display total solo del nivel 2 en adelante
+        if (currentLevel >= 2) {
+            shootingSystem.totalScoreDisplay.style.display = 'block';
+            
+            // Si no era visible antes y ahora sí, reorganizar interfaz móvil
+            if (!wasVisible && shootingSystem.isMobile) {
+                console.log("🔄 Puntaje total ahora visible - Reorganizando interfaz móvil...");
+                setTimeout(adjustUIForMobile, 100); // Pequeño delay para asegurar que el DOM se actualice
+            }
+        } else {
+            shootingSystem.totalScoreDisplay.style.display = 'none';
+        }
     }
 }
 
@@ -3017,6 +3116,7 @@ function adjustUIForMobile() {
             statsContainer.id = 'stats-container';
             statsContainer.style.display = 'flex';
             statsContainer.style.justifyContent = 'space-between';
+            statsContainer.style.alignItems = 'flex-start'; // Alinear arriba
             statsContainer.style.width = '100%';
             statsContainer.style.padding = '0 10px';
             statsContainer.style.marginBottom = '5px';
@@ -3024,21 +3124,41 @@ function adjustUIForMobile() {
             header.appendChild(statsContainer);
         }
         
-        // Mover puntuación al contenedor
+        // Crear/obtener contenedor para los puntajes (lado izquierdo)
+        let scoresContainer = document.getElementById('scores-container');
+        if (!scoresContainer) {
+            scoresContainer = document.createElement('div');
+            scoresContainer.id = 'scores-container';
+            scoresContainer.style.display = 'flex';
+            scoresContainer.style.flexDirection = 'column'; // Uno debajo del otro
+            scoresContainer.style.alignItems = 'flex-start';
+            scoresContainer.style.gap = '5px'; // Espacio entre puntajes
+            
+            statsContainer.appendChild(scoresContainer);
+        }
+        
+        // ✅ IMPORTANTE: Limpiar el contenedor para forzar el orden correcto
+        scoresContainer.innerHTML = '';
+        
+        // ✅ Añadir elementos en el orden correcto: primero puntaje del nivel
         if (shootingSystem.scoreDisplay) {
             shootingSystem.scoreDisplay.style.position = 'relative';
             shootingSystem.scoreDisplay.style.top = 'auto';
             shootingSystem.scoreDisplay.style.left = 'auto';
-            
-            if (shootingSystem.scoreDisplay.parentNode !== statsContainer) {
-                if (shootingSystem.scoreDisplay.parentNode) {
-                    shootingSystem.scoreDisplay.parentNode.removeChild(shootingSystem.scoreDisplay);
-                }
-                statsContainer.appendChild(shootingSystem.scoreDisplay);
-            }
+            shootingSystem.scoreDisplay.style.order = '1'; // Primer elemento visualmente
+            scoresContainer.appendChild(shootingSystem.scoreDisplay);
         }
         
-        // Mover reloj al contenedor
+        // ✅ Luego añadir puntuación total (si está visible)
+        if (shootingSystem.totalScoreDisplay && shootingSystem.totalScoreDisplay.style.display === 'block') {
+            shootingSystem.totalScoreDisplay.style.position = 'relative';
+            shootingSystem.totalScoreDisplay.style.top = 'auto';
+            shootingSystem.totalScoreDisplay.style.left = 'auto';
+            shootingSystem.totalScoreDisplay.style.order = '2'; // Segundo elemento visualmente
+            scoresContainer.appendChild(shootingSystem.totalScoreDisplay);
+        }
+        
+        // Mover reloj al contenedor principal (lado derecho)
         if (shootingSystem.timeDisplay) {
             shootingSystem.timeDisplay.style.position = 'relative';
             shootingSystem.timeDisplay.style.top = 'auto';
@@ -3082,10 +3202,30 @@ function adjustUIForMobile() {
         // IMPORTANTE: Eliminar el contenedor de estadísticas si existe
         const statsContainer = document.getElementById('stats-container');
         if (statsContainer && statsContainer.parentNode) {
-            // Primero mover los displays de vuelta al body
+            // Buscar y limpiar el contenedor de puntajes interno
+            const scoresContainer = document.getElementById('scores-container');
+            if (scoresContainer) {
+                // Mover los displays de puntajes del contenedor interno al body
+                if (shootingSystem.scoreDisplay && shootingSystem.scoreDisplay.parentNode === scoresContainer) {
+                    scoresContainer.removeChild(shootingSystem.scoreDisplay);
+                    document.body.appendChild(shootingSystem.scoreDisplay);
+                }
+                
+                if (shootingSystem.totalScoreDisplay && shootingSystem.totalScoreDisplay.parentNode === scoresContainer) {
+                    scoresContainer.removeChild(shootingSystem.totalScoreDisplay);
+                    document.body.appendChild(shootingSystem.totalScoreDisplay);
+                }
+            }
+            
+            // Mover displays del contenedor principal al body
             if (shootingSystem.scoreDisplay && shootingSystem.scoreDisplay.parentNode === statsContainer) {
                 statsContainer.removeChild(shootingSystem.scoreDisplay);
                 document.body.appendChild(shootingSystem.scoreDisplay);
+            }
+            
+            if (shootingSystem.totalScoreDisplay && shootingSystem.totalScoreDisplay.parentNode === statsContainer) {
+                statsContainer.removeChild(shootingSystem.totalScoreDisplay);
+                document.body.appendChild(shootingSystem.totalScoreDisplay);
             }
             
             if (shootingSystem.timeDisplay && shootingSystem.timeDisplay.parentNode === statsContainer) {
@@ -3102,6 +3242,14 @@ function adjustUIForMobile() {
             shootingSystem.scoreDisplay.style.position = 'absolute';
             shootingSystem.scoreDisplay.style.top = '10px';
             shootingSystem.scoreDisplay.style.left = '10px';
+            shootingSystem.scoreDisplay.style.order = ''; // Limpiar order
+        }
+        
+        if (shootingSystem.totalScoreDisplay) {
+            shootingSystem.totalScoreDisplay.style.position = 'absolute';
+            shootingSystem.totalScoreDisplay.style.top = '45px';
+            shootingSystem.totalScoreDisplay.style.left = '10px';
+            shootingSystem.totalScoreDisplay.style.order = ''; // Limpiar order
         }
         
         if (shootingSystem.timeDisplay) {
@@ -3198,6 +3346,12 @@ function resetGameTime() {
     if (shootingSystem.gameTimer) {
         clearInterval(shootingSystem.gameTimer);
         shootingSystem.gameTimer = null;
+    }
+    
+    // Detener el intervalo de actualización de puntuación si existe
+    if (shootingSystem.scoreUpdateInterval) {
+        clearInterval(shootingSystem.scoreUpdateInterval);
+        shootingSystem.scoreUpdateInterval = null;
     }
     
     // Reiniciar variables de tiempo
