@@ -81,7 +81,7 @@ function ajustarCanvasYCapas() {
         const width = zonaJuego.offsetWidth;
         const height = zonaJuego.offsetHeight;
 
-        console.log(`Ajustando canvas a: ${width}x${height}`);
+        // console.log(`Ajustando canvas a: ${width}x${height}`);
 
         // Asegurar que width y height sean números finitos
         if (!isFinite(width) || !isFinite(height) || width === 0 || height === 0) {
@@ -166,5 +166,5 @@ window.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("resize", () => {
     ajustarCanvasYCapas();
-    console.log("Redibujado por resize.");
+    // console.log("Redibujado por resize.");
 }); 

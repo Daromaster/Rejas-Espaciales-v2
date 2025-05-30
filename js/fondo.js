@@ -31,7 +31,7 @@ function initFondo() {
     }
     
     configFondo.isInitialized = true;
-    console.log("Fondo inicializado con", numStars, "estrellas");
+    // console.log("Fondo inicializado con", numStars, "estrellas");
 }
 
 function dibujarFondo() {

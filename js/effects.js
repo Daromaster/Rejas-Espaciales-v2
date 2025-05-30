@@ -2753,7 +2753,7 @@ function clearAllParticles() {
     
     // Vaciar el array de partículas
     shootingSystem.activeParticles = [];
-    console.log("Todas las partículas han sido eliminadas");
+    // console.log("Todas las partículas han sido eliminadas");
 }
 
 // Crear una única partícula con propiedades según su tipo
@@ -3341,7 +3341,7 @@ window.toggleAudioMute = function() {
 
 // Reiniciar el tiempo del juego
 function resetGameTime() {
-    console.log("Reiniciando sistema de tiempo...");
+    // console.log("Reiniciando sistema de tiempo...");
     
     // Detener el temporizador si existe
     if (shootingSystem.gameTimer) {
@@ -3384,7 +3384,7 @@ function resetGameTime() {
     // Limpiar todas las partículas activas
     clearAllParticles();
     
-    console.log("Sistema de tiempo reiniciado correctamente");
+    // console.log("Sistema de tiempo reiniciado correctamente");
 }
 
 // Función auxiliar para reiniciar el juego desde los efectos
@@ -4037,6 +4037,12 @@ function restartCurrentLevel() {
         window.gameState.currentSubLevel = window.LevelManager.current.subLevel;
     }
     
+    // 🆕 IMPORTANTE: Inicializar grid ANTES del gameLoop
+    if (window.initGrid) {
+        console.log("🎯 Inicializando grid para el nuevo nivel...");
+        window.initGrid();
+    }
+    
     // Resetear sistema de shooting
     shootingSystem.gameEnded = false;
     shootingSystem.isActive = true;
@@ -4059,9 +4065,6 @@ function restartCurrentLevel() {
     
     // Resetear tiempo del nivel (pero NO iniciar el timer)
     resetGameTime();
-    
-    // 🚫 NO llamar a startGameTimer() aquí - debe esperar al primer disparo
-    // startGameTimer(); ← REMOVIDO
     
     // Limpiar partículas
     clearAllParticles();

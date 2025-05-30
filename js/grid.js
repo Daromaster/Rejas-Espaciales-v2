@@ -1,6 +1,96 @@
 // Sistema de reja con SELECT CASE interno por función
 let configGrid; // ✅ Variable global única para todos los niveles
 
+// 🆕 SISTEMA DE MÚLTIPLES CANVAS
+let gridCanvases = []; // Array de contextos de canvas virtuales para grid
+let rotationAngle = 0; // Ángulo de rotación para nivel 2
+let transformMatrix = null; // Matriz de transformación guardada
+
+// ============================================================================
+// 🆕 FUNCIONES DE GESTIÓN DE CANVAS MÚLTIPLES
+// ============================================================================
+
+function ensureGridCanvas(index) {
+    const needsCreation = !gridCanvases[index] || 
+                         !gridCanvases[index].canvas ||
+                         gridCanvases[index].canvas.width !== canvasGrid.width ||
+                         gridCanvases[index].canvas.height !== canvasGrid.height;
+    
+    if (needsCreation) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasGrid.width;
+        canvas.height = canvasGrid.height;
+        gridCanvases[index] = canvas.getContext('2d');
+        console.log(`📊 Canvas virtual ${index} ${needsCreation && gridCanvases[index] ? 'redimensionado' : 'creado'} (${canvas.width}x${canvas.height})`);
+    }
+}
+
+function resetGridArray() {
+    // Limpiar canvas existentes para liberar memoria
+    gridCanvases.forEach((context, index) => {
+        if (context && context.canvas) {
+            context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        }
+    });
+    
+    // Resetear array pero mantener la matriz de transformación
+    gridCanvases = [];
+    rotationAngle = 0;
+    // transformMatrix se mantiene - NO resetear aquí
+    console.log("🔄 Array de canvas reseteado - transformMatrix preservada");
+}
+
+function initGridForLevel(newLevel) {
+    // 1. Limpiar array existente
+    console.log(`🔧 initGridForLevel llamado para nivel ${newLevel}`);
+    resetGridArray();
+    
+    // 2. Inicializar matriz de transformación
+    transformMatrix = null;
+    console.log("🔄 Matriz de transformación reseteada al iniciar nivel");
+    
+    // 3. Crear canvas según el nivel
+    switch(newLevel) {
+        case 1: {
+            // Solo crear gridCanvases[1] para compatibilidad 
+            ensureGridCanvas(1);
+            console.log("📊 Grid Nivel 1: 1 canvas inicializado");
+            break;
+        }
+        
+        case 2: {
+            // gridCanvases[1]: Reja base
+            // gridCanvases[3]: Composición + rotación (gridCanvases[2] no usado aún)
+            ensureGridCanvas(1); // Reja base verde adaptable
+            ensureGridCanvas(3); // Composición final + rotación
+            
+            // 🆕 NUEVO: Inicializar matriz de transformación inmediatamente
+            const centerX = canvasGrid.width / 2;
+            const centerY = canvasGrid.height / 2;
+            
+            gridCanvases[3].save();
+            gridCanvases[3].translate(centerX, centerY);
+            gridCanvases[3].rotate(0); // Empezar en 0 grados
+            gridCanvases[3].translate(-centerX, -centerY);
+            transformMatrix = gridCanvases[3].getTransform();
+            gridCanvases[3].restore();
+            
+            console.log("✨ Matriz de transformación inicializada");
+            console.log("📊 Grid Nivel 2: Canvas 1 y 3 inicializados (rotación habilitada)");
+            console.log(`🔍 Debug: gridCanvases[1] = ${gridCanvases[1] ? 'OK' : 'UNDEFINED'}`);
+            console.log(`🔍 Debug: gridCanvases[3] = ${gridCanvases[3] ? 'OK' : 'UNDEFINED'}`);
+            break;
+        }
+        
+        default: {
+            // Fallback: nivel básico
+            ensureGridCanvas(1);
+            console.log(`⚠️ Grid Nivel ${newLevel}: Fallback a canvas básico`);
+            break;
+        }
+    }
+}
+
 // ============================================================================
 // 🎯 FUNCIÓN PARA OBTENER NIVEL ACTUAL
 // ============================================================================
@@ -111,9 +201,25 @@ function dibujarGrid() {
     
     // ✨ CAMBIO MÍNIMO: Recalcular configGrid si cambió el nivel
     if (!configGrid || configGrid.currentLevel !== currentLevel) {
+        // 🔍 DEBUG: Verificar si es un cambio real de nivel o solo un resync
+        const previousLevel = configGrid ? configGrid.currentLevel : 'undefined';
+        console.log(`🔍 Cambio detectado: ${previousLevel} → ${currentLevel}`);
+        
         configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
         configGrid.currentLevel = currentLevel; // ← Guardar el nivel para detectar cambios
-        console.log(`🔄 ConfigGrid recalculado para nivel ${currentLevel}`);
+    }
+
+    // 🆕 VERIFICACIÓN CENTRALIZADA: Asegurar que los canvas necesarios existan
+    if (currentLevel === 2) {
+        if (!gridCanvases[1] || !gridCanvases[1].canvas || !gridCanvases[3] || !gridCanvases[3].canvas) {
+            console.log("⚠️ Inicializando canvas virtuales para nivel 2...");
+            initGridForLevel(currentLevel); // Forzar inicialización completa
+            return; // Salir y esperar siguiente frame
+        }
+    } else if (!gridCanvases[1] || !gridCanvases[1].canvas) {
+        console.log("⚠️ Inicializando canvas básico...");
+        initGridForLevel(currentLevel); // Forzar inicialización completa
+        return; // Salir y esperar siguiente frame
     }
 
     const {
@@ -125,14 +231,16 @@ function dibujarGrid() {
         grosorLinea
     } = configGrid;
     
+    // 🆕 NUEVO: Limpiar canvas principal
     ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height);
-    ctxGrid.lineWidth = grosorLinea;
     
     const offset = gridMovement.update();
     
     switch(currentLevel) {
         case 1: {
-            // NIVEL 1: Dibujo estático con colores cyan
+            // NIVEL 1: Dibujo directo en canvas principal (como siempre)
+            ctxGrid.lineWidth = grosorLinea;
+            
             const gradientColors = {
                 dark: "rgba(0, 64, 80, 1)",
                 bright: "rgba(0, 255, 255, 1)"
@@ -169,46 +277,81 @@ function dibujarGrid() {
         }
         
         case 2: {
-            // NIVEL 2: Dibujo estático con colores verdes (SIN ROTACIÓN)
+            // NIVEL 2: Nueva arquitectura de múltiples canvas + rotación
+            // gridCanvases[1]: Reja base verde adaptable (sin offset)
+            // gridCanvases[3]: Composición final + rotación gradual
+            
+            // === PASO 1: Dibujar reja base en gridCanvases[1] ===
+            gridCanvases[1].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
+            gridCanvases[1].lineWidth = grosorLinea;
+            
             const gradientColors = {
                 dark: "rgba(0, 80, 64, 1)",
                 bright: "rgba(0, 255, 180, 1)"
             };
             
-            // Dibujar líneas horizontales (igual que nivel 1)
+            // Dibujar líneas horizontales en canvas virtual (SIN offset)
             for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
-                const y = baseY + i * tamCuadrado + offset.y;
-                const grad = ctxGrid.createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
+                const y = baseY + i * tamCuadrado; // SIN offset aquí
+                const grad = gridCanvases[1].createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
                 grad.addColorStop(0, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
                 grad.addColorStop(1, gradientColors.dark);
-                ctxGrid.strokeStyle = grad;
-                ctxGrid.beginPath();
-                ctxGrid.moveTo(baseX + offset.x, y);
-                ctxGrid.lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado + offset.x, y);
-                ctxGrid.stroke();
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(baseX, y); // SIN offset
+                gridCanvases[1].lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado, y); // SIN offset
+                gridCanvases[1].stroke();
             }
             
-            // Dibujar líneas verticales (igual que nivel 1)
+            // Dibujar líneas verticales en canvas virtual (SIN offset)
             for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
-                const x = baseX + j * tamCuadrado + offset.x;
-                const grad = ctxGrid.createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
+                const x = baseX + j * tamCuadrado; // SIN offset aquí
+                const grad = gridCanvases[1].createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
                 grad.addColorStop(0, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
                 grad.addColorStop(1, gradientColors.dark);
-                ctxGrid.strokeStyle = grad;
-                ctxGrid.beginPath();
-                ctxGrid.moveTo(x, baseY + offset.y);
-                ctxGrid.lineTo(x, baseY + (cantidadVert + 1) * tamCuadrado + offset.y);
-                ctxGrid.stroke();
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, baseY); // SIN offset
+                gridCanvases[1].lineTo(x, baseY + (cantidadVert + 1) * tamCuadrado); // SIN offset
+                gridCanvases[1].stroke();
             }
+            
+            // === PASO 2: Componer y rotar en gridCanvases[3] ===
+            gridCanvases[3].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
+            
+            // Incrementar rotación gradualmente
+            rotationAngle += 0.01; // 0.01 radianes por frame (~0.57 grados)
+            
+            // Aplicar transformaciones
+            gridCanvases[3].save();
+            
+            // Centro del canvas para rotación
+            const centerX = canvasGrid.width / 2;
+            const centerY = canvasGrid.height / 2;
+            
+            // Aplicar offset + rotación
+            gridCanvases[3].translate(centerX, centerY); // SIN offset en nivel 2
+            gridCanvases[3].rotate(rotationAngle);
+            gridCanvases[3].translate(-centerX, -centerY);
+            
+            // Guardar matriz de transformación para cálculos posteriores
+            transformMatrix = gridCanvases[3].getTransform();
+            
+            // Dibujar reja base rotada
+            gridCanvases[3].drawImage(gridCanvases[1].canvas, 0, 0);
+            
+            gridCanvases[3].restore();
+            
+            // === PASO 3: Renderizar al canvas principal ===
+            ctxGrid.drawImage(gridCanvases[3].canvas, 0, 0);
+            
             break;
         }
         
         default:
             console.warn(`⚠️ Nivel ${currentLevel} no implementado para dibujo`);
-            // Ejecutar nivel 1 como fallback
-            // [El código del case 1 se podría extraer a función auxiliar para evitar duplicación]
             break;
     }
 }
@@ -245,14 +388,21 @@ function obtenerCoordenadasCubiertas() {
         }
         
         case 2: {
-            // NIVEL 2: Coordenadas base (sin rotación aplicada aquí)
+            // NIVEL 2: Solo rotación, SIN flotación (offset = 0)
             let i_idx = 0;
             for (let i = 0.5; i <= cantidadVert + 0.5; i++, i_idx++) {
                 let j_idx = 0;
                 for (let j = 0.5; j <= cantidadHoriz + 0.5; j++, j_idx++) {
+                    // Coordenadas base (sin offset)
+                    const basePointX = baseX + j * tamCuadrado;
+                    const basePointY = baseY + i * tamCuadrado;
+                    
+                    // Aplicar solo transformación de rotación
+                    const transformedPoint = applyTransformMatrix(basePointX, basePointY);
+                    
                     coordenadasCubiertas.push({
-                        x: baseX + j * tamCuadrado + offset.x,
-                        y: baseY + i * tamCuadrado + offset.y,
+                        x: transformedPoint.x, // SIN offset.x
+                        y: transformedPoint.y, // SIN offset.y
                         tipo: "interseccion",
                         indiceInterseccion: { i_linea: i, j_linea: j } 
                     });
@@ -284,7 +434,7 @@ function obtenerCoordenadasDescubiertas() {
 
     switch(currentLevel) {
         case 1: {
-            // NIVEL 1: Coordenadas en centros de celdas
+            // NIVEL 1: Coordenadas en centros de celdas con offset (flotación)
             for (let i = 0; i < cantidadVert; i++) {
                 for (let j = 0; j < cantidadHoriz; j++) {
                     coordenadasDescubiertas.push({
@@ -299,12 +449,19 @@ function obtenerCoordenadasDescubiertas() {
         }
         
         case 2: {
-            // NIVEL 2: Coordenadas base (sin rotación aplicada aquí)
+            // NIVEL 2: Solo rotación, SIN flotación (offset = 0)
             for (let i = 0; i < cantidadVert; i++) {
                 for (let j = 0; j < cantidadHoriz; j++) {
+                    // Coordenadas base del centro de celda (sin offset)
+                    const basePointX = baseX + (j + 1.0) * tamCuadrado;
+                    const basePointY = baseY + (i + 1.0) * tamCuadrado;
+                    
+                    // Aplicar solo transformación de rotación
+                    const transformedPoint = applyTransformMatrix(basePointX, basePointY);
+                    
                     coordenadasDescubiertas.push({
-                        x: baseX + (j + 1.0) * tamCuadrado + offset.x,
-                        y: baseY + (i + 1.0) * tamCuadrado + offset.y,
+                        x: transformedPoint.x, // SIN offset.x
+                        y: transformedPoint.y, // SIN offset.y
                         tipo: "celda",
                         indiceCelda: { fila: i, columna: j }
                     });
@@ -341,6 +498,28 @@ function rotatePoint(x, y, centerX, centerY, angle) {
     };
 }
 
+// 🆕 NUEVA FUNCIÓN: Aplicar transformación usando la matriz guardada
+function applyTransformMatrix(x, y) {
+    if (!transformMatrix) {
+        // Si no hay matriz de transformación, devolver coordenadas originales
+        console.warn("⚠️ transformMatrix es null, devolviendo coordenadas originales");
+        return { x, y };
+    }
+    
+    // Aplicar la transformación usando la matriz guardada
+    const transformedX = transformMatrix.a * x + transformMatrix.c * y + transformMatrix.e;
+    const transformedY = transformMatrix.b * x + transformMatrix.d * y + transformMatrix.f;
+    
+    const result = {
+        x: transformedX,
+        y: transformedY
+    };
+    
+    // console.log(`🔄 Transformación: (${x}, ${y}) → (${transformedX.toFixed(2)}, ${transformedY.toFixed(2)})`);
+    
+    return result;
+}
+
 function getCentroCeldaActualizado(indiceCelda) {
     const currentLevel = getCurrentLevel();
     
@@ -359,10 +538,17 @@ function getCentroCeldaActualizado(indiceCelda) {
         }
         
         case 2: {
-            // NIVEL 2: Sin rotación (igual que nivel 1)
+            // NIVEL 2: Aplicar transformación de rotación igual que en obtenerCoordenadasDescubiertas
+            // Coordenadas base del centro de celda (sin offset)
+            const basePointX = baseX + (indiceCelda.columna + 1.0) * tamCuadrado;
+            const basePointY = baseY + (indiceCelda.fila + 1.0) * tamCuadrado;
+            
+            // Aplicar transformación de rotación
+            const transformedPoint = applyTransformMatrix(basePointX, basePointY);
+            
             return {
-                x: baseX + (indiceCelda.columna + 1.0) * tamCuadrado + offset.x,
-                y: baseY + (indiceCelda.fila + 1.0) * tamCuadrado + offset.y
+                x: transformedPoint.x, // SIN offset en nivel 2
+                y: transformedPoint.y  // SIN offset en nivel 2
             };
         }
         
@@ -389,10 +575,17 @@ function getInterseccionActualizada(indiceInterseccion) {
         }
         
         case 2: {
-            // NIVEL 2: Sin rotación (igual que nivel 1)
+            // NIVEL 2: Aplicar transformación de rotación igual que en obtenerCoordenadasCubiertas
+            // Coordenadas base (sin offset)
+            const basePointX = baseX + indiceInterseccion.j_linea * tamCuadrado;
+            const basePointY = baseY + indiceInterseccion.i_linea * tamCuadrado;
+            
+            // Aplicar transformación de rotación
+            const transformedPoint = applyTransformMatrix(basePointX, basePointY);
+            
             return {
-                x: baseX + indiceInterseccion.j_linea * tamCuadrado + offset.x,
-                y: baseY + indiceInterseccion.i_linea * tamCuadrado + offset.y
+                x: transformedPoint.x, // SIN offset en nivel 2
+                y: transformedPoint.y  // SIN offset en nivel 2
             };
         }
         
@@ -524,7 +717,16 @@ function obtenerCelda(x, y) {
 // ============================================================================
 
 function initGrid() {
+    // Inicializar movimiento
     gridMovement.init();
+    
+    // Obtener nivel actual
+    const currentLevel = getCurrentLevel();
+    console.log(`🎮 Inicializando grid para nivel ${currentLevel}`);
+    
+    // Forzar inicialización completa del nivel
+    configGrid = null; // Esto forzará recálculo en el primer frame
+    initGridForLevel(currentLevel);
 }
 
 // Exportar funciones al scope global
@@ -541,7 +743,7 @@ window.getBarsFromCell = getBarsFromCell;
 
 // 🧪 FUNCIONES DE TESTING
 window.testLevel2 = function() {
-    console.log("🧪 TESTING: Cambiando al nivel 2...");
+    console.log("🧪 TESTING: Cambiando al nivel 2 (rotación habilitada)...");
     
     if (window.LevelManager) {
         window.LevelManager.setLevel(2);
@@ -550,15 +752,17 @@ window.testLevel2 = function() {
         window.gameState.currentLevel = 2;
     }
     
-    // Reinicializar grid
+    // Forzar reinicialización completa
     configGrid = null;
-    configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
+    resetGridArray(); // Limpiar canvas existentes
+    rotationAngle = 0; // Resetear rotación
     
-    console.log("✅ Cambiado a nivel 2");
+    console.log("✅ Cambiado a nivel 2 con rotación");
+    console.log("🎮 Usa testRotationSpeed() para ajustar velocidad de rotación");
 };
 
 window.testLevel1 = function() {
-    console.log("🧪 TESTING: Cambiando al nivel 1...");
+    console.log("🧪 TESTING: Cambiando al nivel 1 (modo clásico)...");
     
     if (window.LevelManager) {
         window.LevelManager.setLevel(1);
@@ -567,9 +771,58 @@ window.testLevel1 = function() {
         window.gameState.currentLevel = 1;
     }
     
-    // Reinicializar grid
+    // Forzar reinicialización completa
     configGrid = null;
-    configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
+    resetGridArray(); // Limpiar canvas virtuales
+    rotationAngle = 0; // Resetear rotación
     
-    console.log("✅ Cambiado a nivel 1");
-}; 
+    console.log("✅ Cambiado a nivel 1 clásico");
+};
+
+// 🛠️ FUNCIONES DE DEBUG ADICIONALES
+window.testRotationSpeed = function(speed = 0.01) {
+    if (getCurrentLevel() !== 2) {
+        console.warn("⚠️ Rotación solo funciona en nivel 2");
+        return;
+    }
+    
+    // Modificar temporalmente la velocidad de rotación
+    const originalSpeed = 0.01;
+    const newSpeed = parseFloat(speed);
+    
+    console.log(`🔄 Velocidad de rotación cambiada de ${originalSpeed} a ${newSpeed} rad/frame`);
+    console.log(`💡 Para resetear usa: testRotationSpeed(0.01)`);
+    
+    // Aquí podrías guardar la velocidad en una variable global si quieres hacerlo dinámico
+};
+
+window.showGridInfo = function() {
+    const currentLevel = getCurrentLevel();
+    console.log("📊 INFORMACIÓN DEL GRID:");
+    console.log(`   Nivel actual: ${currentLevel}`);
+    console.log(`   Config válido: ${configGrid ? '✅' : '❌'}`);
+    
+    if (configGrid) {
+        console.log(`   Dimensiones: ${configGrid.cantidadHoriz}x${configGrid.cantidadVert} celdas`);
+        console.log(`   Tamaño celda: ${configGrid.tamCuadrado.toFixed(1)}px`);
+        console.log(`   Grosor línea: ${configGrid.grosorLinea}px`);
+    }
+    
+    console.log(`   Canvas virtuales activos: ${gridCanvases.length}`);
+    
+    if (currentLevel === 2) {
+        console.log(`   Ángulo rotación: ${(rotationAngle * 180 / Math.PI).toFixed(1)}°`);
+        console.log(`   Matriz guardada: ${transformMatrix ? '✅' : '❌'}`);
+    }
+};
+
+window.resetRotation = function() {
+    if (getCurrentLevel() !== 2) {
+        console.warn("⚠️ Rotación solo funciona en nivel 2");
+        return;
+    }
+    
+    rotationAngle = 0;
+    transformMatrix = null;
+    console.log("🔄 Rotación reseteada a 0°");
+};

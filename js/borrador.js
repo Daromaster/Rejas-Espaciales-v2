@@ -824,20 +824,63 @@ function setBorradorTargetPoint(targetInfo, color) {
         return;
     }
 
+    // 🎯 OBTENER NIVEL ACTUAL CON FALLBACK
+    let currentLevel = 1; // Fallback seguro
+    if (window.LevelManager) {
+        currentLevel = window.LevelManager.getCurrentLevelInfo().level;
+    } else if (window.gameState && window.gameState.currentLevel) {
+        currentLevel = window.gameState.currentLevel;
+    }
+
     borradorElements.targetPoint.visible = true;
     borradorElements.targetPoint.tipo = targetInfo.tipo;
     
     let puntoActualizado = null;
-    if (targetInfo.tipo === "celda" && typeof window.getCentroCeldaActualizado === 'function') {
-        puntoActualizado = window.getCentroCeldaActualizado(targetInfo.indiceCelda);
-        borradorElements.targetPoint.color = "rgba(255, 0, 0, 1)";
-    } else if (targetInfo.tipo === "interseccion" && typeof window.getInterseccionActualizada === 'function') {
-        puntoActualizado = window.getInterseccionActualizada(targetInfo.indiceInterseccion);
-        borradorElements.targetPoint.color = "rgba(255, 255, 0, 1)";
+
+    switch(currentLevel) {
+        case 1: {
+            // NIVEL 1: Uso directo de funciones originales
+            if (targetInfo.tipo === "celda" && typeof window.getCentroCeldaActualizado === 'function') {
+                puntoActualizado = window.getCentroCeldaActualizado(targetInfo.indiceCelda);
+                borradorElements.targetPoint.color = "rgba(255, 0, 0, 1)"; // Rojo para celdas
+            } else if (targetInfo.tipo === "interseccion" && typeof window.getInterseccionActualizada === 'function') {
+                puntoActualizado = window.getInterseccionActualizada(targetInfo.indiceInterseccion);
+                borradorElements.targetPoint.color = "rgba(255, 255, 0, 1)"; // Amarillo para intersecciones
+            }
+            break;
+        }
+        
+        case 2: {
+            // NIVEL 2: Usar las funciones actualizadas que ya tienen transformación
+            if (targetInfo.tipo === "celda" && typeof window.getCentroCeldaActualizado === 'function') {
+                puntoActualizado = window.getCentroCeldaActualizado(targetInfo.indiceCelda);
+                borradorElements.targetPoint.color = "rgba(255, 0, 0, 1)"; // Rojo para celdas
+            } else if (targetInfo.tipo === "interseccion" && typeof window.getInterseccionActualizada === 'function') {
+                puntoActualizado = window.getInterseccionActualizada(targetInfo.indiceInterseccion);
+                borradorElements.targetPoint.color = "rgba(255, 255, 0, 1)"; // Amarillo para intersecciones
+            }
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado para borrador, usando nivel 1`);
+            // Fallback a nivel 1
+            if (targetInfo.tipo === "celda" && typeof window.getCentroCeldaActualizado === 'function') {
+                puntoActualizado = window.getCentroCeldaActualizado(targetInfo.indiceCelda);
+                borradorElements.targetPoint.color = "rgba(255, 0, 0, 1)";
+            } else if (targetInfo.tipo === "interseccion" && typeof window.getInterseccionActualizada === 'function') {
+                puntoActualizado = window.getInterseccionActualizada(targetInfo.indiceInterseccion);
+                borradorElements.targetPoint.color = "rgba(255, 255, 0, 1)";
+            }
+            break;
+        }
     }
 
     if (puntoActualizado) {
         borradorElements.targetPoint.position = puntoActualizado;
+    } else {
+        console.warn(`⚠️ No se pudo calcular punto actualizado para nivel ${currentLevel}, tipo: ${targetInfo.tipo}`);
+        borradorElements.targetPoint.visible = false;
     }
 }
 
