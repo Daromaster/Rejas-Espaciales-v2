@@ -263,20 +263,7 @@ function dibujarGrid() {
         console.log(`🔍 Cambio detectado: ${previousLevel} → ${currentLevel}`);
         
         configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
-        configGrid.currentLevel = currentLevel; // ← Guardar el nivel para detectar cambios
-    }
-
-    // 🆕 VERIFICACIÓN CENTRALIZADA: Asegurar que los canvas necesarios existan
-    if (currentLevel === 2) {
-        if (!gridCanvases[1] || !gridCanvases[1].canvas || !gridCanvases[2] || !gridCanvases[2].canvas) {
-            console.log("⚠️ Inicializando canvas virtuales para nivel 2...");
-            initGridForLevel(currentLevel); // Forzar inicialización completa
-            return; // Salir y esperar siguiente frame
-        }
-    } else if (!gridCanvases[1] || !gridCanvases[1].canvas) {
-        console.log("⚠️ Inicializando canvas básico...");
-        initGridForLevel(currentLevel); // Forzar inicialización completa
-        return; // Salir y esperar siguiente frame
+        configGrid.currentLevel = currentLevel;
     }
 
     const {
@@ -288,14 +275,22 @@ function dibujarGrid() {
         grosorLinea
     } = configGrid;
     
-    // 🆕 NUEVO: Limpiar canvas principal
+    // Limpiar canvas principal
     ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height);
     
     const offset = gridMovement.update();
     
+    // UN SOLO SELECT CASE para verificación y dibujo
     switch(currentLevel) {
         case 1: {
-            // NIVEL 1: Dibujo directo en canvas principal (como siempre)
+            // Verificar canvas necesario
+            if (!gridCanvases[1] || !gridCanvases[1].canvas) {
+                console.log("⚠️ Inicializando canvas básico para nivel 1...");
+                initGridForLevel(currentLevel);
+                return;
+            }
+
+            // NIVEL 1: Dibujo directo en canvas principal
             ctxGrid.lineWidth = grosorLinea;
             
             const gradientColors = {
@@ -334,6 +329,13 @@ function dibujarGrid() {
         }
         
         case 2: {
+            // Verificar canvas necesarios
+            if (!gridCanvases[1] || !gridCanvases[1].canvas || !gridCanvases[2] || !gridCanvases[2].canvas) {
+                console.log("⚠️ Inicializando canvas virtuales para nivel 2...");
+                initGridForLevel(currentLevel);
+                return;
+            }
+
             // === PASO 1: Limpiar canvas de composición ===
             gridCanvases[2].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
             
@@ -366,9 +368,19 @@ function dibujarGrid() {
             break;
         }
         
-        default:
-            console.warn(`⚠️ Nivel ${currentLevel} no implementado para dibujo`);
+        default: {
+            // Verificar canvas básico para fallback
+            if (!gridCanvases[1] || !gridCanvases[1].canvas) {
+                console.log(`⚠️ Inicializando canvas básico para nivel ${currentLevel} (fallback)...`);
+                initGridForLevel(currentLevel);
+                return;
+            }
+            
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado para dibujo, usando nivel 1`);
+            // Usar lógica del nivel 1 como fallback
+            dibujarGrid(); // Llamada recursiva que caerá en case 1
             break;
+        }
     }
 }
 
