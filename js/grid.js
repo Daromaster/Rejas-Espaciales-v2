@@ -25,18 +25,32 @@ function ensureGridCanvas(index) {
     }
 }
 
+function resizeAllGridCanvases() {
+    // Recorrer todos los canvas existentes y redimensionarlos
+    gridCanvases.forEach((ctx, index) => {
+        if (ctx) {
+            const canvas = ctx.canvas;
+            if (canvas.width !== canvasGrid.width || canvas.height !== canvasGrid.height) {
+                canvas.width = canvasGrid.width;
+                canvas.height = canvasGrid.height;
+                console.log(`📊 Canvas virtual ${index} redimensionado (${canvas.width}x${canvas.height})`);
+            }
+        }
+    });
+}
+
 function resetGridArray() {
-    // Limpiar canvas existentes para liberar memoria
+    // Limpiar todos los canvas existentes
     gridCanvases.forEach((context, index) => {
         if (context && context.canvas) {
             context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+            console.log(`🧹 Canvas virtual ${index} limpiado`);
         }
     });
     
     // Resetear array pero mantener la matriz de transformación
     gridCanvases = [];
     rotationAngle = 0;
-    // transformMatrix se mantiene - NO resetear aquí
     console.log("🔄 Array de canvas reseteado - transformMatrix preservada");
 }
 
@@ -45,11 +59,18 @@ function initGridForLevel(newLevel) {
     console.log(`🔧 initGridForLevel llamado para nivel ${newLevel}`);
     resetGridArray();
     
-    // 2. Inicializar matriz de transformación
+    // 2. Asegurar que configGrid esté inicializado
+    if (!configGrid) {
+        console.log("⚠️ Inicializando configGrid...");
+        configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
+        configGrid.currentLevel = newLevel;
+    }
+    
+    // 3. Inicializar matriz de transformación
     transformMatrix = null;
     console.log("🔄 Matriz de transformación reseteada al iniciar nivel");
     
-    // 3. Crear canvas según el nivel
+    // 4. Crear y dibujar canvas según el nivel
     switch(newLevel) {
         case 1: {
             // Solo crear gridCanvases[1] para compatibilidad 
@@ -59,26 +80,62 @@ function initGridForLevel(newLevel) {
         }
         
         case 2: {
-            // gridCanvases[1]: Reja base
-            // gridCanvases[3]: Composición + rotación (gridCanvases[2] no usado aún)
+            // Crear los canvas necesarios secuencialmente
             ensureGridCanvas(1); // Reja base verde adaptable
-            ensureGridCanvas(3); // Composición final + rotación
+            ensureGridCanvas(2); // Composición final + rotación
+            
+            // NUEVO: Dibujar la reja base en gridCanvases[1]
+            const { baseX, baseY, tamCuadrado, cantidadHoriz, cantidadVert, grosorLinea } = configGrid;
+            
+            gridCanvases[1].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
+            gridCanvases[1].lineWidth = grosorLinea;
+            
+            const gradientColors = {
+                dark: "rgba(0, 80, 64, 1)",
+                bright: "rgba(0, 255, 180, 1)"
+            };
+            
+            // Dibujar líneas horizontales en canvas virtual (SIN offset)
+            for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
+                const y = baseY + i * tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(baseX, y);
+                gridCanvases[1].lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado, y);
+                gridCanvases[1].stroke();
+            }
+            
+            // Dibujar líneas verticales en canvas virtual (SIN offset)
+            for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
+                const x = baseX + j * tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, baseY);
+                gridCanvases[1].lineTo(x, baseY + (cantidadVert + 1) * tamCuadrado);
+                gridCanvases[1].stroke();
+            }
             
             // 🆕 NUEVO: Inicializar matriz de transformación inmediatamente
             const centerX = canvasGrid.width / 2;
             const centerY = canvasGrid.height / 2;
             
-            gridCanvases[3].save();
-            gridCanvases[3].translate(centerX, centerY);
-            gridCanvases[3].rotate(0); // Empezar en 0 grados
-            gridCanvases[3].translate(-centerX, -centerY);
-            transformMatrix = gridCanvases[3].getTransform();
-            gridCanvases[3].restore();
+            gridCanvases[2].save();
+            gridCanvases[2].translate(centerX, centerY);
+            gridCanvases[2].rotate(0); // Empezar en 0 grados
+            gridCanvases[2].translate(-centerX, -centerY);
+            transformMatrix = gridCanvases[2].getTransform();
+            gridCanvases[2].restore();
             
-            console.log("✨ Matriz de transformación inicializada");
-            console.log("📊 Grid Nivel 2: Canvas 1 y 3 inicializados (rotación habilitada)");
-            console.log(`🔍 Debug: gridCanvases[1] = ${gridCanvases[1] ? 'OK' : 'UNDEFINED'}`);
-            console.log(`🔍 Debug: gridCanvases[3] = ${gridCanvases[3] ? 'OK' : 'UNDEFINED'}`);
+            console.log("✨ Reja base dibujada en gridCanvases[1]");
+            console.log("📊 Grid Nivel 2: Canvas 1 y 2 inicializados (rotación habilitada)");
             break;
         }
         
@@ -211,7 +268,7 @@ function dibujarGrid() {
 
     // 🆕 VERIFICACIÓN CENTRALIZADA: Asegurar que los canvas necesarios existan
     if (currentLevel === 2) {
-        if (!gridCanvases[1] || !gridCanvases[1].canvas || !gridCanvases[3] || !gridCanvases[3].canvas) {
+        if (!gridCanvases[1] || !gridCanvases[1].canvas || !gridCanvases[2] || !gridCanvases[2].canvas) {
             console.log("⚠️ Inicializando canvas virtuales para nivel 2...");
             initGridForLevel(currentLevel); // Forzar inicialización completa
             return; // Salir y esperar siguiente frame
@@ -277,75 +334,34 @@ function dibujarGrid() {
         }
         
         case 2: {
-            // NIVEL 2: Nueva arquitectura de múltiples canvas + rotación
-            // gridCanvases[1]: Reja base verde adaptable (sin offset)
-            // gridCanvases[3]: Composición final + rotación gradual
+            // === PASO 1: Limpiar canvas de composición ===
+            gridCanvases[2].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
             
-            // === PASO 1: Dibujar reja base en gridCanvases[1] ===
-            gridCanvases[1].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
-            gridCanvases[1].lineWidth = grosorLinea;
-            
-            const gradientColors = {
-                dark: "rgba(0, 80, 64, 1)",
-                bright: "rgba(0, 255, 180, 1)"
-            };
-            
-            // Dibujar líneas horizontales en canvas virtual (SIN offset)
-            for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
-                const y = baseY + i * tamCuadrado; // SIN offset aquí
-                const grad = gridCanvases[1].createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(baseX, y); // SIN offset
-                gridCanvases[1].lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado, y); // SIN offset
-                gridCanvases[1].stroke();
-            }
-            
-            // Dibujar líneas verticales en canvas virtual (SIN offset)
-            for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
-                const x = baseX + j * tamCuadrado; // SIN offset aquí
-                const grad = gridCanvases[1].createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, baseY); // SIN offset
-                gridCanvases[1].lineTo(x, baseY + (cantidadVert + 1) * tamCuadrado); // SIN offset
-                gridCanvases[1].stroke();
-            }
-            
-            // === PASO 2: Componer y rotar en gridCanvases[3] ===
-            gridCanvases[3].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
-            
+            // === PASO 2: Aplicar transformaciones ===
             // Incrementar rotación gradualmente
             rotationAngle += 0.01; // 0.01 radianes por frame (~0.57 grados)
-            
-            // Aplicar transformaciones
-            gridCanvases[3].save();
             
             // Centro del canvas para rotación
             const centerX = canvasGrid.width / 2;
             const centerY = canvasGrid.height / 2;
             
-            // Aplicar offset + rotación
-            gridCanvases[3].translate(centerX, centerY); // SIN offset en nivel 2
-            gridCanvases[3].rotate(rotationAngle);
-            gridCanvases[3].translate(-centerX, -centerY);
+            // Aplicar transformaciones
+            gridCanvases[2].save();
+            gridCanvases[2].translate(centerX, centerY);
+            gridCanvases[2].rotate(rotationAngle);
+            gridCanvases[2].translate(-centerX, -centerY);
             
             // Guardar matriz de transformación para cálculos posteriores
-            transformMatrix = gridCanvases[3].getTransform();
+            transformMatrix = gridCanvases[2].getTransform();
             
-            // Dibujar reja base rotada
-            gridCanvases[3].drawImage(gridCanvases[1].canvas, 0, 0);
+            // === PASO 3: Componer imagen final ===
+            // Pegar la reja base (ya dibujada en initGridForLevel)
+            gridCanvases[2].drawImage(gridCanvases[1].canvas, 0, 0);
             
-            gridCanvases[3].restore();
+            gridCanvases[2].restore();
             
-            // === PASO 3: Renderizar al canvas principal ===
-            ctxGrid.drawImage(gridCanvases[3].canvas, 0, 0);
+            // === PASO 4: Renderizar al canvas principal ===
+            ctxGrid.drawImage(gridCanvases[2].canvas, 0, 0);
             
             break;
         }
@@ -725,7 +741,10 @@ function initGrid() {
     console.log(`🎮 Inicializando grid para nivel ${currentLevel}`);
     
     // Forzar inicialización completa del nivel
-    configGrid = null; // Esto forzará recálculo en el primer frame
+    configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
+    configGrid.currentLevel = currentLevel;
+    
+    // Inicializar nivel
     initGridForLevel(currentLevel);
 }
 
@@ -826,3 +845,26 @@ window.resetRotation = function() {
     transformMatrix = null;
     console.log("🔄 Rotación reseteada a 0°");
 };
+
+// ============================================================================
+// 🎯 FUNCIONES DE RESPONSIVE
+// ============================================================================
+
+function handleResponsive() {
+    const currentLevel = getCurrentLevel();
+    
+    // Recalcular configuración
+    configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
+    configGrid.currentLevel = currentLevel;
+    
+    console.log("📱 Cambio de tamaño detectado - Recalculando grid");
+    
+    // Redimensionar todos los canvas virtuales existentes
+    resizeAllGridCanvases();
+    
+    // Forzar reinicialización completa del nivel actual
+    initGridForLevel(currentLevel);
+}
+
+// Exportar función para uso externo (debe ser llamada cuando cambie el tamaño del canvas)
+window.handleGridResponsive = handleResponsive;
