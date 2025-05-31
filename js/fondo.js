@@ -74,6 +74,32 @@ function dibujarFondo() {
     ctxFondo.globalAlpha = 1;
 }
 
+function updateFondo() {
+    const currentLevel = fondoConfig.currentLevel;
+    
+    if (!fondoConfig.isInitialized) {
+        console.error("❌ Sistema de fondo no inicializado");
+        return;
+    }
+
+    switch(currentLevel) {
+        case 1: {
+            // Actualizar fondo nivel 1
+            break;
+        }
+        
+        case 2: {
+            // Actualizar fondo nivel 2
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado para fondo`);
+            break;
+        }
+    }
+}
+
 // Exportar al scope global
 window.configFondo = configFondo;
 window.initFondo = initFondo;

@@ -215,28 +215,10 @@ function gameLoop() {
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime; // Usar tiempo real en lugar de valor fijo
-                
-                // Log cada 500ms
-                if (gameState.frameCount % 30 === 0) {
-                    console.log(`=== Estado del tiempo ===`);
-                    console.log(`Estado actual: ${gameState.currentState}`);
-                    console.log(`Tiempo acumulado: ${Math.floor(gameState.stateTime)}ms`);
-                    console.log(`Duración objetivo: ${gameState.currentState === "covered" ? gameState.coveredDuration : gameState.uncoveredDuration}ms`);
-                    console.log(`Frames en este estado: ${gameState.frameCount}`);
-                    console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
-                }
-            } else {
-                if (gameState.frameCount % 60 === 0) {
-                    console.log("No acumulando tiempo - Pelota en tránsito");
-                }
             }
             
             // Cambio de estado solo si la pelota ha estado suficiente tiempo en el destino
             if (gameState.currentState === "covered" && gameState.stateTime >= gameState.coveredDuration) {
-                console.log("\n=== Cambio a estado DESCUBIERTO ===");
-                console.log(`Tiempo final en cubierto: ${Math.floor(gameState.stateTime)}ms`);
-                console.log(`Frames totales en estado: ${gameState.frameCount}`);
-                
                 gameState.currentState = "uncovered";
                 gameState.stateTime = 0;
                 gameState.frameCount = 0;
@@ -245,10 +227,6 @@ function gameLoop() {
                 currentTargetForDebugging = ballMovement.config.currentTarget;
                 
             } else if (gameState.currentState === "uncovered" && gameState.stateTime >= gameState.uncoveredDuration) {
-                console.log("\n=== Cambio a estado CUBIERTO ===");
-                console.log(`Tiempo final en descubierto: ${Math.floor(gameState.stateTime)}ms`);
-                console.log(`Frames totales en estado: ${gameState.frameCount}`);
-                
                 gameState.currentState = "covered";
                 gameState.stateTime = 0;
                 gameState.frameCount = 0;
@@ -274,28 +252,10 @@ function gameLoop() {
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime; // Usar tiempo real en lugar de valor fijo
-                
-                // Log cada 500ms
-                if (gameState.frameCount % 30 === 0) {
-                    console.log(`=== NIVEL 2 - Estado del tiempo ===`);
-                    console.log(`Estado actual: ${gameState.currentState}`);
-                    console.log(`Tiempo acumulado: ${Math.floor(gameState.stateTime)}ms`);
-                    console.log(`Duración objetivo: ${gameState.currentState === "covered" ? gameState.coveredDuration : gameState.uncoveredDuration}ms`);
-                    console.log(`Frames en este estado: ${gameState.frameCount}`);
-                    console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
-                }
-            } else {
-                if (gameState.frameCount % 60 === 0) {
-                    console.log("NIVEL 2: No acumulando tiempo - Pelota en tránsito");
-                }
             }
             
             // Cambio de estado solo si la pelota ha estado suficiente tiempo en el destino
             if (gameState.currentState === "covered" && gameState.stateTime >= gameState.coveredDuration) {
-                console.log("\n=== NIVEL 2: Cambio a estado DESCUBIERTO ===");
-                console.log(`Tiempo final en cubierto: ${Math.floor(gameState.stateTime)}ms`);
-                console.log(`Frames totales en estado: ${gameState.frameCount}`);
-                
                 gameState.currentState = "uncovered";
                 gameState.stateTime = 0;
                 gameState.frameCount = 0;
@@ -304,10 +264,6 @@ function gameLoop() {
                 currentTargetForDebugging = ballMovement.config.currentTarget;
                 
             } else if (gameState.currentState === "uncovered" && gameState.stateTime >= gameState.uncoveredDuration) {
-                console.log("\n=== NIVEL 2: Cambio a estado CUBIERTO ===");
-                console.log(`Tiempo final en descubierto: ${Math.floor(gameState.stateTime)}ms`);
-                console.log(`Frames totales en estado: ${gameState.frameCount}`);
-                
                 gameState.currentState = "covered";
                 gameState.stateTime = 0;
                 gameState.frameCount = 0;
@@ -329,28 +285,15 @@ function gameLoop() {
             // ═══════════════════════════════════════════════════════════
             // FALLBACK: Usar lógica de nivel 1 para niveles no implementados
             // ═══════════════════════════════════════════════════════════
-            console.warn(`⚠️ Nivel ${currentLevel} no implementado, usando lógica de nivel 1`);
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado, usando nivel 1`);
             
             // Exactamente el mismo código que case 1 (duplicado para seguridad)
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime;
-                
-                if (gameState.frameCount % 30 === 0) {
-                    console.log(`=== FALLBACK NIVEL 1 - Estado del tiempo ===`);
-                    console.log(`Estado actual: ${gameState.currentState}`);
-                    console.log(`Tiempo acumulado: ${Math.floor(gameState.stateTime)}ms`);
-                    console.log(`Duración objetivo: ${gameState.currentState === "covered" ? gameState.coveredDuration : gameState.uncoveredDuration}ms`);
-                }
-            } else {
-                if (gameState.frameCount % 60 === 0) {
-                    console.log("FALLBACK: No acumulando tiempo - Pelota en tránsito");
-                }
             }
             
             if (gameState.currentState === "covered" && gameState.stateTime >= gameState.coveredDuration) {
-                console.log("\n=== FALLBACK: Cambio a estado DESCUBIERTO ===");
                 gameState.currentState = "uncovered";
-                gameState.uncoveredDuration = 1000;
                 gameState.stateTime = 0;
                 gameState.frameCount = 0;
                 ballMovement.selectRandomUncoveredTarget();
@@ -358,9 +301,7 @@ function gameLoop() {
                 currentTargetForDebugging = ballMovement.config.currentTarget;
                 
             } else if (gameState.currentState === "uncovered" && gameState.stateTime >= gameState.uncoveredDuration) {
-                console.log("\n=== FALLBACK: Cambio a estado CUBIERTO ===");
                 gameState.currentState = "covered";
-                gameState.coveredDuration = 1000;
                 gameState.stateTime = 0;
                 gameState.frameCount = 0;
                 ballMovement.selectRandomCoveredTarget();
@@ -389,11 +330,6 @@ function gameLoop() {
             // Actualizar los indicadores de estado en la capa de borrador
             if (typeof setBorradorStateIndicators === 'function') {
                 setBorradorStateIndicators(detectedMathState, detectedPixelState);
-            }
-            
-            // Opcional: log cada 60 frames para no saturar la consola
-            if (gameState.frameCount % 60 === 0) {
-                console.log(`Estado detectado: ${detectedState}`);
             }
         }
     }
@@ -455,4 +391,32 @@ function handleEndGamePanel(panel) {
 }
 
 // Iniciar la observación del DOM
-observer.observe(document.body, { childList: true }); 
+observer.observe(document.body, { childList: true });
+
+function updateGame() {
+    const currentLevel = gameState.currentLevel;
+    
+    if (gameState.gameOver || gameState.paused) {
+        return;
+    }
+
+    // Actualizar tiempo de nivel
+    gameState.levelDuration = Date.now() - gameState.levelStartTime;
+
+    switch(currentLevel) {
+        case 1: {
+            // Lógica específica del nivel 1
+            break;
+        }
+        
+        case 2: {
+            // Lógica específica del nivel 2
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado, usando nivel 1`);
+            break;
+        }
+    }
+} 

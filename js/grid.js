@@ -256,12 +256,8 @@ function calcularConfiguracionGrid(width, height) {
 function dibujarGrid() {
     const currentLevel = getCurrentLevel();
     
-    // ✨ CAMBIO MÍNIMO: Recalcular configGrid si cambió el nivel
     if (!configGrid || configGrid.currentLevel !== currentLevel) {
-        // 🔍 DEBUG: Verificar si es un cambio real de nivel o solo un resync
         const previousLevel = configGrid ? configGrid.currentLevel : 'undefined';
-        console.log(`🔍 Cambio detectado: ${previousLevel} → ${currentLevel}`);
-        
         configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
         configGrid.currentLevel = currentLevel;
     }
@@ -529,23 +525,17 @@ function rotatePoint(x, y, centerX, centerY, angle) {
 // 🆕 NUEVA FUNCIÓN: Aplicar transformación usando la matriz guardada
 function applyTransformMatrix(x, y) {
     if (!transformMatrix) {
-        // Si no hay matriz de transformación, devolver coordenadas originales
         console.warn("⚠️ transformMatrix es null, devolviendo coordenadas originales");
         return { x, y };
     }
     
-    // Aplicar la transformación usando la matriz guardada
     const transformedX = transformMatrix.a * x + transformMatrix.c * y + transformMatrix.e;
     const transformedY = transformMatrix.b * x + transformMatrix.d * y + transformMatrix.f;
     
-    const result = {
+    return {
         x: transformedX,
         y: transformedY
     };
-    
-    // console.log(`🔄 Transformación: (${x}, ${y}) → (${transformedX.toFixed(2)}, ${transformedY.toFixed(2)})`);
-    
-    return result;
 }
 
 function getCentroCeldaActualizado(indiceCelda) {

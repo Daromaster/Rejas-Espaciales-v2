@@ -197,4 +197,30 @@ function resetBallColor() {
 window.actualizarPosicionBall = actualizarPosicionBall;
 window.radioPelota = radioPelota;
 window.ballHit = ballHit; // Exportar la función de impacto de la pelota
-window.resetBallColor = resetBallColor; // Exportar la función de reinicio de color 
+window.resetBallColor = resetBallColor; // Exportar la función de reinicio de color
+
+function updateBall() {
+    const currentLevel = ballConfig.currentLevel;
+    
+    if (!ballConfig.isInitialized) {
+        console.error("❌ Sistema de pelota no inicializado");
+        return;
+    }
+
+    switch(currentLevel) {
+        case 1: {
+            // Actualizar pelota nivel 1
+            break;
+        }
+        
+        case 2: {
+            // Actualizar pelota nivel 2
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado para pelota`);
+            break;
+        }
+    }
+} 

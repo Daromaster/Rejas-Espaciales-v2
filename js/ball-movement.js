@@ -99,12 +99,6 @@ let ballMovement = {
         this.config.frameCount = 0;  // Reiniciar contador de frames
         this.config.accelerationFactor = 1.0;  // Reiniciar factor de aceleración
         
-        // 🆕 LOG ESPECÍFICO PARA NIVEL 2
-        if (currentLevel === 2) {
-            console.log(`🎯 Nivel 2: Nuevo destino DESCUBIERTO seleccionado (${indiceAleatorio}/${coordenadas.length-1}):`, 
-                this.config.currentTarget.indiceCelda);
-        }
-        
         return this.config.currentTarget;
     },
 
@@ -113,18 +107,15 @@ let ballMovement = {
         const currentLevel = this.getCurrentLevel();
         
         if (!this.config.currentTarget) {
-            console.log("No hay destino descubierto, seleccionando uno nuevo");
             if (!this.selectRandomUncoveredTarget()) {
                 return this.config.currentPosition;
             }
             this.config.timeAtDestination = 0;
-            // 🆕 Reiniciar factor de aceleración al cambiar de objetivo
             this.config.accelerationFactor = 1.0;
         }
 
         switch(currentLevel) {
             case 1: {
-                // NIVEL 1: Comportamiento original exacto
                 const targetActualizado = window.getCentroCeldaActualizado(this.config.currentTarget.indiceCelda);
                 if (!targetActualizado) {
                     console.error("No se pudo obtener la posición actualizada del destino descubierto");
@@ -201,11 +192,6 @@ let ballMovement = {
                     y: current.y + dy * porcentajeFinal
                 };
 
-                // Debug log para ver la progresión
-                if (distanciaActual < 10) {
-                    console.log(`🔄 Frame=${this.config.frameCount}, Incremento=${incremento.toFixed(5)}, Factor=${this.config.accelerationFactor.toFixed(3)}, Avance=${(porcentajeFinal * 100).toFixed(2)}%`);
-                }
-                
                 // Verificar si ha llegado al destino
                 this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
                 
@@ -334,12 +320,6 @@ let ballMovement = {
         this.config.frameCount = 0;  // Reiniciar contador de frames
         this.config.accelerationFactor = 1.0;  // Reiniciar factor de aceleración
         
-        // 🆕 LOG ESPECÍFICO PARA NIVEL 2
-        if (currentLevel === 2) {
-            console.log(`🎯 Nivel 2: Nuevo destino CUBIERTO seleccionado (${indiceAleatorio}/${coordenadas.length-1}):`, 
-                this.config.currentTarget.indiceInterseccion);
-        }
-        
         return this.config.currentTarget;
     },
 
@@ -348,7 +328,6 @@ let ballMovement = {
         const currentLevel = this.getCurrentLevel();
         
         if (!this.config.currentTarget) {
-            console.log("No hay destino cubierto, seleccionando uno nuevo");
             if (!this.selectRandomCoveredTarget()) {
                 return this.config.currentPosition;
             }
@@ -357,10 +336,9 @@ let ballMovement = {
 
         switch(currentLevel) {
             case 1: {
-                // NIVEL 1: Comportamiento original exacto
                 const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
                 if (!targetActualizado) {
-                    console.error("No se pudo obtener la posición actualizada del destino cubierto");
+                    console.error("❌ No se pudo obtener la posición actualizada del destino cubierto");
                     return this.config.currentPosition;
                 }
 
@@ -392,10 +370,9 @@ let ballMovement = {
             }
             
             case 2: {
-                // NIVEL 2: VERSIÓN MEJORADA CON VELOCIDAD ADAPTATIVA
                 const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
                 if (!targetActualizado) {
-                    console.error("No se pudo obtener la posición actualizada del destino cubierto nivel 2");
+                    console.error("❌ No se pudo obtener la posición actualizada del destino cubierto nivel 2");
                     return this.config.currentPosition;
                 }
 
@@ -435,27 +412,14 @@ let ballMovement = {
                     y: current.y + dy * porcentajeFinal
                 };
 
-                // Debug log para ver la progresión
-                if (distanciaActual < 10) {
-                    console.log(`🔄 Frame=${this.config.frameCount}, Incremento=${incremento.toFixed(5)}, Factor=${this.config.accelerationFactor.toFixed(3)}, Avance=${(porcentajeFinal * 100).toFixed(2)}%`);
-                }
-                
-                // Incrementar tiempo de permanencia en este estado
-                this.config.timeAtDestination += 1/60;
-
                 // Verificar si ha llegado al destino
                 this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
-                
-                // Log para debug cuando está cerca pero no llega
-                if (distanciaActual < 10 && !this.config.isAtDestination) {
-                    console.log(`⚠️ Cerca pero no llega: ${distanciaActual.toFixed(2)}px, factor=${this.config.accelerationFactor.toFixed(3)}, avance=${porcentajeFinal.toFixed(3)}`);
-                }
                 
                 break;
             }
             
             default: {
-                console.warn(`⚠️ Nivel ${currentLevel} no implementado para movimiento cubierto, usando nivel 1`);
+                console.warn(`⚠️ Nivel ${currentLevel} no implementado para movimiento cubierto`);
                 // Fallback a nivel 1
                 const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
                 if (targetActualizado) {

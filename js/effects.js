@@ -4459,4 +4459,30 @@ function showLevelTransitionScreen(levelResult) {
     showUnifiedGameModal(levelResult, false);
 }
 
+function updateEffects() {
+    const currentLevel = effectsConfig.currentLevel;
+    
+    if (!effectsConfig.isInitialized) {
+        console.error("❌ Sistema de efectos no inicializado");
+        return;
+    }
+
+    switch(currentLevel) {
+        case 1: {
+            // Actualizar partículas nivel 1
+            break;
+        }
+        
+        case 2: {
+            // Actualizar partículas nivel 2
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado para efectos`);
+            break;
+        }
+    }
+}
+
 
