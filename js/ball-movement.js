@@ -23,8 +23,9 @@ let ballMovement = {
         // 🆕 Variables para algoritmo adaptativo
         initialDistance: 0,      // Distancia inicial al seleccionar objetivo
         timeAtCurrentTarget: 0,  // Tiempo transcurrido desde selección del objetivo
-        baseSpeed: 0.05,         // Velocidad base de referencia
-        maxSpeedFactor: 0.25     // Límite máximo de velocidad como factor
+        baseSpeed: 0.02,         // Velocidad base
+        accelerationFactor: 1.0, // Factor de aceleración acumulativo
+        frameCount: 0           // Contador de frames para crecimiento parabólico
     },
 
     // ============================================================================
@@ -94,7 +95,9 @@ let ballMovement = {
         
         // 🆕 Reiniciar variables para algoritmo adaptativo
         this.config.timeAtCurrentTarget = 0;
-        this.config.initialDistance = 0; // Se calculará en el primer frame
+        this.config.initialDistance = 0;
+        this.config.frameCount = 0;  // Reiniciar contador de frames
+        this.config.accelerationFactor = 1.0;  // Reiniciar factor de aceleración
         
         // 🆕 LOG ESPECÍFICO PARA NIVEL 2
         if (currentLevel === 2) {
@@ -115,6 +118,8 @@ let ballMovement = {
                 return this.config.currentPosition;
             }
             this.config.timeAtDestination = 0;
+            // 🆕 Reiniciar factor de aceleración al cambiar de objetivo
+            this.config.accelerationFactor = 1.0;
         }
 
         switch(currentLevel) {
@@ -154,7 +159,6 @@ let ballMovement = {
             }
             
             case 2: {
-                // NIVEL 2: VERSIÓN MEJORADA CON VELOCIDAD ADAPTATIVA
                 const targetActualizado = window.getCentroCeldaActualizado(this.config.currentTarget.indiceCelda);
                 if (!targetActualizado) {
                     console.error("No se pudo obtener la posición actualizada del destino descubierto nivel 2");
@@ -164,89 +168,46 @@ let ballMovement = {
                 // Calcular movimiento circular alrededor del punto actualizado
                 const angle = this.getCurrentAngle();
                 const radius = this.config.uncoveredMaintainRadius;
-                const newPosition = {
+                const targetPosition = {
                     x: targetActualizado.x + Math.cos(angle) * radius,
                     y: targetActualizado.y + Math.sin(angle) * radius
                 };
 
-                // Calcular distancia actual
+                // Calcular distancia actual al objetivo
                 const current = this.config.currentPosition;
-                const dx = newPosition.x - current.x;
-                const dy = newPosition.y - current.y;
+                const dx = targetPosition.x - current.x;
+                const dy = targetPosition.y - current.y;
                 const distanciaActual = Math.hypot(dx, dy);
+
+                // 🆕 NUEVO SISTEMA DE PROGRESIÓN PARABÓLICA
+                // Porcentaje base de avance (2%)
+                const porcentajeBase = 0.02;
                 
-                // Inicializar distancia inicial si es necesario
-                if (this.config.initialDistance === 0 && distanciaActual > 0) {
-                    this.config.initialDistance = distanciaActual;
-                    console.log(`🔍 Nivel 2: Distancia inicial al destino descubierto: ${distanciaActual.toFixed(2)}px`);
-                }
+                // Incrementar contador de frames
+                this.config.frameCount = (this.config.frameCount || 0) + 1;
                 
-                // Calcular factor de velocidad adaptativa basado en tiempo
-                this.config.timeAtCurrentTarget += 1/60; // Incrementar tiempo (segundos)
-                const tiempoTranscurrido = this.config.timeAtCurrentTarget;
+                // Calcular incremento parabólico
+                const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
                 
-                // Factor basado en tiempo: aumenta con el tiempo (0.01 por segundo, hasta un máximo)
-                const factorTiempo = Math.min(
-                    1 + (tiempoTranscurrido * 0.2), // +20% por segundo
-                    this.config.maxSpeedFactor / this.config.baseSpeed // Límite superior
-                );
+                // Incrementar factor de aceleración con crecimiento parabólico
+                this.config.accelerationFactor = (this.config.accelerationFactor || 1.0) + incremento;
                 
-                // Factor basado en distancia relativa
-                let factorDistancia = 1.0;
-                if (this.config.initialDistance > 0) {
-                    const distanciaRelativa = distanciaActual / this.config.initialDistance;
-                    
-                    if (distanciaRelativa < 0.3) {
-                        // Cerca del objetivo: +50%
-                        factorDistancia = 1.5;
-                    } else if (distanciaRelativa < 0.8) {
-                        // Acercándose: +20%
-                        factorDistancia = 1.2;
-                    }
-                }
+                // Calcular porcentaje final de avance (sin límite máximo)
+                const porcentajeFinal = porcentajeBase * this.config.accelerationFactor;
                 
-                // 🆕 Factor agresivo para los últimos píxeles
-                if (distanciaActual < 10) {
-                    // Incremento exponencial a medida que se acerca
-                    factorDistancia = 2.0 + (10 - distanciaActual) * 0.3; // Hasta 5.0x de velocidad
-                    
-                    // 🆕🆕 Factor adicional por tiempo excesivo (después de 3 segundos)
-                    if (tiempoTranscurrido > 3.0) {
-                        // Crece 0.5x adicional por cada segundo después de los 3
-                        const factorTiempoExcesivo = (tiempoTranscurrido - 3.0) * 0.5;
-                        
-                        // Sin límite superior - puede crecer indefinidamente
-                        factorDistancia += factorTiempoExcesivo;
-                        
-                        // Log especial para situación crítica
-                        console.log(`⚠️ TIEMPO EXCESIVO: ${tiempoTranscurrido.toFixed(1)}s - Factor=${factorDistancia.toFixed(2)}`);
-                    }
-                    
-                    // Log detallado cuando está muy cerca
-                    if (distanciaActual < 5) {
-                        console.log(`🔥 Fase final agresiva: ${distanciaActual.toFixed(2)}px, factor=${factorDistancia.toFixed(2)}`);
-                    }
-                }
-                
-                // Velocidad final adaptativa (combinando ambos factores)
-                const velocidadAdaptativa = this.config.baseSpeed * factorTiempo * factorDistancia;
-                
-                // Aplicar movimiento con velocidad adaptativa
+                // Aplicar movimiento
                 this.config.currentPosition = {
-                    x: current.x + dx * velocidadAdaptativa,
-                    y: current.y + dy * velocidadAdaptativa
+                    x: current.x + dx * porcentajeFinal,
+                    y: current.y + dy * porcentajeFinal
                 };
 
-                // Incrementar tiempo de permanencia en este estado
-                this.config.timeAtDestination += 1/60;
-
-                // Verificar si ha llegado al destino (ahora con umbral de 4px)
-                this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
-                
-                // Log para debug cuando está cerca pero no llega
-                if (distanciaActual < 10 && !this.config.isAtDestination) {
-                    console.log(`⚠️ Cerca pero no llega: ${distanciaActual.toFixed(2)}px, velocidad=${velocidadAdaptativa.toFixed(3)}`);
+                // Debug log para ver la progresión
+                if (distanciaActual < 10) {
+                    console.log(`🔄 Frame=${this.config.frameCount}, Incremento=${incremento.toFixed(5)}, Factor=${this.config.accelerationFactor.toFixed(3)}, Avance=${(porcentajeFinal * 100).toFixed(2)}%`);
                 }
+                
+                // Verificar si ha llegado al destino
+                this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
                 
                 break;
             }
@@ -369,7 +330,9 @@ let ballMovement = {
         
         // 🆕 Reiniciar variables para algoritmo adaptativo
         this.config.timeAtCurrentTarget = 0;
-        this.config.initialDistance = 0; // Se calculará en el primer frame
+        this.config.initialDistance = 0;
+        this.config.frameCount = 0;  // Reiniciar contador de frames
+        this.config.accelerationFactor = 1.0;  // Reiniciar factor de aceleración
         
         // 🆕 LOG ESPECÍFICO PARA NIVEL 2
         if (currentLevel === 2) {
@@ -450,77 +413,42 @@ let ballMovement = {
                 const dy = newPosition.y - current.y;
                 const distanciaActual = Math.hypot(dx, dy);
                 
-                // Inicializar distancia inicial si es necesario
-                if (this.config.initialDistance === 0 && distanciaActual > 0) {
-                    this.config.initialDistance = distanciaActual;
-                    console.log(`🔍 Nivel 2: Distancia inicial al destino cubierto: ${distanciaActual.toFixed(2)}px`);
-                }
+                // 🆕 NUEVO SISTEMA DE PROGRESIÓN PARABÓLICA
+                // Porcentaje base de avance (2%)
+                const porcentajeBase = 0.02;
                 
-                // Calcular factor de velocidad adaptativa basado en tiempo
-                this.config.timeAtCurrentTarget += 1/60; // Incrementar tiempo (segundos)
-                const tiempoTranscurrido = this.config.timeAtCurrentTarget;
+                // Incrementar contador de frames
+                this.config.frameCount = (this.config.frameCount || 0) + 1;
                 
-                // Factor basado en tiempo: aumenta con el tiempo (0.01 por segundo, hasta un máximo)
-                const factorTiempo = Math.min(
-                    1 + (tiempoTranscurrido * 0.2), // +20% por segundo
-                    this.config.maxSpeedFactor / this.config.baseSpeed // Límite superior
-                );
+                // Calcular incremento parabólico
+                const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
                 
-                // Factor basado en distancia relativa
-                let factorDistancia = 1.0;
-                if (this.config.initialDistance > 0) {
-                    const distanciaRelativa = distanciaActual / this.config.initialDistance;
-                    
-                    if (distanciaRelativa < 0.3) {
-                        // Cerca del objetivo: +50%
-                        factorDistancia = 1.5;
-                    } else if (distanciaRelativa < 0.8) {
-                        // Acercándose: +20%
-                        factorDistancia = 1.2;
-                    }
-                }
+                // Incrementar factor de aceleración con crecimiento parabólico
+                this.config.accelerationFactor = (this.config.accelerationFactor || 1.0) + incremento;
                 
-                // 🆕 Factor agresivo para los últimos píxeles
-                if (distanciaActual < 10) {
-                    // Incremento exponencial a medida que se acerca
-                    factorDistancia = 2.0 + (10 - distanciaActual) * 0.3; // Hasta 5.0x de velocidad
-                    
-                    // 🆕🆕 Factor adicional por tiempo excesivo (después de 3 segundos)
-                    if (tiempoTranscurrido > 3.0) {
-                        // Crece 0.5x adicional por cada segundo después de los 3
-                        const factorTiempoExcesivo = (tiempoTranscurrido - 3.0) * 0.5;
-                        
-                        // Sin límite superior - puede crecer indefinidamente
-                        factorDistancia += factorTiempoExcesivo;
-                        
-                        // Log especial para situación crítica
-                        console.log(`⚠️ TIEMPO EXCESIVO: ${tiempoTranscurrido.toFixed(1)}s - Factor=${factorDistancia.toFixed(2)}`);
-                    }
-                    
-                    // Log detallado cuando está muy cerca
-                    if (distanciaActual < 5) {
-                        console.log(`🔥 Fase final agresiva: ${distanciaActual.toFixed(2)}px, factor=${factorDistancia.toFixed(2)}`);
-                    }
-                }
+                // Calcular porcentaje final de avance (sin límite máximo)
+                const porcentajeFinal = porcentajeBase * this.config.accelerationFactor;
                 
-                // Velocidad final adaptativa (combinando ambos factores)
-                const velocidadAdaptativa = this.config.baseSpeed * factorTiempo * factorDistancia;
-                
-                // Aplicar movimiento con velocidad adaptativa
+                // Aplicar movimiento
                 this.config.currentPosition = {
-                    x: current.x + dx * velocidadAdaptativa,
-                    y: current.y + dy * velocidadAdaptativa
+                    x: current.x + dx * porcentajeFinal,
+                    y: current.y + dy * porcentajeFinal
                 };
 
+                // Debug log para ver la progresión
+                if (distanciaActual < 10) {
+                    console.log(`🔄 Frame=${this.config.frameCount}, Incremento=${incremento.toFixed(5)}, Factor=${this.config.accelerationFactor.toFixed(3)}, Avance=${(porcentajeFinal * 100).toFixed(2)}%`);
+                }
+                
                 // Incrementar tiempo de permanencia en este estado
                 this.config.timeAtDestination += 1/60;
 
-                // Verificar si ha llegado al destino (ahora con umbral de 4px)
+                // Verificar si ha llegado al destino
                 this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
                 
                 // Log para debug cuando está cerca pero no llega
                 if (distanciaActual < 10 && !this.config.isAtDestination) {
-                    console.log(`⚠️ Cerca pero no llega: ${distanciaActual.toFixed(2)}px, velocidad=${velocidadAdaptativa.toFixed(3)}`);
+                    console.log(`⚠️ Cerca pero no llega: ${distanciaActual.toFixed(2)}px, factor=${this.config.accelerationFactor.toFixed(3)}, avance=${porcentajeFinal.toFixed(3)}`);
                 }
                 
                 break;
