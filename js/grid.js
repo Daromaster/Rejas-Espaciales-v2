@@ -183,6 +183,34 @@ function calcularConfiguracionGrid(width, height) {
             const margenY = (height - altoZonaReja) / 2;
 
             const grosorLinea = Math.max(8, Math.floor(dimensionMenor * 0.03));
+
+            // 🆕 Calcular coordenadas base (SIN offset)
+            const coordenadasCubiertasBase = [];
+            const coordenadasDescubiertasBase = [];
+
+            // Calcular intersecciones (cubiertas)
+            for (let i = 0.5; i <= 3 + 0.5; i++) {
+                for (let j = 0.5; j <= cantidadCuadradosHoriz + 0.5; j++) {
+                    coordenadasCubiertasBase.push({
+                        x: margenX + j * tamCuadrado,
+                        y: margenY + i * tamCuadrado,
+                        tipo: "interseccion",
+                        indiceInterseccion: { i_linea: i, j_linea: j }
+                    });
+                }
+            }
+
+            // Calcular centros de celdas (descubiertas)
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < cantidadCuadradosHoriz; j++) {
+                    coordenadasDescubiertasBase.push({
+                        x: margenX + (j + 1.0) * tamCuadrado,
+                        y: margenY + (i + 1.0) * tamCuadrado,
+                        tipo: "celda",
+                        indiceCelda: { fila: i, columna: j }
+                    });
+                }
+            }
           
             return {
                 baseX: margenX,
@@ -197,7 +225,10 @@ function calcularConfiguracionGrid(width, height) {
                 gridWidth: anchoRejaReal,
                 gridHeight: altoZonaReja,
                 offsetX: margenX,
-                offsetY: margenY
+                offsetY: margenY,
+                // 🆕 Agregar las listas base
+                coordenadasCubiertasBase,
+                coordenadasDescubiertasBase
             };
         }
         
@@ -389,30 +420,24 @@ function obtenerCoordenadasCubiertas() {
         configGrid.currentLevel = currentLevel; // ← Guardar el nivel para detectar cambios
     }
 
-    const { baseX, baseY, tamCuadrado, cantidadHoriz, cantidadVert } = configGrid;
-    const offset = gridMovement.getCurrentOffset();
-    const coordenadasCubiertas = [];
-
     switch(currentLevel) {
         case 1: {
-            // NIVEL 1: Coordenadas estáticas en intersecciones
-            let i_idx = 0;
-            for (let i = 0.5; i <= cantidadVert + 0.5; i++, i_idx++) {
-                let j_idx = 0;
-                for (let j = 0.5; j <= cantidadHoriz + 0.5; j++, j_idx++) {
-                    coordenadasCubiertas.push({
-                        x: baseX + j * tamCuadrado + offset.x,
-                        y: baseY + i * tamCuadrado + offset.y,
-                        tipo: "interseccion",
-                        indiceInterseccion: { i_linea: i, j_linea: j } 
-                    });
-                }
-            }
-            break;
+            // NIVEL 1: Usar lista base y aplicar solo offset
+            const offset = gridMovement.getCurrentOffset();
+            
+            // Aplicar offset a cada coordenada base
+            return configGrid.coordenadasCubiertasBase.map(coord => ({
+                ...coord,
+                x: coord.x + offset.x,
+                y: coord.y + offset.y
+            }));
         }
         
         case 2: {
             // NIVEL 2: Solo rotación, SIN flotación (offset = 0)
+            const { baseX, baseY, tamCuadrado, cantidadHoriz, cantidadVert } = configGrid;
+            const coordenadasCubiertas = [];
+            
             let i_idx = 0;
             for (let i = 0.5; i <= cantidadVert + 0.5; i++, i_idx++) {
                 let j_idx = 0;
@@ -432,15 +457,13 @@ function obtenerCoordenadasCubiertas() {
                     });
                 }
             }
-            break;
+            return coordenadasCubiertas;
         }
         
         default:
             console.warn(`⚠️ Nivel ${currentLevel} no implementado para coordenadas cubiertas`);
-            break;
+            return [];
     }
-    
-    return coordenadasCubiertas;
 }
 
 function obtenerCoordenadasDescubiertas() {
@@ -452,28 +475,24 @@ function obtenerCoordenadasDescubiertas() {
         configGrid.currentLevel = currentLevel; // ← Guardar el nivel para detectar cambios
     }
 
-    const { baseX, baseY, tamCuadrado, cantidadHoriz, cantidadVert } = configGrid;
-    const offset = gridMovement.getCurrentOffset();
-    const coordenadasDescubiertas = [];
-
     switch(currentLevel) {
         case 1: {
-            // NIVEL 1: Coordenadas en centros de celdas con offset (flotación)
-            for (let i = 0; i < cantidadVert; i++) {
-                for (let j = 0; j < cantidadHoriz; j++) {
-                    coordenadasDescubiertas.push({
-                        x: baseX + (j + 1.0) * tamCuadrado + offset.x,
-                        y: baseY + (i + 1.0) * tamCuadrado + offset.y,
-                        tipo: "celda",
-                        indiceCelda: { fila: i, columna: j }
-                    });
-                }
-            }
-            break;
+            // NIVEL 1: Usar lista base y aplicar solo offset
+            const offset = gridMovement.getCurrentOffset();
+            
+            // Aplicar offset a cada coordenada base
+            return configGrid.coordenadasDescubiertasBase.map(coord => ({
+                ...coord,
+                x: coord.x + offset.x,
+                y: coord.y + offset.y
+            }));
         }
         
         case 2: {
             // NIVEL 2: Solo rotación, SIN flotación (offset = 0)
+            const { baseX, baseY, tamCuadrado, cantidadHoriz, cantidadVert } = configGrid;
+            const coordenadasDescubiertas = [];
+            
             for (let i = 0; i < cantidadVert; i++) {
                 for (let j = 0; j < cantidadHoriz; j++) {
                     // Coordenadas base del centro de celda (sin offset)
@@ -491,15 +510,13 @@ function obtenerCoordenadasDescubiertas() {
                     });
                 }
             }
-            break;
+            return coordenadasDescubiertas;
         }
         
         default:
             console.warn(`⚠️ Nivel ${currentLevel} no implementado para coordenadas descubiertas`);
-            break;
+            return [];
     }
-    
-    return coordenadasDescubiertas;
 }
 
 // ============================================================================
