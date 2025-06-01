@@ -10,7 +10,7 @@ let ballStateDetector = {
         // Configuración de detección por píxeles
         pixelCheckRadius: 8,  // Radio para verificar píxeles alrededor de la pelota
         pixelCheckPoints: 12, // Número de puntos a verificar en el perímetro
-        barColor: 'rgba(0, 0, 0, 1)',   // Color de los barrotes (Antes: '#000000')
+        barColor: 'rgba(0, 0, 0, 1)',   // Color de los barrotes
 
         // Configuración de indicadores visuales
         indicatorSize: 30,    // Tamaño del cuadrado indicador
@@ -275,20 +275,39 @@ let ballStateDetector = {
         if (!ctx) return 'uncertain';
 
         try {
+            // Validar que las coordenadas sean números finitos
+            if (!ballPosition || 
+                !Number.isFinite(ballPosition.x) || 
+                !Number.isFinite(ballPosition.y)) {
+                console.warn("Coordenadas de pelota no válidas:", ballPosition);
+                return 'uncertain';
+            }
+
+            // Validar que las coordenadas estén dentro del canvas
+            const canvasWidth = ctx.canvas.width;
+            const canvasHeight = ctx.canvas.height;
+            
+            // Calcular coordenadas para getImageData con límites seguros
+            const x = Math.max(0, Math.min(Math.floor(ballPosition.x - this.config.pixelCheckRadius), canvasWidth));
+            const y = Math.max(0, Math.min(Math.floor(ballPosition.y - this.config.pixelCheckRadius), canvasHeight));
+            const width = Math.min(this.config.pixelCheckRadius * 2, canvasWidth - x);
+            const height = Math.min(this.config.pixelCheckRadius * 2, canvasHeight - y);
+
+            // Si el área a analizar es demasiado pequeña, retornar uncertain
+            if (width <= 0 || height <= 0) {
+                console.warn("Área de análisis inválida:", {x, y, width, height});
+                return 'uncertain';
+            }
+
             // Obtener los datos de píxeles
-            const imageData = ctx.getImageData(
-                Math.max(0, ballPosition.x - this.config.pixelCheckRadius),
-                Math.max(0, ballPosition.y - this.config.pixelCheckRadius),
-                this.config.pixelCheckRadius * 2,
-                this.config.pixelCheckRadius * 2
-            );
+            const imageData = ctx.getImageData(x, y, width, height);
 
             // Verificar puntos en el perímetro
             let barPixelCount = 0;
             for (let i = 0; i < this.config.pixelCheckPoints; i++) {
                 const angle = (i / this.config.pixelCheckPoints) * Math.PI * 2;
-                const checkX = Math.round(this.config.pixelCheckRadius + Math.cos(angle) * this.config.pixelCheckRadius);
-                const checkY = Math.round(this.config.pixelCheckRadius + Math.sin(angle) * this.config.pixelCheckRadius);
+                const checkX = Math.round(width/2 + Math.cos(angle) * Math.min(width/2, height/2, this.config.pixelCheckRadius));
+                const checkY = Math.round(height/2 + Math.sin(angle) * Math.min(width/2, height/2, this.config.pixelCheckRadius));
                 
                 if (this.isBarPixel(imageData, checkX, checkY)) {
                     barPixelCount++;
@@ -317,11 +336,8 @@ let ballStateDetector = {
             const g = imageData.data[index + 1];
             const b = imageData.data[index + 2];
             
-            // Convertir el color del píxel a formato hexadecimal
-            const pixelColor = '#' + 
-                r.toString(16).padStart(2, '0') +
-                g.toString(16).padStart(2, '0') +
-                b.toString(16).padStart(2, '0');
+            // Convertir el color del píxel a formato RGBA
+            const pixelColor = `rgba(${r}, ${g}, ${b}, 1)`;
             
             // Comparar con el color de los barrotes (con cierta tolerancia)
             return this.colorsAreSimilar(pixelColor, this.config.barColor);
@@ -333,30 +349,28 @@ let ballStateDetector = {
 
     // Comparar dos colores con cierta tolerancia
     colorsAreSimilar: function(color1, color2) {
-        const tolerance = 30; // Tolerancia para comparación de colores
+        const tolerance = 30;
         
-        // Convertir colores hexadecimales a RGB
-        const rgb1 = this.hexToRgb(color1);
-        const rgb2 = this.hexToRgb(color2);
+        // Extraer valores RGB de los strings rgba
+        const rgb1 = this.rgbaToRgb(color1);
+        const rgb2 = this.rgbaToRgb(color2);
         
         if (!rgb1 || !rgb2) return false;
         
-        // Calcular diferencia para cada componente
         const diffR = Math.abs(rgb1.r - rgb2.r);
         const diffG = Math.abs(rgb1.g - rgb2.g);
         const diffB = Math.abs(rgb1.b - rgb2.b);
         
-        // Si todas las diferencias están dentro de la tolerancia
         return diffR <= tolerance && diffG <= tolerance && diffB <= tolerance;
     },
 
-    // Convertir color hexadecimal a RGB
-    hexToRgb: function(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
+    // Convertir color RGBA a objeto RGB
+    rgbaToRgb: function(rgba) {
+        const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        return match ? {
+            r: parseInt(match[1]),
+            g: parseInt(match[2]),
+            b: parseInt(match[3])
         } : null;
     }
 };

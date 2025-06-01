@@ -316,7 +316,7 @@ function dibujarRejaBase() {
             gridCanvases[1].lineWidth = grosorLinea;
             
             const gradientColors = {
-                dark: "rgba(0, 64, 80, 1)",
+                dark: "rgb(2, 31, 39)",
                 bright: "rgba(0, 255, 255, 1)"
             };
             
