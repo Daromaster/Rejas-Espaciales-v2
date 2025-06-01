@@ -4,12 +4,18 @@ let configFondo = {
     lastBlinkTime: 0,
     blinkInterval: 1000, // 1 segundo entre parpadeos
     currentBlinkingStar: 0,
-    isInitialized: false
+    isInitialized: false,
+    lastWidth: 0,
+    lastHeight: 0
 };
 
 function initFondo() {
-    // Solo inicializar si no está inicializado
-    if (configFondo.isInitialized) return;
+    // Forzar reinicialización si el tamaño del canvas cambió
+    if (configFondo.isInitialized && 
+        (configFondo.lastWidth === canvasFondo.width && 
+         configFondo.lastHeight === canvasFondo.height)) {
+        return;
+    }
     
     // Crear estrellas estáticas
     const numStars = 100;
@@ -30,8 +36,11 @@ function initFondo() {
         });
     }
     
+    // Guardar dimensiones actuales
+    configFondo.lastWidth = canvasFondo.width;
+    configFondo.lastHeight = canvasFondo.height;
     configFondo.isInitialized = true;
-    // console.log("Fondo inicializado con", numStars, "estrellas");
+    console.log("🌟 Fondo reinicializado con nuevo tamaño:", canvasFondo.width, "x", canvasFondo.height);
 }
 
 function dibujarFondo() {

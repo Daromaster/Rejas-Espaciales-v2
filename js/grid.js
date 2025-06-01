@@ -11,32 +11,28 @@ let transformMatrix = null; // Matriz de transformación guardada
 // ============================================================================
 
 function ensureGridCanvas(index) {
-    const needsCreation = !gridCanvases[index] || 
-                         !gridCanvases[index].canvas ||
-                         gridCanvases[index].canvas.width !== canvasGrid.width ||
-                         gridCanvases[index].canvas.height !== canvasGrid.height;
-    
-    if (needsCreation) {
+    // Si no existe el canvas en el índice, crearlo
+    if (!gridCanvases[index]) {
         const canvas = document.createElement('canvas');
-        canvas.width = canvasGrid.width;
-        canvas.height = canvasGrid.height;
         gridCanvases[index] = canvas.getContext('2d');
-        console.log(`📊 Canvas virtual ${index} ${needsCreation && gridCanvases[index] ? 'redimensionado' : 'creado'} (${canvas.width}x${canvas.height})`);
+        console.log(`📊 Canvas virtual ${index} creado`);
     }
+    
+    // Asegurar que tenga el tamaño del canvas principal
+    gridCanvases[index].canvas.width = canvasGrid.width;
+    gridCanvases[index].canvas.height = canvasGrid.height;
+    
+    return gridCanvases[index];
 }
 
 function resizeAllGridCanvases() {
-    // Recorrer todos los canvas existentes y redimensionarlos
+    // Recorrer todos los canvas existentes y darles el tamaño del principal
     gridCanvases.forEach((ctx, index) => {
         if (ctx) {
-            const canvas = ctx.canvas;
-            if (canvas.width !== canvasGrid.width || canvas.height !== canvasGrid.height) {
-                canvas.width = canvasGrid.width;
-                canvas.height = canvasGrid.height;
-                console.log(`📊 Canvas virtual ${index} redimensionado (${canvas.width}x${canvas.height})`);
-            }
+            ensureGridCanvas(index);
         }
     });
+    console.log("📐 Todos los canvas virtuales actualizados al tamaño del principal");
 }
 
 function resetGridArray() {
@@ -75,7 +71,9 @@ function initGridForLevel(newLevel) {
         case 1: {
             // Solo crear gridCanvases[1] para compatibilidad 
             ensureGridCanvas(1);
-            console.log("📊 Grid Nivel 1: 1 canvas inicializado");
+            // Dibujar la reja base
+            dibujarRejaBase();
+            console.log("📊 Grid Nivel 1: Canvas virtual inicializado y dibujado");
             break;
         }
         
@@ -84,64 +82,17 @@ function initGridForLevel(newLevel) {
             ensureGridCanvas(1); // Reja base verde adaptable
             ensureGridCanvas(2); // Composición final + rotación
             
-            // NUEVO: Dibujar la reja base en gridCanvases[1]
-            const { baseX, baseY, tamCuadrado, cantidadHoriz, cantidadVert, grosorLinea } = configGrid;
+            // Dibujar la reja base
+            dibujarRejaBase();
             
-            gridCanvases[1].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
-            gridCanvases[1].lineWidth = grosorLinea;
-            
-            const gradientColors = {
-                dark: "rgba(0, 80, 64, 1)",
-                bright: "rgba(0, 255, 180, 1)"
-            };
-            
-            // Dibujar líneas horizontales en canvas virtual (SIN offset)
-            for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
-                const y = baseY + i * tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(baseX, y);
-                gridCanvases[1].lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado, y);
-                gridCanvases[1].stroke();
-            }
-            
-            // Dibujar líneas verticales en canvas virtual (SIN offset)
-            for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
-                const x = baseX + j * tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, baseY);
-                gridCanvases[1].lineTo(x, baseY + (cantidadVert + 1) * tamCuadrado);
-                gridCanvases[1].stroke();
-            }
-            
-            // 🆕 NUEVO: Inicializar matriz de transformación inmediatamente
-            const centerX = canvasGrid.width / 2;
-            const centerY = canvasGrid.height / 2;
-            
-            gridCanvases[2].save();
-            gridCanvases[2].translate(centerX, centerY);
-            gridCanvases[2].rotate(0); // Empezar en 0 grados
-            gridCanvases[2].translate(-centerX, -centerY);
-            transformMatrix = gridCanvases[2].getTransform();
-            gridCanvases[2].restore();
-            
-            console.log("✨ Reja base dibujada en gridCanvases[1]");
-            console.log("📊 Grid Nivel 2: Canvas 1 y 2 inicializados (rotación habilitada)");
+            console.log("📊 Grid Nivel 2: Canvas 1 y 2 inicializados");
             break;
         }
         
         default: {
             // Fallback: nivel básico
             ensureGridCanvas(1);
+            dibujarRejaBase();
             console.log(`⚠️ Grid Nivel ${newLevel}: Fallback a canvas básico`);
             break;
         }
@@ -284,74 +235,280 @@ function calcularConfiguracionGrid(width, height) {
     }
 }
 
-function dibujarGrid() {
+// 🆕 FUNCIÓN CON SELECT CASE: Dibuja la reja base según el nivel (solo se ejecuta en init y resize)
+function dibujarRejaBase() {
     const currentLevel = getCurrentLevel();
-    
-    if (!configGrid || configGrid.currentLevel !== currentLevel) {
-        const previousLevel = configGrid ? configGrid.currentLevel : 'undefined';
-        configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
-        configGrid.currentLevel = currentLevel;
-    }
+    const width = canvasGrid.width;
+    const height = canvasGrid.height;
 
-    const {
-        baseX,
-        baseY,
-        tamCuadrado,
-        cantidadHoriz,
-        cantidadVert,
-        grosorLinea
-    } = configGrid;
-    
-    // Limpiar canvas principal
-    ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height);
-    
-    const offset = gridMovement.update();
-    
-    // UN SOLO SELECT CASE para verificación y dibujo
+    // Resize de todos los canvas virtuales (común para todos los niveles)
+    resizeAllGridCanvases();
+
     switch(currentLevel) {
         case 1: {
-            // Verificar canvas necesario
-            if (!gridCanvases[1] || !gridCanvases[1].canvas) {
-                console.log("⚠️ Inicializando canvas básico para nivel 1...");
-                initGridForLevel(currentLevel);
-                return;
+            // NIVEL 1: Configuración y dibujo base
+            const dimensionMenor = Math.min(width, height);
+            const altoZonaReja = dimensionMenor * 0.6;
+            const tamCuadrado = altoZonaReja / 4;
+          
+            const cantidadCuadradosHoriz = Math.floor((width * 0.6) / tamCuadrado);
+            const anchoRejaReal = (cantidadCuadradosHoriz + 1) * tamCuadrado;
+          
+            const baseX = (width - anchoRejaReal) / 2;
+            const baseY = (height - altoZonaReja) / 2;
+            const grosorLinea = Math.max(8, Math.floor(dimensionMenor * 0.03));
+
+            // Actualizar configGrid con la nueva configuración
+            configGrid = {
+                baseX,
+                baseY,
+                tamCuadrado,
+                cantidadHoriz: cantidadCuadradosHoriz,
+                cantidadVert: 3,
+                grosorLinea,
+                numCeldasX: cantidadCuadradosHoriz,
+                numCeldasY: 3,
+                cellSize: tamCuadrado,
+                gridWidth: anchoRejaReal,
+                gridHeight: altoZonaReja,
+                offsetX: baseX,
+                offsetY: baseY,
+                currentLevel: currentLevel
+            };
+            
+            // Calcular coordenadas base (necesarias para el movimiento de la pelota)
+            const coordenadasCubiertasBase = [];
+            const coordenadasDescubiertasBase = [];
+
+            // Calcular intersecciones (cubiertas)
+            for (let i = 0.5; i <= 3 + 0.5; i++) {
+                for (let j = 0.5; j <= cantidadCuadradosHoriz + 0.5; j++) {
+                    coordenadasCubiertasBase.push({
+                        x: baseX + j * tamCuadrado,
+                        y: baseY + i * tamCuadrado,
+                        tipo: "interseccion",
+                        indiceInterseccion: { i_linea: i, j_linea: j }
+                    });
+                }
             }
 
-            // NIVEL 1: Dibujo directo en canvas principal
-            ctxGrid.lineWidth = grosorLinea;
+            // Calcular centros de celdas (descubiertas)
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < cantidadCuadradosHoriz; j++) {
+                    coordenadasDescubiertasBase.push({
+                        x: baseX + (j + 1.0) * tamCuadrado,
+                        y: baseY + (i + 1.0) * tamCuadrado,
+                        tipo: "celda",
+                        indiceCelda: { fila: i, columna: j }
+                    });
+                }
+            }
+
+            // Agregar las coordenadas base a configGrid
+            configGrid.coordenadasCubiertasBase = coordenadasCubiertasBase;
+            configGrid.coordenadasDescubiertasBase = coordenadasDescubiertasBase;
+            
+            // Asegurar que existe el canvas virtual
+            ensureGridCanvas(1);
+            
+            // Limpiar canvas base
+            gridCanvases[1].clearRect(0, 0, width, height);
+            gridCanvases[1].lineWidth = grosorLinea;
             
             const gradientColors = {
                 dark: "rgba(0, 64, 80, 1)",
                 bright: "rgba(0, 255, 255, 1)"
             };
             
-            // Dibujar líneas horizontales
-            for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
-                const y = baseY + i * tamCuadrado + offset.y;
-                const grad = ctxGrid.createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
+            // Dibujar líneas horizontales en canvas virtual (SIN offset)
+            for (let i = 0.5; i <= 3 + 0.5; i++) {
+                const y = baseY + i * tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
                 grad.addColorStop(0, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
                 grad.addColorStop(1, gradientColors.dark);
-                ctxGrid.strokeStyle = grad;
-                ctxGrid.beginPath();
-                ctxGrid.moveTo(baseX + offset.x, y);
-                ctxGrid.lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado + offset.x, y);
-                ctxGrid.stroke();
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(baseX, y);
+                gridCanvases[1].lineTo(baseX + (cantidadCuadradosHoriz + 1) * tamCuadrado, y);
+                gridCanvases[1].stroke();
             }
             
-            // Dibujar líneas verticales
-            for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
-                const x = baseX + j * tamCuadrado + offset.x;
-                const grad = ctxGrid.createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
+            // Dibujar líneas verticales en canvas virtual (SIN offset)
+            for (let j = 0.5; j <= cantidadCuadradosHoriz + 0.5; j++) {
+                const x = baseX + j * tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
                 grad.addColorStop(0, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
                 grad.addColorStop(1, gradientColors.dark);
-                ctxGrid.strokeStyle = grad;
-                ctxGrid.beginPath();
-                ctxGrid.moveTo(x, baseY + offset.y);
-                ctxGrid.lineTo(x, baseY + 4 * tamCuadrado + offset.y);
-                ctxGrid.stroke();
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, baseY);
+                gridCanvases[1].lineTo(x, baseY + (3 + 1) * tamCuadrado);
+                gridCanvases[1].stroke();
             }
+            
+            console.log("✨ Reja base nivel 1 dibujada en gridCanvases[1]");
+            break;
+        }
+        
+        case 2: {
+            // NIVEL 2: Configuración y dibujo base
+            const dimensionMenor = Math.min(width, height);
+            const altoZonaReja = dimensionMenor * 0.6;
+            const tamCuadrado = altoZonaReja / 4;
+            
+            // Detectar orientación y aplicar lógica responsive
+            const anchoEsMenor = width < height;
+            let cantidadHoriz, cantidadVert;
+            
+            if (anchoEsMenor) {
+                // ANCHO menor → 4 barrotes horizontales, 6 verticales
+                cantidadHoriz = 3; // 3 cuadrados → 4 barrotes
+                cantidadVert = 5;  // 5 cuadrados → 6 barrotes
+            } else {
+                // ALTO menor → 6 barrotes horizontales, 4 verticales  
+                cantidadHoriz = 5; // 5 cuadrados → 6 barrotes
+                cantidadVert = 3;  // 3 cuadrados → 4 barrotes
+            }
+            
+            // Calcular dimensiones reales con medio módulo en perímetro
+            const anchoRejaReal = (cantidadHoriz + 1) * tamCuadrado;
+            const altoRejaReal = (cantidadVert + 1) * tamCuadrado;
+            
+            // Centrado en el canvas
+            const baseX = (width - anchoRejaReal) / 2;
+            const baseY = (height - altoRejaReal) / 2;
+            const grosorLinea = Math.max(8, Math.floor(dimensionMenor * 0.03));
+            
+            // Actualizar configGrid con la nueva configuración
+            configGrid = {
+                baseX,
+                baseY,
+                tamCuadrado,
+                cantidadHoriz,
+                cantidadVert,
+                grosorLinea,
+                numCeldasX: cantidadHoriz,
+                numCeldasY: cantidadVert,
+                cellSize: tamCuadrado,
+                gridWidth: anchoRejaReal,
+                gridHeight: altoRejaReal,
+                offsetX: baseX,
+                offsetY: baseY,
+                currentLevel: currentLevel
+            };
+
+            // Calcular coordenadas base (necesarias para el movimiento de la pelota)
+            const coordenadasCubiertasBase = [];
+            const coordenadasDescubiertasBase = [];
+
+            // Calcular intersecciones (cubiertas)
+            for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
+                for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
+                    coordenadasCubiertasBase.push({
+                        x: baseX + j * tamCuadrado,
+                        y: baseY + i * tamCuadrado,
+                        tipo: "interseccion",
+                        indiceInterseccion: { i_linea: i, j_linea: j }
+                    });
+                }
+            }
+
+            // Calcular centros de celdas (descubiertas)
+            for (let i = 0; i < cantidadVert; i++) {
+                for (let j = 0; j < cantidadHoriz; j++) {
+                    coordenadasDescubiertasBase.push({
+                        x: baseX + (j + 1.0) * tamCuadrado,
+                        y: baseY + (i + 1.0) * tamCuadrado,
+                        tipo: "celda",
+                        indiceCelda: { fila: i, columna: j }
+                    });
+                }
+            }
+
+            // Agregar las coordenadas base a configGrid
+            configGrid.coordenadasCubiertasBase = coordenadasCubiertasBase;
+            configGrid.coordenadasDescubiertasBase = coordenadasDescubiertasBase;
+            
+            // Asegurar que existe el canvas virtual
+            ensureGridCanvas(1);
+            
+            // Limpiar canvas base
+            gridCanvases[1].clearRect(0, 0, width, height);
+            gridCanvases[1].lineWidth = grosorLinea;
+            
+            const gradientColors = {
+                dark: "rgba(0, 64, 0, 1)",      // Verde oscuro
+                bright: "rgba(0, 255, 0, 1)"    // Verde brillante
+            };
+            
+            // Dibujar líneas horizontales en canvas virtual (SIN offset)
+            for (let i = 0.5; i <= cantidadVert + 0.5; i++) {
+                const y = baseY + i * tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(0, y - grosorLinea/2, 0, y + grosorLinea/2);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(baseX, y);
+                gridCanvases[1].lineTo(baseX + (cantidadHoriz + 1) * tamCuadrado, y);
+                gridCanvases[1].stroke();
+            }
+            
+            // Dibujar líneas verticales en canvas virtual (SIN offset)
+            for (let j = 0.5; j <= cantidadHoriz + 0.5; j++) {
+                const x = baseX + j * tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(x - grosorLinea/2, 0, x + grosorLinea/2, 0);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, baseY);
+                gridCanvases[1].lineTo(x, baseY + (cantidadVert + 1) * tamCuadrado);
+                gridCanvases[1].stroke();
+            }
+            
+            console.log("✨ Reja base nivel 2 dibujada en gridCanvases[1] (verde, lista para rotar)");
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Nivel ${currentLevel} no implementado para dibujo de reja base`);
+            break;
+        }
+    }
+}
+
+function dibujarGrid() {
+    const currentLevel = getCurrentLevel();
+    
+    if (!configGrid || configGrid.currentLevel !== currentLevel) {
+        configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
+        configGrid.currentLevel = currentLevel;
+    }
+
+    // Limpiar canvas principal
+    ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height);
+    
+    const offset = gridMovement.update();
+    
+    switch(currentLevel) {
+        case 1: {
+            // Verificar canvas necesario
+            if (!gridCanvases[1] || !gridCanvases[1].canvas) {
+                console.log("⚠️ Inicializando canvas virtual para nivel 1...");
+                initGridForLevel(currentLevel);
+                return;
+            }
+
+            // NIVEL 1: Aplicar offset y copiar canvas virtual
+            ctxGrid.save();
+            ctxGrid.translate(offset.x, offset.y);
+            ctxGrid.drawImage(gridCanvases[1].canvas, 0, 0);
+            ctxGrid.restore();
             break;
         }
         
@@ -391,18 +548,10 @@ function dibujarGrid() {
             
             // === PASO 4: Renderizar al canvas principal ===
             ctxGrid.drawImage(gridCanvases[2].canvas, 0, 0);
-            
             break;
         }
         
         default: {
-            // Verificar canvas básico para fallback
-            if (!gridCanvases[1] || !gridCanvases[1].canvas) {
-                console.log(`⚠️ Inicializando canvas básico para nivel ${currentLevel} (fallback)...`);
-                initGridForLevel(currentLevel);
-                return;
-            }
-            
             console.warn(`⚠️ Nivel ${currentLevel} no implementado para dibujo, usando nivel 1`);
             // Usar lógica del nivel 1 como fallback
             dibujarGrid(); // Llamada recursiva que caerá en case 1
@@ -869,21 +1018,25 @@ window.resetRotation = function() {
 // 🎯 FUNCIONES DE RESPONSIVE
 // ============================================================================
 
-function handleResponsive() {
+// OBSOLETA: Esta función ha sido reemplazada por la secuencia dibujarRejaBase -> dibujarGrid en ajustarCanvasYCapas
+/*
+function handleGridResponsive() {
     const currentLevel = getCurrentLevel();
+    console.log("📱 Cambio de tamaño detectado - Recalculando grid");
     
-    // Recalcular configuración
+    // 1. Recalcular configuración
     configGrid = calcularConfiguracionGrid(canvasGrid.width, canvasGrid.height);
     configGrid.currentLevel = currentLevel;
     
-    console.log("📱 Cambio de tamaño detectado - Recalculando grid");
-    
-    // Redimensionar todos los canvas virtuales existentes
+    // 2. Redimensionar todos los canvas virtuales existentes
     resizeAllGridCanvases();
     
-    // Forzar reinicialización completa del nivel actual
-    initGridForLevel(currentLevel);
+    // 3. Volver a dibujar la reja base
+    dibujarRejaBase();
+    
+    console.log("✨ Responsive de grid completado");
 }
+*/
 
 // Exportar función para uso externo (debe ser llamada cuando cambie el tamaño del canvas)
-window.handleGridResponsive = handleResponsive;
+// window.handleGridResponsive = handleGridResponsive;
