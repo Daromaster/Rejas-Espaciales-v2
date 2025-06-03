@@ -531,11 +531,19 @@ function dibujarGrid() {
             const centerX = canvasGrid.width / 2;
             const centerY = canvasGrid.height / 2;
             
-            // Aplicar transformaciones
+            // Obtener offset del movimiento flotante
+            const floatingOffset = gridMovement.getCurrentOffset();
+            
+            // Aplicar transformaciones en orden:
+            // 1. Traslación al centro
+            // 2. Rotación
+            // 3. Traslación de vuelta
+            // 4. Movimiento flotante
             gridCanvases[2].save();
             gridCanvases[2].translate(centerX, centerY);
             gridCanvases[2].rotate(rotationAngle);
             gridCanvases[2].translate(-centerX, -centerY);
+            gridCanvases[2].translate(floatingOffset.x, floatingOffset.y);
             
             // Guardar matriz de transformación para cálculos posteriores
             transformMatrix = gridCanvases[2].getTransform();

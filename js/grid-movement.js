@@ -2,17 +2,45 @@
 let gridMovement = {
     // Configuración del movimiento
     config: {
-        amplitudeY: 12,      // Amplitud del movimiento vertical en píxeles
-        amplitudeX: 8,       // Amplitud del movimiento horizontal en píxeles
+        amplitudeY: 12,      // Amplitud del movimiento vertical en píxeles (valor por defecto)
+        amplitudeX: 8,       // Amplitud del movimiento horizontal en píxeles (valor por defecto)
         frequencyY: 0.001,   // Frecuencia del movimiento vertical
-        frequencyX: 0.0007,  // Frecuencia del movimiento horizontal (diferente para que no sea sincronizado)
+        frequencyX: 0.0007,  // Frecuencia del movimiento horizontal
         phaseY: 0,          // Fase inicial vertical
         phaseX: 0,          // Fase inicial horizontal
-        speed: 1.2,         // Velocidad general del movimiento
+        speed: 1.2,         // Velocidad general del movimiento (valor por defecto)
         offsetY: 0,         // Offset vertical actual
         offsetX: 0,         // Offset horizontal actual
         lastTime: 0,        // Último tiempo de actualización
         isInitialized: false // Flag para controlar la inicialización
+    },
+
+    // Obtener configuración según nivel
+    getConfigForLevel: function(level) {
+        switch(level) {
+            case 1: {
+                return {
+                    amplitudeY: 12,      // Valores originales para nivel 1
+                    amplitudeX: 8,
+                    speed: 1.2
+                };
+            }
+            case 2: {
+                return {
+                    amplitudeY: 20,      // Valores aumentados para nivel 2
+                    amplitudeX: 15,
+                    speed: 1.8
+                };
+            }
+            default: {
+                console.warn(`⚠️ Nivel ${level} no implementado, usando configuración por defecto`);
+                return {
+                    amplitudeY: 12,
+                    amplitudeX: 8,
+                    speed: 1.2
+                };
+            }
+        }
     },
 
     // Inicializar el movimiento
@@ -21,14 +49,34 @@ let gridMovement = {
         // Fases iniciales aleatorias para que cada reja comience en una posición diferente
         this.config.phaseY = Math.random() * Math.PI * 2;
         this.config.phaseX = Math.random() * Math.PI * 2;
+        
+        // Obtener configuración según el nivel actual
+        const currentLevel = window.getCurrentLevel ? window.getCurrentLevel() : 1;
+        const levelConfig = this.getConfigForLevel(currentLevel);
+        
+        // Aplicar configuración del nivel
+        Object.assign(this.config, levelConfig);
+        
         this.config.isInitialized = true;
-        console.log("Sistema de movimiento inicializado");
+        console.log(`Sistema de movimiento inicializado para nivel ${currentLevel}`);
     },
 
     // Actualizar la posición
     update: function() {
         if (!this.config.isInitialized) {
             this.init();
+        }
+
+        // Verificar si el nivel ha cambiado
+        const currentLevel = window.getCurrentLevel ? window.getCurrentLevel() : 1;
+        const levelConfig = this.getConfigForLevel(currentLevel);
+        
+        // Actualizar configuración si es necesario
+        if (this.config.amplitudeY !== levelConfig.amplitudeY ||
+            this.config.amplitudeX !== levelConfig.amplitudeX ||
+            this.config.speed !== levelConfig.speed) {
+            Object.assign(this.config, levelConfig);
+            console.log(`Configuración de movimiento actualizada para nivel ${currentLevel}`);
         }
 
         const currentTime = performance.now();
