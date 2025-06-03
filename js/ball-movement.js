@@ -228,6 +228,75 @@ let ballMovement = {
         return this.config.currentPosition;
     },
 
+    // 🆕 FUNCIÓN UNIFICADA PARA MANTENER POSICIÓN EN DESTINO
+    maintainPositionAtTarget: function() {
+        if (!this.config.currentTarget) return this.config.currentPosition;
+
+        // Recalcular coordenadas en tiempo real según el tipo de destino
+        const coordenadasActuales = this.config.currentTarget.tipo === "celda" 
+            ? window.obtenerCoordenadasDescubiertas()
+            : window.obtenerCoordenadasCubiertas();
+
+        if (!coordenadasActuales || coordenadasActuales.length === 0) {
+            console.warn("No hay coordenadas actuales disponibles");
+            return this.config.currentPosition;
+        }
+
+        // Buscar la coordenada correspondiente al target actual
+        let targetActualizado = null;
+        for (const coord of coordenadasActuales) {
+            if (this.config.currentTarget.tipo === "celda") {
+                if (coord.indiceCelda && 
+                    coord.indiceCelda.fila === this.config.currentTarget.indiceCelda.fila &&
+                    coord.indiceCelda.columna === this.config.currentTarget.indiceCelda.columna) {
+                    targetActualizado = coord;
+                    break;
+                }
+            } else { // tipo "interseccion"
+                if (coord.indiceInterseccion && 
+                    coord.indiceInterseccion.i_linea === this.config.currentTarget.indiceInterseccion.i_linea &&
+                    coord.indiceInterseccion.j_linea === this.config.currentTarget.indiceInterseccion.j_linea) {
+                    targetActualizado = coord;
+                    break;
+                }
+            }
+        }
+
+        if (!targetActualizado) {
+            console.warn("No se encontró el punto destino en las coordenadas actuales");
+            return this.config.currentPosition;
+        }
+
+        // Obtener el radio según el tipo de destino
+        const radius = this.config.currentTarget.tipo === "celda" 
+            ? this.config.uncoveredMaintainRadius 
+            : this.config.coveredMaintainRadius;
+
+        // Calcular offset de mantenimiento
+        const angle = this.getCurrentAngle();
+        const offsetX = Math.cos(angle) * radius;
+        const offsetY = Math.sin(angle * 1.5) * radius;
+
+        // Aplicar offset directamente a la posición actualizada del target
+        const newPosition = {
+            x: targetActualizado.x + offsetX,
+            y: targetActualizado.y + offsetY
+        };
+
+        // Verificar que las coordenadas sean válidas
+        if (isNaN(newPosition.x) || isNaN(newPosition.y)) {
+            console.error("Error al calcular nueva posición - usando offset fijo de seguridad");
+            // Usar offset fijo de 2px en x y 2px en y desde el punto destino
+            return {
+                x: targetActualizado.x + 2,
+                y: targetActualizado.y + 2
+            };
+        }
+
+        this.config.currentPosition = newPosition;
+        return this.config.currentPosition;
+    },
+
     // 🆕 MANTENER POSICIÓN DESCUBIERTA CON SELECT CASE POR NIVEL
     maintainUncoveredPosition: function() {
         const currentLevel = this.getCurrentLevel();
@@ -235,68 +304,15 @@ let ballMovement = {
         if (!this.config.currentTarget) return this.config.currentPosition;
 
         switch(currentLevel) {
-            case 1: {
-                // NIVEL 1: Posición estática con pequeños movimientos
-                const angle = this.getCurrentAngle();
-                const radius = this.config.uncoveredMaintainRadius;
-                const target = this.config.currentTarget;
-                
-                // Movimiento elíptico suave alrededor del punto estático
-                const newX = target.x + Math.cos(angle) * radius;
-                const newY = target.y + Math.sin(angle * 1.5) * radius; // Multiplicador 1.5 para movimiento más orgánico
-                
-                this.config.currentPosition = { x: newX, y: newY };
-                break;
-            }
-            
-            case 2: {
-                // NIVEL 2: Mantener posición alrededor del punto que rota dinámicamente
-                // Recalcular las coordenadas descubiertas EN TIEMPO REAL
-                const coordenadasActuales = window.obtenerCoordenadasDescubiertas();
-                if (!coordenadasActuales || coordenadasActuales.length === 0) {
-                    return this.config.currentPosition;
-                }
-                
-                // Buscar la coordenada correspondiente al target actual
-                let targetActualizado = null;
-                for (const coord of coordenadasActuales) {
-                    if (coord.indiceCelda && 
-                        coord.indiceCelda.fila === this.config.currentTarget.indiceCelda.fila &&
-                        coord.indiceCelda.columna === this.config.currentTarget.indiceCelda.columna) {
-                        targetActualizado = coord;
-                        break;
-                    }
-                }
-                
-                if (!targetActualizado) {
-                    return this.config.currentPosition;
-                }
-
-                const angle = this.getCurrentAngle();
-                const radius = this.config.uncoveredMaintainRadius;
-                
-                // Movimiento elíptico suave alrededor del punto que rota
-                const newX = targetActualizado.x + Math.cos(angle) * radius;
-                const newY = targetActualizado.y + Math.sin(angle * 1.5) * radius; // Multiplicador 1.5 para movimiento más orgánico
-                
-                this.config.currentPosition = { x: newX, y: newY };
-                break;
-            }
+            case 1:
+            case 2:
+                return this.maintainPositionAtTarget();
             
             default: {
-                console.warn(`⚠️ Nivel ${currentLevel} no implementado para mantener posición descubierta, usando nivel 1`);
-                // Fallback a nivel 1
-                const angle = this.getCurrentAngle();
-                const radius = this.config.uncoveredMaintainRadius;
-                const target = this.config.currentTarget;
-                const newX = target.x + Math.cos(angle) * radius;
-                const newY = target.y + Math.sin(angle * 1.5) * radius;
-                this.config.currentPosition = { x: newX, y: newY };
-                break;
+                console.warn(`⚠️ Nivel ${currentLevel} no implementado para mantener posición descubierta, usando función unificada`);
+                return this.maintainPositionAtTarget();
             }
         }
-        
-        return this.config.currentPosition;
     },
 
     // === Algoritmos para estado cubierto ===
@@ -455,66 +471,15 @@ let ballMovement = {
         if (!this.config.currentTarget) return this.config.currentPosition;
 
         switch(currentLevel) {
-            case 1: {
-                // NIVEL 1: Posición estática con pequeños movimientos
-                const angle = this.getCurrentAngle();
-                const radius = this.config.coveredMaintainRadius;
-                const target = this.config.currentTarget;
-                
-                const newX = target.x + Math.cos(angle) * radius;
-                const newY = target.y + Math.sin(angle) * radius;
-                
-                this.config.currentPosition = { x: newX, y: newY };
-                break;
-            }
-            
-            case 2: {
-                // NIVEL 2: Mantener posición alrededor del punto que rota dinámicamente
-                // Recalcular las coordenadas cubiertas EN TIEMPO REAL
-                const coordenadasActuales = window.obtenerCoordenadasCubiertas();
-                if (!coordenadasActuales || coordenadasActuales.length === 0) {
-                    return this.config.currentPosition;
-                }
-                
-                // Buscar la coordenada correspondiente al target actual
-                let targetActualizado = null;
-                for (const coord of coordenadasActuales) {
-                    if (coord.indiceInterseccion && 
-                        coord.indiceInterseccion.i_linea === this.config.currentTarget.indiceInterseccion.i_linea &&
-                        coord.indiceInterseccion.j_linea === this.config.currentTarget.indiceInterseccion.j_linea) {
-                        targetActualizado = coord;
-                        break;
-                    }
-                }
-                
-                if (!targetActualizado) {
-                    return this.config.currentPosition;
-                }
-
-                const angle = this.getCurrentAngle();
-                const radius = this.config.coveredMaintainRadius;
-                
-                const newX = targetActualizado.x + Math.cos(angle) * radius;
-                const newY = targetActualizado.y + Math.sin(angle) * radius;
-                
-                this.config.currentPosition = { x: newX, y: newY };
-                break;
-            }
+            case 1:
+            case 2:
+                return this.maintainPositionAtTarget();
             
             default: {
-                console.warn(`⚠️ Nivel ${currentLevel} no implementado para mantener posición cubierta, usando nivel 1`);
-                // Fallback a nivel 1
-                const angle = this.getCurrentAngle();
-                const radius = this.config.coveredMaintainRadius;
-                const target = this.config.currentTarget;
-                const newX = target.x + Math.cos(angle) * radius;
-                const newY = target.y + Math.sin(angle) * radius;
-                this.config.currentPosition = { x: newX, y: newY };
-                break;
+                console.warn(`⚠️ Nivel ${currentLevel} no implementado para mantener posición cubierta, usando función unificada`);
+                return this.maintainPositionAtTarget();
             }
         }
-        
-        return this.config.currentPosition;
     },
 
     // Obtener el tiempo que la pelota ha estado en el destino actual
