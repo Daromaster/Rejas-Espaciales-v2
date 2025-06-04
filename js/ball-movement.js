@@ -225,23 +225,16 @@ let ballMovement = {
                         y: current.y + dy * porcentajeFinal
                     };
                 } else {
-                    // PARTE 2: MANTENIMIENTO
-                    if (1 === 1) {  // Temporalmente desactivado
-                        const angle = this.getCurrentAngle();
-                        const radius = this.config.uncoveredMaintainRadius;
-                        const newPosition = {
-                            x: targetActualizado.x + Math.cos(angle) * radius,
-                            y: targetActualizado.y + Math.sin(angle) * radius
-                        };
-    
-                        const dx = newPosition.x - current.x;
-                        const dy = newPosition.y - current.y;
-                        
-                        this.config.currentPosition = {
-                            x: current.x + dx * this.config.moveSpeed,
-                            y: current.y + dy * this.config.moveSpeed
-                        };
-                    }
+                    // PARTE 2: MANTENIMIENTO - Usando la misma velocidad que el giro general
+                    const angle = this.getCurrentAngle(); // Ya usa rotationSpeed: 0.005
+                    const radius = this.config.uncoveredMaintainRadius;
+                    const newPosition = {
+                        x: targetActualizado.x + Math.cos(angle) * radius,
+                        y: targetActualizado.y + Math.sin(angle) * radius
+                    };
+
+                    // Aplicar la nueva posición directamente, sin interpolación adicional
+                    this.config.currentPosition = newPosition;
                 }
                 
                 break;
@@ -477,23 +470,16 @@ let ballMovement = {
                         y: current.y + dy * porcentajeFinal
                     };
                 } else {
-                    // PARTE 2: MANTENIMIENTO
-                    if (1 === 1) {  // Temporalmente desactivado
-                        const angle = this.getCurrentAngle();
-                        const radius = this.config.coveredMaintainRadius;
-                        const newPosition = {
-                            x: targetActualizado.x + Math.cos(angle) * radius,
-                            y: targetActualizado.y + Math.sin(angle) * radius
-                        };
-    
-                        const dx = newPosition.x - current.x;
-                        const dy = newPosition.y - current.y;
-                        
-                        this.config.currentPosition = {
-                            x: current.x + dx * this.config.moveSpeed,
-                            y: current.y + dy * this.config.moveSpeed
-                        };
-                    }
+                    // PARTE 2: MANTENIMIENTO - Usando la misma velocidad que el giro general
+                    const angle = this.getCurrentAngle(); // Ya usa rotationSpeed: 0.005
+                    const radius = this.config.coveredMaintainRadius;
+                    const newPosition = {
+                        x: targetActualizado.x + Math.cos(angle) * radius,
+                        y: targetActualizado.y + Math.sin(angle) * radius
+                    };
+
+                    // Aplicar la nueva posición directamente, sin interpolación adicional
+                    this.config.currentPosition = newPosition;
                 }
                 
                 break;
