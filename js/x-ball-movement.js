@@ -25,11 +25,7 @@ let ballMovement = {
         timeAtCurrentTarget: 0,  // Tiempo transcurrido desde selección del objetivo
         baseSpeed: 0.02,         // Velocidad base
         accelerationFactor: 1.0, // Factor de aceleración acumulativo
-        frameCount: 0,           // Contador de frames para crecimiento parabólico
-
-        // 🆕 Control de acercamiento discreto nivel 2
-        isInDiscreteApproach: false,  // Bandera para proceso de acercamiento discreto
-        currentApproachDistance: 4.0   // Distancia actual para el acercamiento discreto
+        frameCount: 0           // Contador de frames para crecimiento parabólico
     },
 
     // ============================================================================
@@ -214,10 +210,10 @@ let ballMovement = {
 
                 // Actualizar estado
                 this.config.timeAtDestination += 1/60;
-                this.config.isAtDestination = distanciaActual <= 2; // Mantenimiento a 2px
+                this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
 
-                if (distanciaActual > 4) {
-                    // ETAPA 1: VIAJE INICIAL CUADRÁTICO (> 4px)
+                if (distanciaActual > this.config.destinationThreshold) {
+                    // PARTE 1: VIAJE HACIA EL PUNTO
                     const porcentajeBase = 0.02;
                     this.config.frameCount = (this.config.frameCount || 0) + 1;
                     const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
@@ -228,39 +224,16 @@ let ballMovement = {
                         x: current.x + dx * porcentajeFinal,
                         y: current.y + dy * porcentajeFinal
                     };
-                } else if (distanciaActual > 2) {
-                    // ETAPA 2: ACERCAMIENTO SUAVE CON PREDICCIÓN (4px > x > 2px)
-                    // Calcular punto de predicción basado en el movimiento circular
-                    const anguloActual = this.getCurrentAngle();
-                    const anguloPrediccion = anguloActual + this.config.rotationSpeed * 2; // Predecir 2 frames adelante
-                    const radius = this.config.uncoveredMaintainRadius;
-                    
-                    // Punto predicho donde estará el target
-                    const puntoPrediccion = {
-                        x: targetActualizado.x + Math.cos(anguloPrediccion) * radius,
-                        y: targetActualizado.y + Math.sin(anguloPrediccion) * radius
-                    };
-
-                    // Calcular vector hacia el punto predicho
-                    const dxPrediccion = puntoPrediccion.x - current.x;
-                    const dyPrediccion = puntoPrediccion.y - current.y;
-                    
-                    // Factor de suavizado que aumenta cuando nos acercamos
-                    const factorSuavizado = Math.min(0.3, 0.1 + (4 - distanciaActual) * 0.05);
-                    
-                    this.config.currentPosition = {
-                        x: current.x + dxPrediccion * factorSuavizado,
-                        y: current.y + dyPrediccion * factorSuavizado
-                    };
                 } else {
-                    // ETAPA 3: MANTENIMIENTO CIRCULAR (≤ 2px)
-                    const angle = this.getCurrentAngle();
+                    // PARTE 2: MANTENIMIENTO - Usando la misma velocidad que el giro general
+                    const angle = this.getCurrentAngle(); // Ya usa rotationSpeed: 0.005
                     const radius = this.config.uncoveredMaintainRadius;
                     const newPosition = {
                         x: targetActualizado.x + Math.cos(angle) * radius,
                         y: targetActualizado.y + Math.sin(angle) * radius
                     };
 
+                    // Aplicar la nueva posición directamente, sin interpolación adicional
                     this.config.currentPosition = newPosition;
                 }
                 
@@ -482,10 +455,10 @@ let ballMovement = {
 
                 // Actualizar estado
                 this.config.timeAtDestination += 1/60;
-                this.config.isAtDestination = distanciaActual <= 2; // Mantenimiento a 2px
+                this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
 
-                if (distanciaActual > 4) {
-                    // ETAPA 1: VIAJE INICIAL CUADRÁTICO (> 4px)
+                if (distanciaActual > this.config.destinationThreshold) {
+                    // PARTE 1: VIAJE HACIA EL PUNTO
                     const porcentajeBase = 0.02;
                     this.config.frameCount = (this.config.frameCount || 0) + 1;
                     const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
@@ -496,39 +469,16 @@ let ballMovement = {
                         x: current.x + dx * porcentajeFinal,
                         y: current.y + dy * porcentajeFinal
                     };
-                } else if (distanciaActual > 2) {
-                    // ETAPA 2: ACERCAMIENTO SUAVE CON PREDICCIÓN (4px > x > 2px)
-                    // Calcular punto de predicción basado en el movimiento circular
-                    const anguloActual = this.getCurrentAngle();
-                    const anguloPrediccion = anguloActual + this.config.rotationSpeed * 2; // Predecir 2 frames adelante
-                    const radius = this.config.coveredMaintainRadius; // Usamos el radio para estado cubierto
-                    
-                    // Punto predicho donde estará el target
-                    const puntoPrediccion = {
-                        x: targetActualizado.x + Math.cos(anguloPrediccion) * radius,
-                        y: targetActualizado.y + Math.sin(anguloPrediccion) * radius
-                    };
-
-                    // Calcular vector hacia el punto predicho
-                    const dxPrediccion = puntoPrediccion.x - current.x;
-                    const dyPrediccion = puntoPrediccion.y - current.y;
-                    
-                    // Factor de suavizado que aumenta cuando nos acercamos
-                    const factorSuavizado = Math.min(0.3, 0.1 + (4 - distanciaActual) * 0.05);
-                    
-                    this.config.currentPosition = {
-                        x: current.x + dxPrediccion * factorSuavizado,
-                        y: current.y + dyPrediccion * factorSuavizado
-                    };
                 } else {
-                    // ETAPA 3: MANTENIMIENTO CIRCULAR (≤ 2px)
-                    const angle = this.getCurrentAngle();
-                    const radius = this.config.coveredMaintainRadius; // Usamos el radio para estado cubierto
+                    // PARTE 2: MANTENIMIENTO - Usando la misma velocidad que el giro general
+                    const angle = this.getCurrentAngle(); // Ya usa rotationSpeed: 0.005
+                    const radius = this.config.coveredMaintainRadius;
                     const newPosition = {
                         x: targetActualizado.x + Math.cos(angle) * radius,
                         y: targetActualizado.y + Math.sin(angle) * radius
                     };
 
+                    // Aplicar la nueva posición directamente, sin interpolación adicional
                     this.config.currentPosition = newPosition;
                 }
                 
