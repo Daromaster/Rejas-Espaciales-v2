@@ -26,6 +26,7 @@ let ballMovement = {
         baseSpeed: 0.02,         // Velocidad base
         accelerationFactor: 1.0, // Factor de aceleración acumulativo
         frameCount: 0,           // Contador de frames para crecimiento parabólico
+        isInStage1Complete: false, // 🆕 Bandera para control de etapas
 
         // 🆕 Control de acercamiento discreto nivel 2
         isInDiscreteApproach: false,  // Bandera para proceso de acercamiento discreto
@@ -216,7 +217,7 @@ let ballMovement = {
                 this.config.timeAtDestination += 1/60;
                 this.config.isAtDestination = distanciaActual <= 2; // Mantenimiento a 2px
 
-                if (distanciaActual > 4) {
+                if (distanciaActual > 4 && !this.config.isInStage1Complete) {
                     // ETAPA 1: VIAJE INICIAL CUADRÁTICO (> 4px)
                     const porcentajeBase = 0.02;
                     this.config.frameCount = (this.config.frameCount || 0) + 1;
@@ -228,32 +229,33 @@ let ballMovement = {
                         x: current.x + dx * porcentajeFinal,
                         y: current.y + dy * porcentajeFinal
                     };
-                } else if (distanciaActual > 2) {
-                    // ETAPA 2: ACERCAMIENTO SUAVE CON PREDICCIÓN (4px > x > 2px)
-                    // Calcular punto de predicción basado en el movimiento circular
-                    const anguloActual = this.getCurrentAngle();
-                    const anguloPrediccion = anguloActual + this.config.rotationSpeed * 2; // Predecir 2 frames adelante
-                    const radius = this.config.uncoveredMaintainRadius;
-                    
-                    // Punto predicho donde estará el target
-                    const puntoPrediccion = {
-                        x: targetActualizado.x + Math.cos(anguloPrediccion) * radius,
-                        y: targetActualizado.y + Math.sin(anguloPrediccion) * radius
-                    };
 
-                    // Calcular vector hacia el punto predicho
-                    const dxPrediccion = puntoPrediccion.x - current.x;
-                    const dyPrediccion = puntoPrediccion.y - current.y;
+                    // Si llegamos cerca de los 4px, marcamos la etapa 1 como completa
+                    if (distanciaActual <= 4.1) {
+                        this.config.isInStage1Complete = true;
+                        this.config.currentApproachDistance = 3.9; // Iniciamos en 3.9px para la etapa 2
+                    }
+                } else if (distanciaActual > 2) {
+                    // ETAPA 2: ACERCAMIENTO DISCRETO (4px > x > 2px)
+                    // Calcular vector unitario de dirección
+                    const magnitud = Math.hypot(dx, dy);
+                    const vectorUnitarioX = dx / magnitud;
+                    const vectorUnitarioY = dy / magnitud;
                     
-                    // Factor de suavizado que aumenta cuando nos acercamos
-                    const factorSuavizado = Math.min(0.3, 0.1 + (4 - distanciaActual) * 0.05);
-                    
+                    // Posicionar la pelota a la distancia actual en la nueva línea
                     this.config.currentPosition = {
-                        x: current.x + dxPrediccion * factorSuavizado,
-                        y: current.y + dyPrediccion * factorSuavizado
+                        x: targetActualizado.x - (vectorUnitarioX * this.config.currentApproachDistance),
+                        y: targetActualizado.y - (vectorUnitarioY * this.config.currentApproachDistance)
                     };
+                    
+                    // Reducir la distancia para el próximo frame
+                    this.config.currentApproachDistance = Math.max(2.1, this.config.currentApproachDistance - 0.1);
                 } else {
                     // ETAPA 3: MANTENIMIENTO CIRCULAR (≤ 2px)
+                    // Resetear la bandera para el próximo ciclo
+                    this.config.isInStage1Complete = false;
+                    this.config.currentApproachDistance = 4.0;
+                    
                     const angle = this.getCurrentAngle();
                     const radius = this.config.uncoveredMaintainRadius;
                     const newPosition = {
@@ -484,7 +486,7 @@ let ballMovement = {
                 this.config.timeAtDestination += 1/60;
                 this.config.isAtDestination = distanciaActual <= 2; // Mantenimiento a 2px
 
-                if (distanciaActual > 4) {
+                if (distanciaActual > 4 && !this.config.isInStage1Complete) {
                     // ETAPA 1: VIAJE INICIAL CUADRÁTICO (> 4px)
                     const porcentajeBase = 0.02;
                     this.config.frameCount = (this.config.frameCount || 0) + 1;
@@ -496,34 +498,35 @@ let ballMovement = {
                         x: current.x + dx * porcentajeFinal,
                         y: current.y + dy * porcentajeFinal
                     };
-                } else if (distanciaActual > 2) {
-                    // ETAPA 2: ACERCAMIENTO SUAVE CON PREDICCIÓN (4px > x > 2px)
-                    // Calcular punto de predicción basado en el movimiento circular
-                    const anguloActual = this.getCurrentAngle();
-                    const anguloPrediccion = anguloActual + this.config.rotationSpeed * 2; // Predecir 2 frames adelante
-                    const radius = this.config.coveredMaintainRadius; // Usamos el radio para estado cubierto
-                    
-                    // Punto predicho donde estará el target
-                    const puntoPrediccion = {
-                        x: targetActualizado.x + Math.cos(anguloPrediccion) * radius,
-                        y: targetActualizado.y + Math.sin(anguloPrediccion) * radius
-                    };
 
-                    // Calcular vector hacia el punto predicho
-                    const dxPrediccion = puntoPrediccion.x - current.x;
-                    const dyPrediccion = puntoPrediccion.y - current.y;
+                    // Si llegamos cerca de los 4px, marcamos la etapa 1 como completa
+                    if (distanciaActual <= 4.1) {
+                        this.config.isInStage1Complete = true;
+                        this.config.currentApproachDistance = 3.9; // Iniciamos en 3.9px para la etapa 2
+                    }
+                } else if (distanciaActual > 2) {
+                    // ETAPA 2: ACERCAMIENTO DISCRETO (4px > x > 2px)
+                    // Calcular vector unitario de dirección
+                    const magnitud = Math.hypot(dx, dy);
+                    const vectorUnitarioX = dx / magnitud;
+                    const vectorUnitarioY = dy / magnitud;
                     
-                    // Factor de suavizado que aumenta cuando nos acercamos
-                    const factorSuavizado = Math.min(0.3, 0.1 + (4 - distanciaActual) * 0.05);
-                    
+                    // Posicionar la pelota a la distancia actual en la nueva línea
                     this.config.currentPosition = {
-                        x: current.x + dxPrediccion * factorSuavizado,
-                        y: current.y + dyPrediccion * factorSuavizado
+                        x: targetActualizado.x - (vectorUnitarioX * this.config.currentApproachDistance),
+                        y: targetActualizado.y - (vectorUnitarioY * this.config.currentApproachDistance)
                     };
+                    
+                    // Reducir la distancia para el próximo frame
+                    this.config.currentApproachDistance = Math.max(2.1, this.config.currentApproachDistance - 0.1);
                 } else {
                     // ETAPA 3: MANTENIMIENTO CIRCULAR (≤ 2px)
+                    // Resetear la bandera para el próximo ciclo
+                    this.config.isInStage1Complete = false;
+                    this.config.currentApproachDistance = 4.0;
+                    
                     const angle = this.getCurrentAngle();
-                    const radius = this.config.coveredMaintainRadius; // Usamos el radio para estado cubierto
+                    const radius = this.config.coveredMaintainRadius;
                     const newPosition = {
                         x: targetActualizado.x + Math.cos(angle) * radius,
                         y: targetActualizado.y + Math.sin(angle) * radius
