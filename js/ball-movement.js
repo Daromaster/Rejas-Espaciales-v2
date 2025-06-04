@@ -105,7 +105,7 @@ let ballMovement = {
     // 🆕 MOVER HACIA OBJETIVO DESCUBIERTO CON SELECT CASE POR NIVEL
     moveToUncoveredTarget: function() {
         const currentLevel = this.getCurrentLevel();
-        
+        console.log ("usando moveTuUncoveredTarget");
         if (!this.config.currentTarget) {
             if (!this.selectRandomUncoveredTarget()) {
                 return this.config.currentPosition;
@@ -152,48 +152,50 @@ let ballMovement = {
             case 2: {
                 const targetActualizado = window.getCentroCeldaActualizado(this.config.currentTarget.indiceCelda);
                 if (!targetActualizado) {
-                    console.error("No se pudo obtener la posición actualizada del destino descubierto nivel 2");
+                    console.warn("No se pudo obtener la posición actualizada del destino");
                     return this.config.currentPosition;
                 }
 
-                // Calcular movimiento circular alrededor del punto actualizado
-                const angle = this.getCurrentAngle();
-                const radius = this.config.uncoveredMaintainRadius;
-                const targetPosition = {
-                    x: targetActualizado.x + Math.cos(angle) * radius,
-                    y: targetActualizado.y + Math.sin(angle) * radius
-                };
-
-                // Calcular distancia actual al objetivo
                 const current = this.config.currentPosition;
-                const dx = targetPosition.x - current.x;
-                const dy = targetPosition.y - current.y;
+                const dx = targetActualizado.x - current.x;
+                const dy = targetActualizado.y - current.y;
                 const distanciaActual = Math.hypot(dx, dy);
 
-                // 🆕 NUEVO SISTEMA DE PROGRESIÓN PARABÓLICA
-                // Porcentaje base de avance (2%)
-                const porcentajeBase = 0.02;
-                
-                // Incrementar contador de frames
-                this.config.frameCount = (this.config.frameCount || 0) + 1;
-                
-                // Calcular incremento parabólico
-                const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
-                
-                // Incrementar factor de aceleración con crecimiento parabólico
-                this.config.accelerationFactor = (this.config.accelerationFactor || 1.0) + incremento;
-                
-                // Calcular porcentaje final de avance (sin límite máximo)
-                const porcentajeFinal = porcentajeBase * this.config.accelerationFactor;
-                
-                // Aplicar movimiento
-                this.config.currentPosition = {
-                    x: current.x + dx * porcentajeFinal,
-                    y: current.y + dy * porcentajeFinal
-                };
-
-                // Verificar si ha llegado al destino
+                // Actualizar estado
+                this.config.timeAtDestination += 1/60;
                 this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
+
+                if (distanciaActual > this.config.destinationThreshold) {
+                    // PARTE 1: VIAJE HACIA EL PUNTO
+                    const porcentajeBase = 0.02;
+                    this.config.frameCount = (this.config.frameCount || 0) + 1;
+                    const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
+                    this.config.accelerationFactor = (this.config.accelerationFactor || 1.0) + incremento;
+                    const porcentajeFinal = porcentajeBase * this.config.accelerationFactor;
+                    
+                    this.config.currentPosition = {
+                        x: current.x + dx * porcentajeFinal,
+                        y: current.y + dy * porcentajeFinal
+                    };
+                } else {
+                    // PARTE 2: MANTENIMIENTO
+                    if (1 === 1) {  // Temporalmente desactivado
+                        const angle = this.getCurrentAngle();
+                        const radius = this.config.uncoveredMaintainRadius;
+                        const newPosition = {
+                            x: targetActualizado.x + Math.cos(angle) * radius,
+                            y: targetActualizado.y + Math.sin(angle) * radius
+                        };
+    
+                        const dx = newPosition.x - current.x;
+                        const dy = newPosition.y - current.y;
+                        
+                        this.config.currentPosition = {
+                            x: current.x + dx * this.config.moveSpeed,
+                            y: current.y + dy * this.config.moveSpeed
+                        };
+                    }
+                }
                 
                 break;
             }
@@ -230,6 +232,7 @@ let ballMovement = {
 
     // 🆕 FUNCIÓN UNIFICADA PARA MANTENER POSICIÓN EN DESTINO
     maintainPositionAtTarget: function() {
+        console.log ("usando maintainPositionAtTarget");
         if (!this.config.currentTarget) return this.config.currentPosition;
 
         // Recalcular coordenadas en tiempo real según el tipo de destino
@@ -388,48 +391,50 @@ let ballMovement = {
             case 2: {
                 const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
                 if (!targetActualizado) {
-                    console.error("❌ No se pudo obtener la posición actualizada del destino cubierto nivel 2");
+                    console.warn("No se pudo obtener la posición actualizada del destino");
                     return this.config.currentPosition;
                 }
 
-                // Calcular movimiento circular alrededor del punto actualizado
-                const angle = this.getCurrentAngle();
-                const radius = this.config.coveredMaintainRadius;
-                const newPosition = {
-                    x: targetActualizado.x + Math.cos(angle) * radius,
-                    y: targetActualizado.y + Math.sin(angle) * radius
-                };
-
-                // Calcular distancia actual
                 const current = this.config.currentPosition;
-                const dx = newPosition.x - current.x;
-                const dy = newPosition.y - current.y;
+                const dx = targetActualizado.x - current.x;
+                const dy = targetActualizado.y - current.y;
                 const distanciaActual = Math.hypot(dx, dy);
-                
-                // 🆕 NUEVO SISTEMA DE PROGRESIÓN PARABÓLICA
-                // Porcentaje base de avance (2%)
-                const porcentajeBase = 0.02;
-                
-                // Incrementar contador de frames
-                this.config.frameCount = (this.config.frameCount || 0) + 1;
-                
-                // Calcular incremento parabólico
-                const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
-                
-                // Incrementar factor de aceleración con crecimiento parabólico
-                this.config.accelerationFactor = (this.config.accelerationFactor || 1.0) + incremento;
-                
-                // Calcular porcentaje final de avance (sin límite máximo)
-                const porcentajeFinal = porcentajeBase * this.config.accelerationFactor;
-                
-                // Aplicar movimiento
-                this.config.currentPosition = {
-                    x: current.x + dx * porcentajeFinal,
-                    y: current.y + dy * porcentajeFinal
-                };
 
-                // Verificar si ha llegado al destino
+                // Actualizar estado
+                this.config.timeAtDestination += 1/60;
                 this.config.isAtDestination = distanciaActual <= this.config.destinationThreshold;
+
+                if (distanciaActual > this.config.destinationThreshold) {
+                    // PARTE 1: VIAJE HACIA EL PUNTO
+                    const porcentajeBase = 0.02;
+                    this.config.frameCount = (this.config.frameCount || 0) + 1;
+                    const incremento = 0.00015 * Math.pow(this.config.frameCount, 2.0);
+                    this.config.accelerationFactor = (this.config.accelerationFactor || 1.0) + incremento;
+                    const porcentajeFinal = porcentajeBase * this.config.accelerationFactor;
+                    
+                    this.config.currentPosition = {
+                        x: current.x + dx * porcentajeFinal,
+                        y: current.y + dy * porcentajeFinal
+                    };
+                } else {
+                    // PARTE 2: MANTENIMIENTO
+                    if (1 === 1) {  // Temporalmente desactivado
+                        const angle = this.getCurrentAngle();
+                        const radius = this.config.coveredMaintainRadius;
+                        const newPosition = {
+                            x: targetActualizado.x + Math.cos(angle) * radius,
+                            y: targetActualizado.y + Math.sin(angle) * radius
+                        };
+    
+                        const dx = newPosition.x - current.x;
+                        const dy = newPosition.y - current.y;
+                        
+                        this.config.currentPosition = {
+                            x: current.x + dx * this.config.moveSpeed,
+                            y: current.y + dy * this.config.moveSpeed
+                        };
+                    }
+                }
                 
                 break;
             }
