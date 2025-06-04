@@ -102,15 +102,62 @@ let ballMovement = {
         return this.config.currentTarget;
     },
 
+    // 🆕 FUNCIÓN VERIFICADORA DE PUNTOS VÁLIDOS
+    verificarPuntoValido: function(target) {
+        if (!target) return false;
+
+        // Obtener todas las coordenadas actuales según el tipo
+        const coordenadasActuales = target.tipo === "celda" 
+            ? window.obtenerCoordenadasDescubiertas()
+            : window.obtenerCoordenadasCubiertas();
+
+        if (!coordenadasActuales || coordenadasActuales.length === 0) {
+            console.warn("No hay coordenadas actuales disponibles para verificar");
+            return false;
+        }
+
+        // Buscar si el punto existe en las coordenadas actuales
+        const puntoExiste = coordenadasActuales.some(coord => {
+            if (target.tipo === "celda") {
+                return coord.indiceCelda &&
+                    coord.indiceCelda.fila === target.indiceCelda.fila &&
+                    coord.indiceCelda.columna === target.indiceCelda.columna;
+            } else { // tipo "interseccion"
+                return coord.indiceInterseccion &&
+                    coord.indiceInterseccion.i_linea === target.indiceInterseccion.i_linea &&
+                    coord.indiceInterseccion.j_linea === target.indiceInterseccion.j_linea;
+            }
+        });
+
+        if (!puntoExiste) {
+            console.warn("El punto destino ya no existe en la reja actual");
+        }
+
+        return puntoExiste;
+    },
+
     // 🆕 MOVER HACIA OBJETIVO DESCUBIERTO CON SELECT CASE POR NIVEL
     moveToUncoveredTarget: function() {
+        console.log("usando moveTuUncoveredTarget");
         const currentLevel = this.getCurrentLevel();
-        console.log ("usando moveTuUncoveredTarget");
+        
         if (!this.config.currentTarget) {
             if (!this.selectRandomUncoveredTarget()) {
                 return this.config.currentPosition;
             }
             this.config.timeAtDestination = 0;
+            this.config.frameCount = 0;
+            this.config.accelerationFactor = 1.0;
+        }
+
+        // 🆕 Verificar si el punto actual es válido
+        if (!this.verificarPuntoValido(this.config.currentTarget)) {
+            console.log("Punto no válido, seleccionando nuevo punto...");
+            if (!this.selectRandomUncoveredTarget()) {
+                return this.config.currentPosition;
+            }
+            this.config.timeAtDestination = 0;
+            this.config.frameCount = 0;
             this.config.accelerationFactor = 1.0;
         }
 
@@ -351,6 +398,19 @@ let ballMovement = {
                 return this.config.currentPosition;
             }
             this.config.timeAtDestination = 0;
+            this.config.frameCount = 0;
+            this.config.accelerationFactor = 1.0;
+        }
+
+        // 🆕 Verificar si el punto actual es válido
+        if (!this.verificarPuntoValido(this.config.currentTarget)) {
+            console.log("Punto no válido, seleccionando nuevo punto...");
+            if (!this.selectRandomCoveredTarget()) {
+                return this.config.currentPosition;
+            }
+            this.config.timeAtDestination = 0;
+            this.config.frameCount = 0;
+            this.config.accelerationFactor = 1.0;
         }
 
         switch(currentLevel) {
