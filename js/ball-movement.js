@@ -15,10 +15,9 @@ let ballMovement = {
         uncoveredMaintainRadius: 1.5, // Radio específico para estado descubierto
         coveredMaintainRadius: 1.5,    // Radio específico para estado cubierto
 
-        // Control de estado y tiempo
-        isAtDestination: false,  // Solo para debugging/verificación
-        timeAtDestination: 0,    // Tiempo en el estado actual
-        destinationThreshold: 4,  // Solo para debugging/verificación
+        // Control de estado
+        isAtDestination: false,  // revisar donde se usa
+        destinationThreshold: 4,  
         
         // 🆕 Variables para algoritmo adaptativo
         initialDistance: 0,      // Distancia inicial al seleccionar objetivo
@@ -154,7 +153,6 @@ let ballMovement = {
             if (!this.selectRandomUncoveredTarget()) {
                 return this.config.currentPosition;
             }
-            this.config.timeAtDestination = 0;
             this.config.frameCount = 0;
             this.config.accelerationFactor = 1.0;
         }
@@ -165,7 +163,6 @@ let ballMovement = {
             if (!this.selectRandomUncoveredTarget()) {
                 return this.config.currentPosition;
             }
-            this.config.timeAtDestination = 0;
             this.config.frameCount = 0;
             this.config.accelerationFactor = 1.0;
         }
@@ -197,7 +194,7 @@ let ballMovement = {
                 };
 
                 // Incrementar tiempo (basado solo en el estado del movimiento)
-                this.config.timeAtDestination += 1/60;
+                this.config.timeAtCurrentTarget += 1/60;
 
                 // Solo para debugging/verificación (ORIGINAL: distancia hacia newPosition)
                 const distancia = Math.hypot(dx, dy);
@@ -221,7 +218,7 @@ let ballMovement = {
                 console.log(`[UNCOVERED] Estado actual - Distancia: ${distanciaActual.toFixed(2)}px, Etapa1Completa: ${this.config.isInStage1Complete}`);
 
                 // Actualizar estado
-                this.config.timeAtDestination += 1/60;
+                this.config.timeAtCurrentTarget += 1/60;
                 this.config.isAtDestination = distanciaActual <= 2; // Mantenimiento a 2px
 
                 if (distanciaActual > 4 && !this.config.isInStage1Complete) {
@@ -316,7 +313,7 @@ let ballMovement = {
                         y: current.y + dy * this.config.moveSpeed
                     };
                     // Tiempo e isAtDestination
-                    this.config.timeAtDestination += 1/60;
+                    this.config.timeAtCurrentTarget += 1/60;
                     const distancia = Math.hypot(dx, dy);
                     this.config.isAtDestination = distancia <= this.config.destinationThreshold;
                 }
@@ -450,7 +447,6 @@ let ballMovement = {
             if (!this.selectRandomCoveredTarget()) {
                 return this.config.currentPosition;
             }
-            this.config.timeAtDestination = 0;
             this.config.frameCount = 0;
             this.config.accelerationFactor = 1.0;
         }
@@ -461,7 +457,6 @@ let ballMovement = {
             if (!this.selectRandomCoveredTarget()) {
                 return this.config.currentPosition;
             }
-            this.config.timeAtDestination = 0;
             this.config.frameCount = 0;
             this.config.accelerationFactor = 1.0;
         }
@@ -493,7 +488,7 @@ let ballMovement = {
                 };
 
                 // Incrementar tiempo (basado solo en el estado del movimiento)
-                this.config.timeAtDestination += 1/60;
+                this.config.timeAtCurrentTarget += 1/60;
 
                 // Solo para debugging/verificación (ORIGINAL: distancia hacia newPosition)
                 const distancia = Math.hypot(dx, dy);
@@ -517,7 +512,7 @@ let ballMovement = {
                 console.log(`[COVERED] Estado actual - Distancia: ${distanciaActual.toFixed(2)}px, Etapa1Completa: ${this.config.isInStage1Complete}`);
 
                 // Actualizar estado
-                this.config.timeAtDestination += 1/60;
+                this.config.timeAtCurrentTarget += 1/60;
                 this.config.isAtDestination = distanciaActual <= 2; // Mantenimiento a 2px
 
                 if (distanciaActual > 4 && !this.config.isInStage1Complete) {
@@ -612,7 +607,7 @@ let ballMovement = {
                         y: current.y + dy * this.config.moveSpeed
                     };
                     // Tiempo e isAtDestination
-                    this.config.timeAtDestination += 1/60;
+                    this.config.timeAtCurrentTarget += 1/60;
                     const distancia = Math.hypot(dx, dy);
                     this.config.isAtDestination = distancia <= this.config.destinationThreshold;
                 }
@@ -641,19 +636,13 @@ let ballMovement = {
         }
     },
 
-    // Obtener el tiempo que la pelota ha estado en el destino actual
-    getTimeAtDestination: function() {
-        return this.config.timeAtDestination;
-    },
-
     // Verificar si la pelota está en el destino
     isAtDestination: function() {
         return this.config.isAtDestination;
     },
 
-    // Resetear el tiempo en destino
+    // Resetear estado de destino
     resetTimeAtDestination: function() {
-        this.config.timeAtDestination = 0;
         this.config.isAtDestination = false;
     }
 };

@@ -124,7 +124,6 @@ function resetGame() {
         } else {
             // Fallback si no existe la función específica
             ballMovement.config.currentTarget = null;
-            ballMovement.config.timeAtDestination = 0;
         }
         
         // Reiniciar dirección de movimiento de la pelota
@@ -419,4 +418,24 @@ function updateGame() {
             break;
         }
     }
-} 
+}
+
+// Inicializar el estado del juego
+function init() {
+    this.currentLevel = 1;
+    this.currentSubLevel = 1;
+    this.totalLevels = 2;
+    this.stateTime = 0;
+    this.coveredDuration = 1000;  // 1 segundo en estado cubierto
+    this.uncoveredDuration = 1000; // 1 segundo en estado descubierto
+    this.isCovered = false;
+    this.isGameOver = false;
+    this.score = 0;
+    this.ballMovement = window.ballMovement;
+    this.ballMovement.config.currentTarget = null;
+    this.ballMovement.config.isAtDestination = false;
+    console.log("Estado del juego inicializado");
+}
+
+// Exportar funciones necesarias
+window.init = init; 
