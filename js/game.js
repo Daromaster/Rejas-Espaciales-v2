@@ -1,5 +1,5 @@
 // Constante de versión del juego
-const GAME_VERSION = "2.1.104";
+const GAME_VERSION = "2.1.105";
 window.GAME_VERSION = GAME_VERSION;
 
 // Test de edición - Comentario simple
@@ -247,25 +247,23 @@ function gameLoop() {
     switch(currentLevel) {
         case 1: {
             // ═══════════════════════════════════════════════════════════
-            // NIVEL 1: Alternancia fija con tiempos fijos de 950ms
+            // NIVEL 1: Alternancia fija con tiempos fijos
             // ═══════════════════════════════════════════════════════════
+            const TIEMPO_EN_DESTINO = 950; // ms que debe permanecer en cada destino
+            const PATRON_FIJO = true;      // true = alterna siempre entre cubierto y descubierto
             
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime;
-            }
-            
-            // Cambio de estado solo si la pelota ha estado suficiente tiempo en el destino
-            if (ballMovement.isAtDestination()) {
-                const currentDuration = getDurationForState(1, gameState.currentState);
                 
-                if (gameState.stateTime >= currentDuration) {
-                    // Obtener el próximo estado (alternancia fija)
-                    gameState.currentState = getNextState(1, gameState.currentState);
+                // Si cumplió el tiempo en el destino actual
+                if (gameState.stateTime >= TIEMPO_EN_DESTINO) {
+                    // En nivel 1 siempre alterna entre cubierto y descubierto
+                    gameState.currentState = (gameState.currentState === "covered") ? "uncovered" : "covered";
                     gameState.stateTime = 0;
                     gameState.frameCount = 0;
                     
-                    // Seleccionar nuevo objetivo según el estado
+                    // Seleccionar nuevo destino según el estado
                     if (gameState.currentState === "covered") {
                         ballMovement.selectRandomCoveredTarget();
                     } else {
@@ -274,38 +272,36 @@ function gameLoop() {
                     ballMovement.resetTimeAtDestination();
                     currentTargetForDebugging = ballMovement.config.currentTarget;
                 }
-            }
-            
-            // Actualizar posición de la pelota según el estado
-            if (gameState.currentState === "covered") {
-                newPosition = ballMovement.moveToCoveredTarget();
-            } else {
-                newPosition = ballMovement.moveToUncoveredTarget();
             }
             break;
         }
         
         case 2: {
             // ═══════════════════════════════════════════════════════════
-            // NIVEL 2: Estado aleatorio y tiempos aleatorios
+            // NIVEL 2: Selección y tiempos aleatorios
             // ═══════════════════════════════════════════════════════════
+            const TIEMPO_MINIMO = 500;     // ms mínimo en un destino
+            const TIEMPO_MAXIMO = 1000;    // ms máximo en un destino
+            const PROB_CUBIERTO = 0.5;     // Probabilidad de que el próximo sea cubierto
             
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime;
-            }
-            
-            // Cambio de estado solo si la pelota ha estado suficiente tiempo en el destino
-            if (ballMovement.isAtDestination()) {
-                const currentDuration = getDurationForState(2, gameState.currentState);
                 
-                if (gameState.stateTime >= currentDuration) {
-                    // Obtener el próximo estado (aleatorio)
-                    gameState.currentState = getNextState(2, gameState.currentState);
+                // Generar tiempo aleatorio para este destino si no existe
+                if (!gameState.currentDestinoDuration) {
+                    gameState.currentDestinoDuration = Math.floor(Math.random() * (TIEMPO_MAXIMO - TIEMPO_MINIMO + 1)) + TIEMPO_MINIMO;
+                }
+                
+                // Si cumplió el tiempo en el destino actual
+                if (gameState.stateTime >= gameState.currentDestinoDuration) {
+                    // En nivel 2 el próximo estado es aleatorio
+                    gameState.currentState = (Math.random() < PROB_CUBIERTO) ? "covered" : "uncovered";
                     gameState.stateTime = 0;
                     gameState.frameCount = 0;
+                    gameState.currentDestinoDuration = null; // Reset para el próximo destino
                     
-                    // Seleccionar nuevo objetivo según el estado
+                    // Seleccionar nuevo destino según el estado
                     if (gameState.currentState === "covered") {
                         ballMovement.selectRandomCoveredTarget();
                     } else {
@@ -314,13 +310,6 @@ function gameLoop() {
                     ballMovement.resetTimeAtDestination();
                     currentTargetForDebugging = ballMovement.config.currentTarget;
                 }
-            }
-            
-            // Actualizar posición de la pelota según el estado
-            if (gameState.currentState === "covered") {
-                newPosition = ballMovement.moveToCoveredTarget();
-            } else {
-                newPosition = ballMovement.moveToUncoveredTarget();
             }
             break;
         }
@@ -331,13 +320,13 @@ function gameLoop() {
             // ═══════════════════════════════════════════════════════════
             console.warn(`⚠️ Nivel ${currentLevel} no implementado, usando nivel 1`);
             
+            const TIEMPO_EN_DESTINO = 950;
+            
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime;
                 
-                const currentDuration = getDurationForState(1, gameState.currentState);
-                
-                if (gameState.stateTime >= currentDuration) {
-                    gameState.currentState = getNextState(1, gameState.currentState);
+                if (gameState.stateTime >= TIEMPO_EN_DESTINO) {
+                    gameState.currentState = (gameState.currentState === "covered") ? "uncovered" : "covered";
                     gameState.stateTime = 0;
                     gameState.frameCount = 0;
                     
@@ -350,14 +339,15 @@ function gameLoop() {
                     currentTargetForDebugging = ballMovement.config.currentTarget;
                 }
             }
-            
-            if (gameState.currentState === "covered") {
-                newPosition = ballMovement.moveToCoveredTarget();
-            } else {
-                newPosition = ballMovement.moveToUncoveredTarget();
-            }
             break;
         }
+    }
+    
+    // Actualizar posición de la pelota según el estado actual
+    if (gameState.currentState === "covered") {
+        newPosition = ballMovement.moveToCoveredTarget();
+    } else {
+        newPosition = ballMovement.moveToUncoveredTarget();
     }
     
     if (newPosition) {
