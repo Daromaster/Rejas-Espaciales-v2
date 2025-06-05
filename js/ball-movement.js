@@ -260,7 +260,7 @@ let ballMovement = {
                     
                     // Reducir la distancia para el próximo frame
                     const anteriorDistancia = this.config.currentApproachDistance;
-                    this.config.currentApproachDistance = Math.max(1.8, this.config.currentApproachDistance - 0.1);
+                    this.config.currentApproachDistance = Math.max(1.8, this.config.currentApproachDistance - 0.5);
                     
                     // Si llegamos a 1.8px o menos, marcamos la etapa 2 como completa
                     if (this.config.currentApproachDistance <= 1.8) {
@@ -554,7 +554,7 @@ let ballMovement = {
                     
                     // Reducir la distancia para el próximo frame
                     const anteriorDistancia = this.config.currentApproachDistance;
-                    this.config.currentApproachDistance = Math.max(1.8, this.config.currentApproachDistance - 0.1);
+                    this.config.currentApproachDistance = Math.max(1.8, this.config.currentApproachDistance - 0.5);
                     
                     // Si llegamos a 1.8px o menos, marcamos la etapa 2 como completa
                     if (this.config.currentApproachDistance <= 1.8) {
