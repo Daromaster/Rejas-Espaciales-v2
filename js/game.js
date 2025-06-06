@@ -284,6 +284,9 @@ function gameLoop() {
             const TIEMPO_MAXIMO = 1000;    // ms máximo en un destino
             const PROB_CUBIERTO = 0.5;     // Probabilidad de que el próximo sea cubierto
             
+
+
+            
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
                 gameState.stateTime += deltaTime;
