@@ -6,7 +6,9 @@ let configFondo = {
     currentBlinkingStar: 0,
     isInitialized: false,
     lastWidth: 0,
-    lastHeight: 0
+    lastHeight: 0,
+    // Color del cielo (se guarda en localStorage)
+    cieloColor: localStorage.getItem('rejasEspacialesCieloColor') === 'claro' ? 'claro' : 'oscuro'
 };
 
 function initFondo() {
@@ -53,8 +55,12 @@ function dibujarFondo() {
     // Limpiar el canvas
     ctxFondo.clearRect(0, 0, canvasFondo.width, canvasFondo.height);
     
-    // Fondo negro
-    ctxFondo.fillStyle = "rgba(0, 0, 0, 1)";
+    // Color de fondo según configuración
+    const colorFondo = configFondo.cieloColor === 'claro' ? 
+        "rgba(200, 200, 200, 1)" :  // Gris claro
+        "rgba(0, 0, 0, 1)";         // Negro original
+    
+    ctxFondo.fillStyle = colorFondo;
     ctxFondo.fillRect(0, 0, canvasFondo.width, canvasFondo.height);
     
     // Actualizar parpadeo de estrellas
@@ -72,8 +78,13 @@ function dibujarFondo() {
         configFondo.lastBlinkTime = currentTime;
     }
     
+    // Color de estrellas según fondo
+    const colorEstrellas = configFondo.cieloColor === 'claro' ? 
+        "rgba(50, 50, 50, 1)" :    // Gris oscuro para fondo claro
+        "rgba(255, 255, 255, 1)";  // Blanco original para fondo oscuro
+    
     // Dibujar estrellas
-    ctxFondo.fillStyle = "rgba(255, 255, 255, 1)";
+    ctxFondo.fillStyle = colorEstrellas;
     for (const star of configFondo.stars) {
         ctxFondo.globalAlpha = star.brightness;
         ctxFondo.beginPath();
@@ -109,7 +120,15 @@ function updateFondo() {
     }
 }
 
+// Función para cambiar el color del cielo
+function toggleCieloColor() {
+    configFondo.cieloColor = configFondo.cieloColor === 'oscuro' ? 'claro' : 'oscuro';
+    localStorage.setItem('rejasEspacialesCieloColor', configFondo.cieloColor);
+    console.log(`🌌 Color del cielo cambiado a: ${configFondo.cieloColor}`);
+}
+
 // Exportar al scope global
 window.configFondo = configFondo;
 window.initFondo = initFondo;
-window.dibujarFondo = dibujarFondo; 
+window.dibujarFondo = dibujarFondo;
+window.toggleCieloColor = toggleCieloColor; 

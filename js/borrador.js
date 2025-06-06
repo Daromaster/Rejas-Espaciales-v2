@@ -44,6 +44,16 @@ let borradorElements = {
         text: "VER RANKING",        
         color: "rgba(50, 255, 50, 0.9)", 
         hovered: false
+    },
+    // Botón de cambio de color del cielo
+    toggleCieloButton: {
+        visible: false,
+        position: { x: 20, y: 190 }, // Posicionado debajo del botón de ranking
+        width: 150,
+        height: 50,
+        text: "CAMBIAR CIELO",
+        color: "rgba(100, 100, 255, 0.9)",
+        hovered: false
     }
 };
 
@@ -71,18 +81,21 @@ function initBorrador() {
             borradorElements.stateIndicators.visible = true;
             borradorElements.endGameButton.visible = true;
             borradorElements.viewRankingButton.visible = true;
+            borradorElements.toggleCieloButton.visible = true;
             
             // Crear botón real en HTML en lugar de dibujarlo en el canvas
             createRealEndGameButton();
             
             // Crear botón de ver ranking para admin
             createRealViewRankingButton();
+            createRealToggleCieloButton();
         } else {
             // Si no está habilitado, asegurar que todo esté oculto
             borradorElements.targetPoint.visible = false;
             borradorElements.stateIndicators.visible = false;
             borradorElements.endGameButton.visible = false;
             borradorElements.viewRankingButton.visible = false;
+            borradorElements.toggleCieloButton.visible = false;
         }
         
         // Forzar redibujado inicial (solo para elementos de canvas, no botones HTML)
@@ -103,17 +116,20 @@ function toggleBorradorMode() {
         borradorElements.stateIndicators.visible = true;
         borradorElements.endGameButton.visible = true;
         borradorElements.viewRankingButton.visible = true;
+        borradorElements.toggleCieloButton.visible = true;
         
         // Crear botones HTML
         createRealEndGameButton();
         createRealViewRankingButton();
         createRealDebugMobileButton();
+        createRealToggleCieloButton();
     } else {
         // Desactivar modo debug
         borradorElements.targetPoint.visible = false;
         borradorElements.stateIndicators.visible = false;
         borradorElements.endGameButton.visible = false;
         borradorElements.viewRankingButton.visible = false;
+        borradorElements.toggleCieloButton.visible = false;
         
         // Remover botones HTML
         removeRealButtons();
@@ -211,6 +227,7 @@ function removeRealButtons() {
     const endGameButton = document.getElementById('end-game-real-button');
     const viewRankingButton = document.getElementById('view-ranking-real-button');
     const debugMobileButton = document.getElementById('debug-mobile-real-button');
+    const toggleCieloButton = document.getElementById('toggle-cielo-real-button');
     
     if (endGameButton) {
         endGameButton.parentNode.removeChild(endGameButton);
@@ -225,6 +242,11 @@ function removeRealButtons() {
     if (debugMobileButton) {
         debugMobileButton.parentNode.removeChild(debugMobileButton);
         console.log("Botón DEBUG MÓVIL removido");
+    }
+    
+    if (toggleCieloButton) {
+        toggleCieloButton.parentNode.removeChild(toggleCieloButton);
+        console.log("Botón TOGGLE CIELO removido");
     }
 }
 
@@ -483,6 +505,72 @@ function createRealDebugMobileButton() {
         // Si no encuentra el canvas o su padre, añadirlo directamente al body
         document.body.appendChild(button);
         console.log("Botón DEBUG MÓVIL real HTML añadido al body (no se encontró el contenedor del canvas)");
+    }
+}
+
+// Función para crear un botón HTML real para cambiar el color del cielo
+function createRealToggleCieloButton() {
+    if (!borradorToggleState.enabled || !window.IS_LOCAL_ENVIRONMENT) return;
+    
+    // Eliminar el botón anterior si existe
+    const existingButton = document.getElementById('toggle-cielo-real-button');
+    if (existingButton) {
+        existingButton.parentNode.removeChild(existingButton);
+    }
+    
+    // Crear el botón real como elemento HTML
+    const button = document.createElement('button');
+    button.id = 'toggle-cielo-real-button';
+    
+    // Texto según estado actual
+    const statusText = window.configFondo?.cieloColor === 'claro' ? "CLARO" : "OSCURO";
+    button.textContent = `🌌 CIELO ${statusText}`;
+    
+    // Estilos para el botón
+    button.style.position = 'absolute';
+    button.style.top = '190px';
+    button.style.left = '20px';
+    button.style.width = '150px';
+    button.style.height = '50px';
+    button.style.backgroundColor = 'rgba(100, 100, 255, 0.9)';
+    button.style.color = 'white';
+    button.style.border = '2px solid white';
+    button.style.borderRadius = '8px';
+    button.style.fontSize = '16px';
+    button.style.fontWeight = 'bold';
+    button.style.cursor = 'pointer';
+    button.style.zIndex = '9999';
+    button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
+    
+    // Efectos de hover
+    button.onmouseover = function() {
+        this.style.backgroundColor = 'rgba(120, 120, 255, 1)';
+        this.style.transform = 'scale(1.05)';
+    };
+    
+    button.onmouseout = function() {
+        this.style.backgroundColor = 'rgba(100, 100, 255, 0.9)';
+        this.style.transform = 'scale(1)';
+    };
+    
+    // Manejar el clic
+    button.onclick = function() {
+        if (typeof window.toggleCieloColor === 'function') {
+            window.toggleCieloColor();
+            // Actualizar texto del botón
+            const newStatusText = window.configFondo?.cieloColor === 'claro' ? "CLARO" : "OSCURO";
+            this.textContent = `🌌 CIELO ${newStatusText}`;
+        }
+    };
+    
+    // Añadir el botón al DOM
+    const canvas = document.getElementById('canvas-juego');
+    if (canvas && canvas.parentNode) {
+        canvas.parentNode.appendChild(button);
+        console.log("Botón TOGGLE CIELO real HTML creado y añadido al DOM");
+    } else {
+        document.body.appendChild(button);
+        console.log("Botón TOGGLE CIELO real HTML añadido al body");
     }
 }
 
