@@ -124,6 +124,10 @@ function updateFondo() {
 function toggleCieloColor() {
     configFondo.cieloColor = configFondo.cieloColor === 'oscuro' ? 'claro' : 'oscuro';
     localStorage.setItem('rejasEspacialesCieloColor', configFondo.cieloColor);
+    
+    // Actualizar el tema del documento
+    document.documentElement.dataset.theme = configFondo.cieloColor;
+    
     console.log(`🌌 Color del cielo cambiado a: ${configFondo.cieloColor}`);
 }
 
@@ -131,4 +135,7 @@ function toggleCieloColor() {
 window.configFondo = configFondo;
 window.initFondo = initFondo;
 window.dibujarFondo = dibujarFondo;
-window.toggleCieloColor = toggleCieloColor; 
+window.toggleCieloColor = toggleCieloColor;
+
+// Inicializar el tema del documento según el color guardado
+document.documentElement.dataset.theme = configFondo.cieloColor; 

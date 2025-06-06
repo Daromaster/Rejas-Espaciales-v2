@@ -17,7 +17,7 @@ html, body {
 /* Zona superior: fija en 10% del alto */
 #zona-superior {
   height: 10vh;
-  background-color: #111;
+  background-color: var(--zona-color, #111);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -48,7 +48,7 @@ html, body {
 /* Zona inferior: fija en 10% del alto */
 #zona-inferior {
   height: 10vh;
-  background-color: #111;
+  background-color: var(--zona-color, #111);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,6 +75,15 @@ html, body {
     height: 20vh;
     padding: 10px;
   }
+}
+
+/* Estilos para el modo claro */
+:root {
+  --zona-color: #111;
+}
+
+:root[data-theme="claro"] {
+  --zona-color: #c8c8c8;
 }
 
 /* --- Fin del archivo main.css completo - 2025-04-30 15:57:00 GMT-3 --- */

@@ -303,18 +303,18 @@ function createRealEndGameButton() {
     
     // Estilos para el botón
     button.style.position = 'absolute';
-    button.style.top = '130px'; // Bajado por reposición del toggle
+    button.style.top = '100px'; // Movido más abajo para evitar el puntaje
     button.style.left = '20px';
-    button.style.width = '150px';
-    button.style.height = '50px';
-    button.style.backgroundColor = 'rgba(255, 165, 0, 0.9)'; // Naranja para diferenciar de finalizar juego
+    button.style.width = '112px'; // 75% de 150px
+    button.style.height = '37px'; // 75% de 50px
+    button.style.backgroundColor = 'rgba(255, 165, 0, 0.9)';
     button.style.color = 'white';
     button.style.border = '2px solid white';
-    button.style.borderRadius = '8px';
-    button.style.fontSize = '16px';
+    button.style.borderRadius = '6px';
+    button.style.fontSize = '12px';
     button.style.fontWeight = 'bold';
     button.style.cursor = 'pointer';
-    button.style.zIndex = '9999'; // Asegurar que esté por encima de todo
+    button.style.zIndex = '9999';
     button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
     
     // Efectos de hover
@@ -381,18 +381,18 @@ function createRealViewRankingButton() {
     
     // Estilos para el botón
     button.style.position = 'absolute';
-    button.style.top = '190px'; // Bajado por reposición del toggle
+    button.style.top = '147px'; // 100px + 37px + 10px de margen
     button.style.left = '20px';
-    button.style.width = '150px';
-    button.style.height = '50px';
+    button.style.width = '112px';
+    button.style.height = '37px';
     button.style.backgroundColor = 'rgba(50, 255, 50, 0.9)';
     button.style.color = 'white';
     button.style.border = '2px solid white';
-    button.style.borderRadius = '8px';
-    button.style.fontSize = '16px';
+    button.style.borderRadius = '6px';
+    button.style.fontSize = '12px';
     button.style.fontWeight = 'bold';
     button.style.cursor = 'pointer';
-    button.style.zIndex = '9999'; // Asegurar que esté por encima de todo
+    button.style.zIndex = '9999';
     button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
     
     // Efectos de hover
@@ -452,24 +452,20 @@ function createRealDebugMobileButton() {
     
     // Estilos para el botón
     button.style.position = 'absolute';
-    button.style.top = '250px'; // Posicionado debajo de VER RANKING
+    button.style.top = '194px'; // 147px + 37px + 10px de margen
     button.style.left = '20px';
-    button.style.width = '150px';
-    button.style.height = '50px';
-    
-    // Color inicial según estado
-    const initialColor = debugMobileState.enabled ? 
+    button.style.width = '112px';
+    button.style.height = '37px';
+    button.style.backgroundColor = debugMobileState.enabled ? 
         'rgba(255, 100, 150, 1)' : 
         'rgba(255, 100, 150, 0.6)';
-    button.style.backgroundColor = initialColor;
-    
     button.style.color = 'white';
     button.style.border = '2px solid white';
-    button.style.borderRadius = '8px';
-    button.style.fontSize = '16px';
+    button.style.borderRadius = '6px';
+    button.style.fontSize = '12px';
     button.style.fontWeight = 'bold';
     button.style.cursor = 'pointer';
-    button.style.zIndex = '9999'; // Asegurar que esté por encima de todo
+    button.style.zIndex = '9999';
     button.style.boxShadow = '2px 2px 10px rgba(0, 0, 0, 0.5)';
     
     // Efectos de hover
@@ -528,15 +524,15 @@ function createRealToggleCieloButton() {
     
     // Estilos para el botón
     button.style.position = 'absolute';
-    button.style.top = '190px';
+    button.style.top = '241px'; // 194px + 37px + 10px de margen
     button.style.left = '20px';
-    button.style.width = '150px';
-    button.style.height = '50px';
+    button.style.width = '112px';
+    button.style.height = '37px';
     button.style.backgroundColor = 'rgba(100, 100, 255, 0.9)';
     button.style.color = 'white';
     button.style.border = '2px solid white';
-    button.style.borderRadius = '8px';
-    button.style.fontSize = '16px';
+    button.style.borderRadius = '6px';
+    button.style.fontSize = '12px';
     button.style.fontWeight = 'bold';
     button.style.cursor = 'pointer';
     button.style.zIndex = '9999';
