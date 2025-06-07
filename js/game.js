@@ -286,60 +286,64 @@ function gameLoop() {
             const CANT_PELOTAS  = 24;       // valor aprox. medido para los parametros 300,700, 0.5
 
             const TIEMPO_DESCUBIERTO_BUSCADO = (TIEMPO_MINIMO + TIEMPO_MAXIMO) / 2 * ((1-PROB_CUBIERTO) *CANT_PELOTAS );
-          
             
-            // Solo incrementar el tiempo si la pelota está en el destino
-            if (ballMovement.isAtDestination()) {
-                gameState.stateTime += deltaTime;
-                
-                // Generar tiempo aleatorio para este destino si no existe
-                if (!gameState.currentDestinoDuration) {
-                    gameState.currentDestinoDuration = getRandomDestinationTime(TIEMPO_MINIMO, TIEMPO_MAXIMO);
-                }
-                
-                // Si cumplió el tiempo en el destino actual
-                if (gameState.stateTime >= gameState.currentDestinoDuration) {
-                    // Solo contabilizar tiempo si el juego ya comenzó (primer disparo realizado)
-                    if (window.shootingSystem && window.shootingSystem.gameStarted) {
-                        // Activar la contabilización si aún no está activa
-                        if (!contabilizandoTiempo) {
-                            contabilizandoTiempo = true;
-                            console.log("Iniciando contabilización de tiempo descubierto");
-                        }
+            // Obtener tiempo restante actual
+            const tiempoRestante = getRemainingTime();
 
-                        // Obtener tiempo restante del nivel
-                        const tiempoRestante = getRemainingTime();
-                        
-                        // Si estamos en los últimos 10 segundos, mostrar el tiempo acumulado
-                        if (tiempoRestante <= 10000 && tiempoRestante > 9900) {
-                            console.log("🕒 Tiempo total descubierto acumulado:", totalTiempoDescubierto, "ms");
-                        }
-                    }
+            // Nueva lógica para activar la contabilización basada en tiempo restante
+            if (!contabilizandoTiempo && tiempoRestante < 60000) {
+                contabilizandoTiempo = true;
+                totalTiempoDescubierto = 0; // Reiniciamos el contador por seguridad
+            }
 
-                    // En nivel 2 el próximo estado es aleatorio
-                    const nuevoEstado = getNextDestinationState(PROB_CUBIERTO);
+            // Si el juego no ha comenzado o quedan más de 10 segundos
+            if (tiempoRestante > 10000) {
+                // Solo incrementar el tiempo si la pelota está en el destino
+                if (ballMovement.isAtDestination()) {
+                    gameState.stateTime += deltaTime;
                     
-                    // Si el juego ya comenzó y el nuevo estado es descubierto, acumular su tiempo planificado
-                    if (contabilizandoTiempo && nuevoEstado === "uncovered") {
+                    // Generar tiempo aleatorio para este destino si no existe
+                    if (!gameState.currentDestinoDuration) {
                         const tiempoPlanificado = getRandomDestinationTime(TIEMPO_MINIMO, TIEMPO_MAXIMO);
-                        totalTiempoDescubierto += tiempoPlanificado;
-                        console.log("Sumando tiempo planificado descubierto:", tiempoPlanificado, "ms");
+                        gameState.currentDestinoDuration = tiempoPlanificado;
+                        
+                        // Si el juego ya comenzó y estamos en estado descubierto, acumular el tiempo planificado
+                        if (contabilizandoTiempo && gameState.currentState === "uncovered") {
+                            totalTiempoDescubierto += tiempoPlanificado;
+                            
+                        }
                     }
-
-                    gameState.currentState = nuevoEstado;
-                    gameState.stateTime = 0;
-                    gameState.frameCount = 0;
-                    gameState.currentDestinoDuration = null; // Reset para el próximo destino
                     
-                    // Seleccionar nuevo destino según el estado
-                    if (gameState.currentState === "covered") {
-                        ballMovement.selectRandomCoveredTarget();
-                    } else {
-                        ballMovement.selectRandomUncoveredTarget();
+                    // Si cumplió el tiempo en el destino actual
+                    if (gameState.stateTime >= gameState.currentDestinoDuration) {
+                        // En nivel 2 el próximo estado es aleatorio
+                        const nuevoEstado = getNextDestinationState(PROB_CUBIERTO);
+                        gameState.currentState = nuevoEstado;
+                        gameState.stateTime = 0;
+                        gameState.frameCount = 0;
+                        gameState.currentDestinoDuration = null; // Reset para el próximo destino
+                        console.log ("se resetea gameState.currentDestinoDuration a NULL, tiempo acumulado:", totalTiempoDescubierto);
+                        
+                        // Seleccionar nuevo destino según el estado
+                        if (gameState.currentState === "covered") {
+                            ballMovement.selectRandomCoveredTarget();
+                        } else {
+                            ballMovement.selectRandomUncoveredTarget();
+                        }
+                        ballMovement.resetTimeAtDestination();
+                        currentTargetForDebugging = ballMovement.config.currentTarget;
                     }
-                    ballMovement.resetTimeAtDestination();
-                    currentTargetForDebugging = ballMovement.config.currentTarget;
                 }
+            } else {
+                // ═══════════════════════════════════════════════════════════
+                // ÚLTIMOS 10 SEGUNDOS - FASE DE COMPENSACIÓN
+                // ═══════════════════════════════════════════════════════════
+                if (!window.compensacionIniciada) {
+                    window.compensacionIniciada = true;
+                    console.log("🕒 INICIANDO FASE DE COMPENSACIÓN - Tiempo total descubierto acumulado:", totalTiempoDescubierto, "ms");
+                }
+                
+                // Aquí irá la lógica de compensación que definiremos
             }
             break;
         }

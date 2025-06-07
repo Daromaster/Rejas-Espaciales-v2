@@ -1207,7 +1207,7 @@ function checkAndAddPoints() {
     const detectedState = window.ballStateDetector.detectStateMathematically(ballPosition);
     
     // Mostrar en consola el estado detectado (para depuración)
-    console.log("Estado detectado en disparo:", detectedState);
+   
     
     // Si la pelota está en estado "descubierto", sumar puntos
     if (detectedState === 'uncovered') {
@@ -1871,7 +1871,7 @@ function updateGameTime() {
     let totalGameTime = 60 * 1000; // Default: 1 minuto en milisegundos
     if (window.LevelManager) {
         totalGameTime = window.LevelManager.getCurrentLevelDuration();
-        console.log(`⏱️ Usando duración de nivel: ${totalGameTime}ms`);
+     
     }
     
     // Calcular tiempo restante
