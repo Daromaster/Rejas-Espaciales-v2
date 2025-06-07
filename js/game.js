@@ -283,7 +283,7 @@ function gameLoop() {
             const TIEMPO_MINIMO = 300;     // ms mínimo en un destino
             const TIEMPO_MAXIMO = 700;    // ms máximo en un destino
             const PROB_CUBIERTO = 0.5;     // Probabilidad de que el próximo sea cubierto
-            const CANT_PELOTAS  = 24;       // valor aprox. medido para los parametros 300,700, 0.5
+            const CANT_PELOTAS  = 24 + 3;       // valor aprox. medido para los parametros 300,700, 0.5 + 3 para aumentar la compensacion a descubierta
 
             const TIEMPO_DESCUBIERTO_BUSCADO = (TIEMPO_MINIMO + TIEMPO_MAXIMO) / 2 * ((1-PROB_CUBIERTO) *CANT_PELOTAS );
             
@@ -296,8 +296,9 @@ function gameLoop() {
                 totalTiempoDescubierto = 0; // Reiniciamos el contador por seguridad
             }
 
-            // Si el juego no ha comenzado o quedan más de 10 segundos
-            if (tiempoRestante > 10000) {
+            // Si el juego no ha comenzado o quedan más de 15 segundos
+            const TIEMPO_COMPENSACION = 15000; // 15 segundos para compensación
+            if (tiempoRestante > TIEMPO_COMPENSACION) {
                 // Solo incrementar el tiempo si la pelota está en el destino
                 if (ballMovement.isAtDestination()) {
                     gameState.stateTime += deltaTime;
@@ -336,14 +337,85 @@ function gameLoop() {
                 }
             } else {
                 // ═══════════════════════════════════════════════════════════
-                // ÚLTIMOS 10 SEGUNDOS - FASE DE COMPENSACIÓN
+                // ÚLTIMOS 15 SEGUNDOS - FASE DE COMPENSACIÓN
                 // ═══════════════════════════════════════════════════════════
                 if (!window.compensacionIniciada) {
                     window.compensacionIniciada = true;
-                    console.log("🕒 INICIANDO FASE DE COMPENSACIÓN - Tiempo total descubierto acumulado:", totalTiempoDescubierto, "ms");
+                    
+                    // Calcular tiempos de compensación
+                    const TIEMPO_VIAJE_PELOTA = 1500; // ms que tarda la pelota en viajar
+                    const CANTIDAD_PELOTAS = 3;
+                    const TIEMPO_TOTAL_VIAJES = TIEMPO_VIAJE_PELOTA * CANTIDAD_PELOTAS;
+                    
+                    const tiempoFaltante = TIEMPO_DESCUBIERTO_BUSCADO - totalTiempoDescubierto;
+                    const Txxx = Math.max(tiempoFaltante, 50); // Tiempo mínimo 50ms si da negativo
+                    const Cxxx = Math.max(TIEMPO_COMPENSACION - TIEMPO_TOTAL_VIAJES - Txxx, 50); // Tiempo restante para estado cubierto
+                    
+                    // Crear secuencia de tiempos para los últimos 15 segundos
+                    window.secuenciaCompensacion = [
+                        { estado: "uncovered", duracion: Math.max(Math.floor(Txxx / 2), 50) },
+                        { estado: "covered", duracion: Math.max(Cxxx, 50) },
+                        { estado: "uncovered", duracion: Math.max(Txxx, 50) } // Última descubierta usa todo el tiempo restante
+                    ];
+                    
+                    window.indiceSecuenciaActual = 0;
+                    window.tiempoEnSecuenciaActual = 0;
+                    
+                    console.log("Iniciando compensación final (15 segundos):", 
+                              "\n- Tiempo restante actual:", tiempoRestante,
+                              "\n- Tiempo faltante descubierto:", tiempoFaltante,
+                              "\n- Tiempo total viajes:", TIEMPO_TOTAL_VIAJES,
+                              "\n- Tiempo por estado:", 
+                              "\n  * Descubierto (Txxx):", Txxx,
+                              "\n  * Cubierto (Cxxx):", Cxxx,
+                              "\nSecuencia planificada:");
+                    
+                    // Mostrar la secuencia completa planificada
+                    window.secuenciaCompensacion.forEach((seq, idx) => {
+                        console.log(`${idx}: ${seq.estado} - ${seq.duracion}ms`);
+                    });
                 }
                 
-                // Aquí irá la lógica de compensación que definiremos
+                // Ejecutar la secuencia de compensación
+                if (window.secuenciaCompensacion && window.indiceSecuenciaActual < window.secuenciaCompensacion.length) {
+                    const secuenciaActual = window.secuenciaCompensacion[window.indiceSecuenciaActual];
+                    window.tiempoEnSecuenciaActual += deltaTime;
+                    
+                    // Log del progreso actual
+                    if (window.indiceSecuenciaActual !== window.ultimoIndiceLoggeado) {
+                        console.log(`Ejecutando paso ${window.indiceSecuenciaActual} de la secuencia:`,
+                                  `\n- Estado actual: ${secuenciaActual.estado}`,
+                                  `\n- Duración planificada: ${secuenciaActual.duracion}ms`,
+                                  `\n- Tiempo transcurrido: ${window.tiempoEnSecuenciaActual}ms`);
+                        window.ultimoIndiceLoggeado = window.indiceSecuenciaActual;
+                    }
+                    
+                    if (window.tiempoEnSecuenciaActual >= secuenciaActual.duracion) {
+                        // Pasar al siguiente estado en la secuencia
+                        window.tiempoEnSecuenciaActual = 0;
+                        window.indiceSecuenciaActual++;
+                        
+                        if (window.indiceSecuenciaActual < window.secuenciaCompensacion.length) {
+                            const siguienteSecuencia = window.secuenciaCompensacion[window.indiceSecuenciaActual];
+                            gameState.currentState = siguienteSecuencia.estado;
+                            
+                            // Asegurar que cada cambio tenga un nuevo destino aleatorio
+                            if (gameState.currentState === "covered") {
+                                const nuevoTarget = ballMovement.selectRandomCoveredTarget();
+                                if (nuevoTarget) {
+                                    console.log(`Nuevo target CUBIERTO seleccionado para paso ${window.indiceSecuenciaActual}:`, nuevoTarget);
+                                }
+                            } else {
+                                const nuevoTarget = ballMovement.selectRandomUncoveredTarget();
+                                if (nuevoTarget) {
+                                    console.log(`Nuevo target DESCUBIERTO seleccionado para paso ${window.indiceSecuenciaActual}:`, nuevoTarget);
+                                }
+                            }
+                            ballMovement.resetTimeAtDestination();
+                            currentTargetForDebugging = ballMovement.config.currentTarget;
+                        }
+                    }
+                }
             }
             break;
         }
