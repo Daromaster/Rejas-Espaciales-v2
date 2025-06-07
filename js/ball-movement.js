@@ -146,7 +146,7 @@ let ballMovement = {
 
     // 🆕 MOVER HACIA OBJETIVO DESCUBIERTO CON SELECT CASE POR NIVEL
     moveToUncoveredTarget: function() {
-        console.log("usando moveTuUncoveredTarget");
+    
         const currentLevel = this.getCurrentLevel();
         
         if (!this.config.currentTarget) {
@@ -215,7 +215,7 @@ let ballMovement = {
                 const distanciaActual = Math.hypot(dx, dy);
 
                 // Log general de estado actual
-                console.log(`[UNCOVERED] Estado actual - Distancia: ${distanciaActual.toFixed(2)}px, Etapa1Completa: ${this.config.isInStage1Complete}`);
+              
 
                 // Actualizar estado
                 this.config.timeAtCurrentTarget += 1/60;
@@ -236,13 +236,13 @@ let ballMovement = {
 
                     // Si llegamos cerca de los 4px, marcamos la etapa 1 como completa
                     if (distanciaActual <= 4.1) {
-                        console.log(`[UNCOVERED] 🚩 ETAPA 1 COMPLETA - Distancia: ${distanciaActual.toFixed(2)}px`);
+                     
                         this.config.isInStage1Complete = true;
                         this.config.currentApproachDistance = 3.9; // Iniciamos en 3.9px para la etapa 2
                     }
                 } else if (distanciaActual > 1.8 && !this.config.isInStage2Complete) {
                     // ETAPA 2: ACERCAMIENTO DISCRETO (4px > x > 1.8px)
-                    console.log(`[UNCOVERED] 📏 ETAPA 2 - Distancia actual: ${distanciaActual.toFixed(2)}px, Próxima distancia objetivo: ${this.config.currentApproachDistance.toFixed(2)}px`);
+                  
                     
                     // Calcular vector unitario de dirección
                     const magnitud = Math.hypot(dx, dy);
@@ -264,18 +264,18 @@ let ballMovement = {
                     
                     // Si llegamos a 1.8px o menos, marcamos la etapa 2 como completa
                     if (this.config.currentApproachDistance <= 1.8) {
-                        console.log(`[UNCOVERED] 🏁 ETAPA 2 COMPLETA - Distancia final: ${this.config.currentApproachDistance.toFixed(2)}px`);
+                      
                         this.config.isInStage2Complete = true;
                     }
                     
-                    console.log(`[UNCOVERED] ⬇️ Reducción: ${anteriorDistancia.toFixed(2)}px -> ${this.config.currentApproachDistance.toFixed(2)}px`);
+                  
                 } else {
                     // ETAPA 3: MANTENIMIENTO CIRCULAR (cuando isInStage2Complete es true)
-                    console.log(`[UNCOVERED] 🎉 ETAPA 3 - Distancia: ${distanciaActual.toFixed(2)}px`);
+                  
                     
                     // Resetear banderas solo si volvemos a empezar con un nuevo punto
                     if (distanciaActual > 4) {
-                        console.log(`[UNCOVERED] 🔄 Reseteando banderas para nuevo ciclo`);
+                       
                         this.config.isInStage1Complete = false;
                         this.config.isInStage2Complete = false;
                         this.config.currentApproachDistance = 4.0;
@@ -326,7 +326,7 @@ let ballMovement = {
 
     // 🆕 FUNCIÓN UNIFICADA PARA MANTENER POSICIÓN EN DESTINO
     maintainPositionAtTarget: function() {
-        console.log ("usando maintainPositionAtTarget");
+      
         if (!this.config.currentTarget) return this.config.currentPosition;
 
         // Recalcular coordenadas en tiempo real según el tipo de destino
@@ -509,7 +509,7 @@ let ballMovement = {
                 const distanciaActual = Math.hypot(dx, dy);
 
                 // Log general de estado actual
-                console.log(`[COVERED] Estado actual - Distancia: ${distanciaActual.toFixed(2)}px, Etapa1Completa: ${this.config.isInStage1Complete}`);
+              
 
                 // Actualizar estado
                 this.config.timeAtCurrentTarget += 1/60;
@@ -530,13 +530,13 @@ let ballMovement = {
 
                     // Si llegamos cerca de los 4px, marcamos la etapa 1 como completa
                     if (distanciaActual <= 4.1) {
-                        console.log(`[COVERED] 🚩 ETAPA 1 COMPLETA - Distancia: ${distanciaActual.toFixed(2)}px`);
+                       
                         this.config.isInStage1Complete = true;
                         this.config.currentApproachDistance = 3.9; // Iniciamos en 3.9px para la etapa 2
                     }
                 } else if (distanciaActual > 1.8 && !this.config.isInStage2Complete) {
                     // ETAPA 2: ACERCAMIENTO DISCRETO (4px > x > 1.8px)
-                    console.log(`[COVERED] 📏 ETAPA 2 - Distancia actual: ${distanciaActual.toFixed(2)}px, Próxima distancia objetivo: ${this.config.currentApproachDistance.toFixed(2)}px`);
+                   
                     
                     // Calcular vector unitario de dirección
                     const magnitud = Math.hypot(dx, dy);
@@ -558,18 +558,18 @@ let ballMovement = {
                     
                     // Si llegamos a 1.8px o menos, marcamos la etapa 2 como completa
                     if (this.config.currentApproachDistance <= 1.8) {
-                        console.log(`[COVERED] 🏁 ETAPA 2 COMPLETA - Distancia final: ${this.config.currentApproachDistance.toFixed(2)}px`);
+                      
                         this.config.isInStage2Complete = true;
                     }
                     
-                    console.log(`[COVERED] ⬇️ Reducción: ${anteriorDistancia.toFixed(2)}px -> ${this.config.currentApproachDistance.toFixed(2)}px`);
+                   
                 } else {
                     // ETAPA 3: MANTENIMIENTO CIRCULAR (cuando isInStage2Complete es true)
-                    console.log(`[COVERED] 🎉 ETAPA 3 - Distancia: ${distanciaActual.toFixed(2)}px`);
+                 
                     
                     // Resetear banderas solo si volvemos a empezar con un nuevo punto
                     if (distanciaActual > 4) {
-                        console.log(`[COVERED] 🔄 Reseteando banderas para nuevo ciclo`);
+                       
                         this.config.isInStage1Complete = false;
                         this.config.isInStage2Complete = false;
                         this.config.currentApproachDistance = 4.0;

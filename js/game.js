@@ -286,29 +286,7 @@ function gameLoop() {
             const CANT_PELOTAS  = 24;       // valor aprox. medido para los parametros 300,700, 0.5
 
             const TIEMPO_DESCUBIERTO_BUSCADO = (TIEMPO_MINIMO + TIEMPO_MAXIMO) / 2 * ((1-PROB_CUBIERTO) *CANT_PELOTAS );
-            console.log("Tiempo descubierto buscado:", TIEMPO_DESCUBIERTO_BUSCADO);
-            
-            // Solo contabilizar tiempo si el juego ya comenzó (primer disparo realizado)
-            if (window.shootingSystem && window.shootingSystem.gameStarted) {
-                // Activar la contabilización si aún no está activa
-                if (!contabilizandoTiempo) {
-                    contabilizandoTiempo = true;
-                    console.log("Iniciando contabilización de tiempo descubierto");
-                }
-                
-                // Obtener tiempo restante del nivel
-                const tiempoRestante = getRemainingTime();
-                
-                // Si estamos en los últimos 10 segundos, mostrar el tiempo acumulado
-                if (tiempoRestante <= 10000 && tiempoRestante > 9900) {  // Ventana pequeña para evitar múltiples logs
-                    console.log("🕒 Tiempo total descubierto acumulado:", totalTiempoDescubierto, "ms");
-                }
-                
-                // Acumular tiempo si estamos en estado descubierto
-                if (gameState.currentState === "uncovered") {
-                    totalTiempoDescubierto += deltaTime;
-                }
-            }
+          
             
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
@@ -321,8 +299,34 @@ function gameLoop() {
                 
                 // Si cumplió el tiempo en el destino actual
                 if (gameState.stateTime >= gameState.currentDestinoDuration) {
+                    // Solo contabilizar tiempo si el juego ya comenzó (primer disparo realizado)
+                    if (window.shootingSystem && window.shootingSystem.gameStarted) {
+                        // Activar la contabilización si aún no está activa
+                        if (!contabilizandoTiempo) {
+                            contabilizandoTiempo = true;
+                            console.log("Iniciando contabilización de tiempo descubierto");
+                        }
+
+                        // Obtener tiempo restante del nivel
+                        const tiempoRestante = getRemainingTime();
+                        
+                        // Si estamos en los últimos 10 segundos, mostrar el tiempo acumulado
+                        if (tiempoRestante <= 10000 && tiempoRestante > 9900) {
+                            console.log("🕒 Tiempo total descubierto acumulado:", totalTiempoDescubierto, "ms");
+                        }
+                    }
+
                     // En nivel 2 el próximo estado es aleatorio
-                    gameState.currentState = getNextDestinationState(PROB_CUBIERTO);
+                    const nuevoEstado = getNextDestinationState(PROB_CUBIERTO);
+                    
+                    // Si el juego ya comenzó y el nuevo estado es descubierto, acumular su tiempo planificado
+                    if (contabilizandoTiempo && nuevoEstado === "uncovered") {
+                        const tiempoPlanificado = getRandomDestinationTime(TIEMPO_MINIMO, TIEMPO_MAXIMO);
+                        totalTiempoDescubierto += tiempoPlanificado;
+                        console.log("Sumando tiempo planificado descubierto:", tiempoPlanificado, "ms");
+                    }
+
+                    gameState.currentState = nuevoEstado;
                     gameState.stateTime = 0;
                     gameState.frameCount = 0;
                     gameState.currentDestinoDuration = null; // Reset para el próximo destino
