@@ -280,12 +280,35 @@ function gameLoop() {
             // ═══════════════════════════════════════════════════════════
             // NIVEL 2: Selección y tiempos aleatorios
             // ═══════════════════════════════════════════════════════════
-            const TIEMPO_MINIMO = 500;     // ms mínimo en un destino
-            const TIEMPO_MAXIMO = 1000;    // ms máximo en un destino
+            const TIEMPO_MINIMO = 300;     // ms mínimo en un destino
+            const TIEMPO_MAXIMO = 700;    // ms máximo en un destino
             const PROB_CUBIERTO = 0.5;     // Probabilidad de que el próximo sea cubierto
+            const CANT_PELOTAS  = 24;       // valor aprox. medido para los parametros 300,700, 0.5
+
+            const TIEMPO_DESCUBIERTO_BUSCADO = (TIEMPO_MINIMO + TIEMPO_MAXIMO) / 2 * ((1-PROB_CUBIERTO) *CANT_PELOTAS );
+            console.log("Tiempo descubierto buscado:", TIEMPO_DESCUBIERTO_BUSCADO);
             
-
-
+            // Solo contabilizar tiempo si el juego ya comenzó (primer disparo realizado)
+            if (window.shootingSystem && window.shootingSystem.gameStarted) {
+                // Activar la contabilización si aún no está activa
+                if (!contabilizandoTiempo) {
+                    contabilizandoTiempo = true;
+                    console.log("Iniciando contabilización de tiempo descubierto");
+                }
+                
+                // Obtener tiempo restante del nivel
+                const tiempoRestante = getRemainingTime();
+                
+                // Si estamos en los últimos 10 segundos, mostrar el tiempo acumulado
+                if (tiempoRestante <= 10000 && tiempoRestante > 9900) {  // Ventana pequeña para evitar múltiples logs
+                    console.log("🕒 Tiempo total descubierto acumulado:", totalTiempoDescubierto, "ms");
+                }
+                
+                // Acumular tiempo si estamos en estado descubierto
+                if (gameState.currentState === "uncovered") {
+                    totalTiempoDescubierto += deltaTime;
+                }
+            }
             
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
@@ -293,13 +316,13 @@ function gameLoop() {
                 
                 // Generar tiempo aleatorio para este destino si no existe
                 if (!gameState.currentDestinoDuration) {
-                    gameState.currentDestinoDuration = Math.floor(Math.random() * (TIEMPO_MAXIMO - TIEMPO_MINIMO + 1)) + TIEMPO_MINIMO;
+                    gameState.currentDestinoDuration = getRandomDestinationTime(TIEMPO_MINIMO, TIEMPO_MAXIMO);
                 }
                 
                 // Si cumplió el tiempo en el destino actual
                 if (gameState.stateTime >= gameState.currentDestinoDuration) {
                     // En nivel 2 el próximo estado es aleatorio
-                    gameState.currentState = (Math.random() < PROB_CUBIERTO) ? "covered" : "uncovered";
+                    gameState.currentState = getNextDestinationState(PROB_CUBIERTO);
                     gameState.stateTime = 0;
                     gameState.frameCount = 0;
                     gameState.currentDestinoDuration = null; // Reset para el próximo destino
@@ -474,4 +497,18 @@ function init() {
 }
 
 // Exportar funciones necesarias
-window.init = init; 
+window.init = init;
+
+// Función para generar tiempo aleatorio entre TIEMPO_MINIMO y TIEMPO_MAXIMO
+function getRandomDestinationTime(minTime, maxTime) {
+    return Math.floor(Math.random() * (maxTime - minTime + 1)) + minTime;
+}
+
+// Función para determinar el próximo estado basado en PROB_CUBIERTO
+function getNextDestinationState(probCubierto) {
+    return (Math.random() < probCubierto) ? "covered" : "uncovered";
+}
+
+// Variables para tracking de tiempo descubierto
+let totalTiempoDescubierto = 0;
+let contabilizandoTiempo = false; 
