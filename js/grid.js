@@ -6,6 +6,19 @@ let gridCanvases = []; // Array de contextos de canvas virtuales para grid
 let rotationAngle = 0; // Ángulo de rotación para nivel 2
 let transformMatrix = null; // Matriz de transformación guardada
 
+// Nueva variable para la velocidad de rotación (en radianes por segundo)
+const ROTATION_SPEED = Math.PI / 6; // 30 grados por segundo (un tercio de la velocidad anterior)
+
+// Función para actualizar la rotación usando fixed time step
+function updateRotation(deltaTime) {
+    if (getCurrentLevel() === 2) {
+        rotationAngle += ROTATION_SPEED * (deltaTime / 1000); // Convertir deltaTime a segundos
+    }
+}
+
+// Exportar la función de actualización
+window.updateGridRotation = updateRotation;
+
 // ============================================================================
 // 🆕 FUNCIONES DE GESTIÓN DE CANVAS MÚLTIPLES
 // ============================================================================
@@ -524,8 +537,7 @@ function dibujarGrid() {
             gridCanvases[2].clearRect(0, 0, canvasGrid.width, canvasGrid.height);
             
             // === PASO 2: Aplicar transformaciones ===
-            // Incrementar rotación gradualmente
-            rotationAngle += 0.01; // 0.01 radianes por frame (~0.57 grados)
+            // La rotación ahora se actualiza en updateGameLogic
             
             // Centro del canvas para rotación
             const centerX = canvasGrid.width / 2;
@@ -535,10 +547,6 @@ function dibujarGrid() {
             const floatingOffset = gridMovement.getCurrentOffset();
             
             // Aplicar transformaciones en orden:
-            // 1. Traslación al centro
-            // 2. Rotación
-            // 3. Traslación de vuelta
-            // 4. Movimiento flotante
             gridCanvases[2].save();
             gridCanvases[2].translate(centerX, centerY);
             gridCanvases[2].rotate(rotationAngle);
@@ -549,7 +557,6 @@ function dibujarGrid() {
             transformMatrix = gridCanvases[2].getTransform();
             
             // === PASO 3: Componer imagen final ===
-            // Pegar la reja base (ya dibujada en initGridForLevel)
             gridCanvases[2].drawImage(gridCanvases[1].canvas, 0, 0);
             
             gridCanvases[2].restore();

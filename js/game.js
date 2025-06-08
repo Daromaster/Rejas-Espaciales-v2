@@ -30,6 +30,13 @@ let gameState = {
     }
 };
 
+// Variables para fixed time step
+const FIXED_UPDATE_RATE = 30; // 30 actualizaciones por segundo
+const FIXED_TIME_STEP = 1000 / FIXED_UPDATE_RATE;
+let accumulator = 0;
+let lastFixedUpdateTime = performance.now();
+let gameStartTime = 0; // Nueva variable para tiempo absoluto
+
 // Exportar gameState al objeto window para que sea accesible desde otros módulos
 window.gameState = gameState;
 
@@ -91,6 +98,8 @@ function initGame() {
     }
     
     gameState.lastFrameTime = performance.now();
+    gameStartTime = performance.now(); // Inicializar tiempo de inicio
+    gameState.stateStartTime = gameStartTime; // Nuevo: tiempo cuando inició el estado actual
     gameState.frameCount = 0;
     
     // Si ya había un loop ejecutándose, cancelarlo
@@ -208,34 +217,45 @@ function gameLoop() {
     if (!gameState.isRunning) return;
 
     const currentTime = performance.now();
-    const deltaTime = currentTime - gameState.lastFrameTime;
-    gameState.lastFrameTime = currentTime;
-    gameState.frameCount++;
-
+    const frameTime = currentTime - lastFixedUpdateTime;
+    lastFixedUpdateTime = currentTime;
+    
+    // Limitar frameTime para evitar espirales de muerte
+    const maxFrameTime = 250; // máximo 250ms de frame time
+    const deltaTime = Math.min(frameTime, maxFrameTime);
+    
+    // Acumular el tiempo transcurrido
+    accumulator += deltaTime;
+    
+    // Actualizar la lógica en pasos fijos
+    while (accumulator >= FIXED_TIME_STEP) {
+        updateGameLogic(FIXED_TIME_STEP);
+        accumulator -= FIXED_TIME_STEP;
+    }
+    
+    // El render siempre ocurre en cada frame
+    render();
+    
     // Actualizar métricas de rendimiento si está disponible el sistema
     if (window.shootingSystem && window.shootingSystem.performanceMonitor) {
-        const perfMon = window.shootingSystem.performanceMonitor;
-        
-        // Actualizar datos del frame actual para medición más precisa
         if (typeof updatePerformanceMetrics === 'function') {
             updatePerformanceMetrics();
-        } else {
-            // Método alternativo si la función específica no está disponible
-            const frameDelta = currentTime - perfMon.lastFrameTime;
-            perfMon.lastFrameTime = currentTime;
-            
-            // Verificar que el deltaTime no sea demasiado grande (por ejemplo, después de cambio de pestaña)
-            if (frameDelta < 100) {
-                // Calcular FPS actual y añadir al historial
-                const currentFPS = 1000 / frameDelta;
-                perfMon.frameRates.push(currentFPS);
-                if (perfMon.frameRates.length > perfMon.samplingSize) {
-                    perfMon.frameRates.shift();
-                }
-            }
         }
     }
+    
+    // Continuar el loop
+    window.gameLoopRequestId = requestAnimationFrame(gameLoop);
+}
 
+// Nueva función para manejar toda la lógica del juego
+function updateGameLogic(deltaTime) {
+    const currentTime = performance.now();
+    
+    // Actualizar la rotación de la reja si la función está disponible
+    if (typeof window.updateGridRotation === 'function') {
+        window.updateGridRotation(deltaTime);
+    }
+    
     // Obtener nivel actual para el SELECT CASE principal
     const currentLevel = window.LevelManager ? window.LevelManager.getCurrentLevelInfo().level : 1;
     
@@ -250,17 +270,16 @@ function gameLoop() {
             // NIVEL 1: Alternancia fija con tiempos fijos
             // ═══════════════════════════════════════════════════════════
             const TIEMPO_EN_DESTINO = 950; // ms que debe permanecer en cada destino
-            const PATRON_FIJO = true;      // true = alterna siempre entre cubierto y descubierto
             
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
-                gameState.stateTime += deltaTime;
+                // En lugar de acumular deltaTime, usamos tiempo absoluto
+                const tiempoEnEstado = currentTime - gameState.stateStartTime;
                 
-                // Si cumplió el tiempo en el destino actual
-                if (gameState.stateTime >= TIEMPO_EN_DESTINO) {
+                if (tiempoEnEstado >= TIEMPO_EN_DESTINO) {
                     // En nivel 1 siempre alterna entre cubierto y descubierto
                     gameState.currentState = (gameState.currentState === "covered") ? "uncovered" : "covered";
-                    gameState.stateTime = 0;
+                    gameState.stateStartTime = currentTime; // Actualizar tiempo de inicio del nuevo estado
                     gameState.frameCount = 0;
                     
                     // Seleccionar nuevo destino según el estado
@@ -301,7 +320,8 @@ function gameLoop() {
             if (tiempoRestante > TIEMPO_COMPENSACION) {
                 // Solo incrementar el tiempo si la pelota está en el destino
                 if (ballMovement.isAtDestination()) {
-                    gameState.stateTime += deltaTime;
+                    // En lugar de acumular deltaTime, usamos tiempo absoluto
+                    const tiempoEnEstado = currentTime - gameState.stateStartTime;
                     
                     // Generar tiempo aleatorio para este destino si no existe
                     if (!gameState.currentDestinoDuration) {
@@ -316,11 +336,11 @@ function gameLoop() {
                     }
                     
                     // Si cumplió el tiempo en el destino actual
-                    if (gameState.stateTime >= gameState.currentDestinoDuration) {
+                    if (tiempoEnEstado >= gameState.currentDestinoDuration) {
                         // En nivel 2 el próximo estado es aleatorio
                         const nuevoEstado = getNextDestinationState(PROB_CUBIERTO);
                         gameState.currentState = nuevoEstado;
-                        gameState.stateTime = 0;
+                        gameState.stateStartTime = currentTime; // Actualizar tiempo de inicio del nuevo estado
                         gameState.frameCount = 0;
                         gameState.currentDestinoDuration = null; // Reset para el próximo destino
                         
@@ -442,11 +462,12 @@ function gameLoop() {
             const TIEMPO_EN_DESTINO = 950;
             
             if (ballMovement.isAtDestination()) {
-                gameState.stateTime += deltaTime;
+                // En lugar de acumular deltaTime, usamos tiempo absoluto
+                const tiempoEnEstado = currentTime - gameState.stateStartTime;
                 
-                if (gameState.stateTime >= TIEMPO_EN_DESTINO) {
+                if (tiempoEnEstado >= TIEMPO_EN_DESTINO) {
                     gameState.currentState = (gameState.currentState === "covered") ? "uncovered" : "covered";
-                    gameState.stateTime = 0;
+                    gameState.stateStartTime = currentTime; // Actualizar tiempo de inicio del nuevo estado
                     gameState.frameCount = 0;
                     
                     if (gameState.currentState === "covered") {
@@ -469,6 +490,7 @@ function gameLoop() {
         newPosition = ballMovement.moveToUncoveredTarget();
     }
     
+    // Si hay nueva posición, actualizar la pelota
     if (newPosition) {
         actualizarPosicionBall(newPosition.x, newPosition.y);
         
@@ -485,21 +507,12 @@ function gameLoop() {
         }
     }
     
-    // Actualizar punto de destino en la capa borrador (solo en entorno local)
-    if (window.IS_LOCAL_ENVIRONMENT && typeof setBorradorTargetPoint === 'function') {
-        if (currentTargetForDebugging) {
+    // Actualizar el punto de depuración si está habilitado
+    if (window.IS_LOCAL_ENVIRONMENT && currentTargetForDebugging) {
+        if (typeof setBorradorTargetPoint === 'function') {
             setBorradorTargetPoint(currentTargetForDebugging);
         }
     }
-    
-    if (typeof render === 'function') {
-        render();
-    } else {
-        console.error("Función render() no encontrada.");
-    }
-
-    // Guardar la referencia al ID de requestAnimationFrame para poder cancelarlo después
-    window.gameLoopRequestId = requestAnimationFrame(gameLoop);
 }
 
 // Event listeners para el juego

@@ -147,24 +147,24 @@ function render() {
     if (typeof dibujarFondo === 'function') {
         dibujarFondo(); // Asegura que el fondo (estrellas, etc.) se actualice si es dinámico
     }
+    
     // 2. Actualizar y dibujar la Pelota
     // La posición de la pelota es actualizada por gameLoop -> actualizarPosicionBall -> dibujarBall.
     // dibujarBall() ya se encarga de limpiar y redibujar ctxBall.
-    // Si la pelota tuviera animaciones propias independientes del movimiento, se llamarían aquí.
-
+    
     // 3. Actualizar y dibujar la Reja
     if (typeof dibujarGrid === 'function') {
-        dibujarGrid(); // Esto llamará a gridMovement.update() y redibujará la reja en canvasGrid
+        dibujarGrid(); // La lógica de actualización (como rotación) debe estar en updateGameLogic
     }
 
     // 4. Actualizar y dibujar Efectos
     if (typeof dibujarEffects === 'function') {
-        dibujarEffects(); // Para cualquier efecto visual adicional
+        dibujarEffects();
     }
 
     // 5. Dibujar la capa de Borrador
     if (typeof dibujarBorrador === 'function') {
-        dibujarBorrador(); // Maneja los elementos de depuración
+        dibujarBorrador();
     }
 
     // Copiar capas al canvas principal en el orden deseado
@@ -173,10 +173,10 @@ function render() {
     ctxPrincipal.drawImage(canvasGrid, 0, 0, canvasPrincipal.width, canvasPrincipal.height);     // Capa 3: Reja
     ctxPrincipal.drawImage(canvasEffects, 0, 0, canvasPrincipal.width, canvasPrincipal.height);  // Capa 4: Efectos
     ctxPrincipal.drawImage(canvasBorrador, 0, 0, canvasPrincipal.width, canvasPrincipal.height); // Capa 5: Borrador
-
-    // NO solicitar siguiente frame aquí. Será llamado por gameLoop en game.js.
-    // requestAnimationFrame(render);
 }
+
+// Exportar función render al scope global
+window.render = render;
 
 // Event listeners
 window.addEventListener("DOMContentLoaded", () => {
