@@ -139,9 +139,11 @@ function calcularConfiguracionGrid(width, height) {
             const dimensionMenor = Math.min(width, height);
             const altoZonaReja = dimensionMenor * 0.6;
             const tamCuadrado = altoZonaReja / 4;
+
           
             const cantidadCuadradosHoriz = Math.floor((width * 0.6) / tamCuadrado);
             const anchoRejaReal = (cantidadCuadradosHoriz + 1) * tamCuadrado;
+            const distanciaMaxima = anchoRejaReal;  // Recorrido maximo pelota para Funciones de paso hechas con ChatGpt
           
             const margenX = (width - anchoRejaReal) / 2;
             const margenY = (height - altoZonaReja) / 2;
@@ -219,6 +221,8 @@ function calcularConfiguracionGrid(width, height) {
             // Calcular dimensiones reales con medio módulo en perímetro
             const anchoRejaReal = (cantidadHoriz + 1) * tamCuadrado;
             const altoRejaReal = (cantidadVert + 1) * tamCuadrado;
+            const distanciaMaxima = anchoRejaReal;  // Recorrido maximo pelota para Funciones de paso hechas con ChatGpt
+          
             
             // Centrado en el canvas
             const margenX = (width - anchoRejaReal) / 2;
