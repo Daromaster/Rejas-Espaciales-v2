@@ -1,5 +1,9 @@
 // Sistema de movimiento de la pelota
 let ballMovement = {
+    // Variables para el nuevo sistema de movimiento
+    viajePelota: null,  // Almacena el estado del viaje actual
+    orbitaPelota: null, // Almacena el estado de la órbita actual
+    
     config: {
         // Configuración de rotación
         rotationSpeed: 0.005,    // Velocidad de rotación en radianes por frame
@@ -469,7 +473,7 @@ let ballMovement = {
             case 1: {
                 // Si hay un viaje en curso, continuarlo
                 if (window.viajePelota) {
-                    const newPosition = avanzarPelota();
+                    const newPosition = avanzarPelota(window.viajePelota.origen, targetActualizado);
                     // Actualizar isAtDestination basado en si el viaje terminó
                     this.config.isAtDestination = !window.viajePelota;
                     this.config.currentPosition = newPosition;
@@ -491,7 +495,7 @@ let ballMovement = {
                     500 // Valor temporal hasta que distanciaMaxima esté disponible
                 );
                 
-                const newPosition = avanzarPelota();
+                const newPosition = avanzarPelota(window.viajePelota.origen, targetActualizado);
                 this.config.isAtDestination = false;
                 this.config.currentPosition = newPosition;
                 return this.config.currentPosition;
@@ -675,33 +679,39 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
   
   // funcion algoritmo pra viaje Pelotahecho con ChatGpt
   // Se llama cada frame si el viaje está activo
-  function avanzarPelota() {
-    if (!viajePelota) return ballMovement.config.currentPosition;
-  
-    const { origen, destino, pasoActual, totalPasos } = viajePelota;
+  function avanzarPelota(origen, destino) {
+    if (!origen || !destino) return ballMovement.config.currentPosition;
   
     // Calcular progreso normalizado (entre 0 y 1)
     const t = pasoActual / (totalPasos - 1);
   
     // Aplicar easing elástico
-    const progreso = easeInOutSine(t);
+    //const progreso = easeInOutSine(t);
+    const progreso = easeInOutSine(easeInOutSine(t));
+
+
+    // Obtener destino actualizado con transformación
+    const destinoActualizado = window.applyTransformMatrix ? 
+        window.applyTransformMatrix(destino.x, destino.y) : 
+        destino;
   
-    // Interpolación
+    // Interpolación usando destino actualizado
     const newPosition = {
-        x: origen.x + (destino.x - origen.x) * progreso,
-        y: origen.y + (destino.y - origen.y) * progreso
+        x: origen.x + (destinoActualizado.x - origen.x) * progreso,
+        y: origen.y + (destinoActualizado.y - origen.y) * progreso
     };
 
     // Actualizar la posición en el objeto ballMovement
     ballMovement.config.currentPosition = newPosition;
   
     // Avanzar paso
-    viajePelota.pasoActual++;
+    pasoActual++;
   
     // Terminar si se llegó al destino
-    if (viajePelota.pasoActual >= viajePelota.totalPasos) {
-      viajePelota = null; // viaje finalizado
-      iniciarOrbita(destino);  // inicia el estado orbital
+    if (pasoActual >= totalPasos) {
+      window.viajePelota = null; // Limpiar estado del viaje
+      pasoActual = 0; // reset para próximo viaje
+      iniciarOrbita(destinoActualizado);  // inicia el estado orbital
     }
 
     return ballMovement.config.currentPosition;
@@ -777,3 +787,7 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
 
 // Exportar al scope global
 window.ballMovement = ballMovement; 
+
+// Variables globales para control de viaje
+let pasoActual = 0;
+let totalPasos = 44; // valor base que se ajustará según distancia 
