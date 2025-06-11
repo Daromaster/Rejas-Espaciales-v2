@@ -129,6 +129,8 @@ function getCurrentLevel() {
 // ============================================================================
 // 🎯 FUNCIONES PRINCIPALES CON SELECT CASE INTERNO
 // ============================================================================
+let distanciaMaxima;
+
 
 function calcularConfiguracionGrid(width, height) {
     const currentLevel = getCurrentLevel();
@@ -144,6 +146,7 @@ function calcularConfiguracionGrid(width, height) {
             const cantidadCuadradosHoriz = Math.floor((width * 0.6) / tamCuadrado);
             const anchoRejaReal = (cantidadCuadradosHoriz + 1) * tamCuadrado;
             const distanciaMaxima = anchoRejaReal;  // Recorrido maximo pelota para Funciones de paso hechas con ChatGpt
+           
           
             const margenX = (width - anchoRejaReal) / 2;
             const margenY = (height - altoZonaReja) / 2;
@@ -192,6 +195,7 @@ function calcularConfiguracionGrid(width, height) {
                 gridHeight: altoZonaReja,
                 offsetX: margenX,
                 offsetY: margenY,
+                distanciaMaxima: distanciaMaxima,
                 // 🆕 Agregar las listas base
                 coordenadasCubiertasBase,
                 coordenadasDescubiertasBase

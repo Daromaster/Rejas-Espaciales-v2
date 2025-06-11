@@ -448,8 +448,6 @@ let ballMovement = {
             if (!this.selectRandomCoveredTarget()) {
                 return this.config.currentPosition;
             }
-            this.config.frameCount = 0;
-            this.config.accelerationFactor = 1.0;
         }
 
         // 🆕 Verificar si el punto actual es válido
@@ -458,59 +456,53 @@ let ballMovement = {
             if (!this.selectRandomCoveredTarget()) {
                 return this.config.currentPosition;
             }
-            this.config.frameCount = 0;
-            this.config.accelerationFactor = 1.0;
+        }
+
+        // Obtener posición actualizada del destino
+        const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
+        if (!targetActualizado) {
+            console.error("❌ No se pudo obtener la posición actualizada del destino cubierto");
+            return this.config.currentPosition;
         }
 
         switch(currentLevel) {
             case 1: {
-                const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
-                if (!targetActualizado) {
-                    console.error("❌ No se pudo obtener la posición actualizada del destino cubierto");
+                // Si hay un viaje en curso, continuarlo
+                if (window.viajePelota) {
+                    const newPosition = avanzarPelota();
+                    // Actualizar isAtDestination basado en si el viaje terminó
+                    this.config.isAtDestination = !window.viajePelota;
+                    this.config.currentPosition = newPosition;
                     return this.config.currentPosition;
                 }
-
-                // Calcular movimiento circular alrededor del punto actualizado
-                const angle = this.getCurrentAngle();
-                const radius = this.config.coveredMaintainRadius;
-                const newPosition = {
-                    x: targetActualizado.x + Math.cos(angle) * radius,
-                    y: targetActualizado.y + Math.sin(angle) * radius
-                };
-
-                // Interpolar suavemente desde la posición actual hacia la nueva posición
-                const current = this.config.currentPosition;
-                const dx = newPosition.x - current.x;
-                const dy = newPosition.y - current.y;
                 
-                this.config.currentPosition = {
-                    x: current.x + dx * this.config.moveSpeed,
-                    y: current.y + dy * this.config.moveSpeed
-                };
-
-                // Incrementar tiempo (basado solo en el estado del movimiento)
-                this.config.timeAtCurrentTarget += 1/60;
-
-                // Solo para debugging/verificación (ORIGINAL: distancia hacia newPosition)
-                const distancia = Math.hypot(dx, dy);
-                this.config.isAtDestination = distancia <= this.config.destinationThreshold;
-                break;
+                // Si hay una órbita en curso, continuarla
+                if (window.orbitaPelota) {
+                    const newPosition = orbitarPelota(targetActualizado);
+                    this.config.isAtDestination = true;
+                    this.config.currentPosition = newPosition;
+                    return this.config.currentPosition;
+                }
+                
+                // Si no hay ni viaje ni órbita, iniciar viaje
+                iniciarViajePelota(
+                    this.config.currentPosition,
+                    targetActualizado,
+                    500 // Valor temporal hasta que distanciaMaxima esté disponible
+                );
+                
+                const newPosition = avanzarPelota();
+                this.config.isAtDestination = false;
+                this.config.currentPosition = newPosition;
+                return this.config.currentPosition;
             }
             
             case 2: {
-                const targetActualizado = window.getInterseccionActualizada(this.config.currentTarget.indiceInterseccion);
-                if (!targetActualizado) {
-                    console.warn("No se pudo obtener la posición actualizada del destino");
-                    return this.config.currentPosition;
-                }
-
+                // Por ahora mantener la lógica existente del nivel 2
                 const current = this.config.currentPosition;
                 const dx = targetActualizado.x - current.x;
                 const dy = targetActualizado.y - current.y;
                 const distanciaActual = Math.hypot(dx, dy);
-
-                // Log general de estado actual
-              
 
                 // Actualizar estado
                 this.config.timeAtCurrentTarget += 1/60;
@@ -683,8 +675,8 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
   
   // funcion algoritmo pra viaje Pelotahecho con ChatGpt
   // Se llama cada frame si el viaje está activo
-function avanzarPelota() {
-    if (!viajePelota) return;
+  function avanzarPelota() {
+    if (!viajePelota) return ballMovement.config.currentPosition;
   
     const { origen, destino, pasoActual, totalPasos } = viajePelota;
   
@@ -695,8 +687,13 @@ function avanzarPelota() {
     const progreso = easeInOutSine(t);
   
     // Interpolación
-    pelota.x = origen.x + (destino.x - origen.x) * progreso;
-    pelota.y = origen.y + (destino.y - origen.y) * progreso;
+    const newPosition = {
+        x: origen.x + (destino.x - origen.x) * progreso,
+        y: origen.y + (destino.y - origen.y) * progreso
+    };
+
+    // Actualizar la posición en el objeto ballMovement
+    ballMovement.config.currentPosition = newPosition;
   
     // Avanzar paso
     viajePelota.pasoActual++;
@@ -704,8 +701,10 @@ function avanzarPelota() {
     // Terminar si se llegó al destino
     if (viajePelota.pasoActual >= viajePelota.totalPasos) {
       viajePelota = null; // viaje finalizado
-      iniciarOrbita(puntoDestinoActual);  // inicia el estado orbital
+      iniciarOrbita(destino);  // inicia el estado orbital
     }
+
+    return ballMovement.config.currentPosition;
   }
   
   // funcion algoritmo hecho con ChatGpt
@@ -734,20 +733,23 @@ function avanzarPelota() {
 // funcion algoritmo para Orbitar en destino hecho con ChatGpt
 // sostiene la orbita
   function orbitarPelota(puntoDestinoActualizado) {
-    if (!orbitaPelota) return;
+    if (!orbitaPelota) return ballMovement.config.currentPosition;
   
     // Recalcular el nuevo centro porque la reja se mueve
     orbitaPelota.centro = { x: puntoDestinoActualizado.x, y: puntoDestinoActualizado.y };
   
     const orbita = orbitaPelota;
+    let newPosition;
     
     if (orbita.fase === "despegue") {
       // Movimiento recto en dirección 45° (PI/4)
       const fraccion = (orbita.pasoDespegue + 1) / orbita.totalDespegue;
       const offset = orbita.radio * fraccion;
   
-      pelota.x = orbita.centro.x + offset * Math.cos(orbita.anguloActual);
-      pelota.y = orbita.centro.y + offset * Math.sin(orbita.anguloActual);
+      newPosition = {
+          x: orbita.centro.x + offset * Math.cos(orbita.anguloActual),
+          y: orbita.centro.y + offset * Math.sin(orbita.anguloActual)
+      };
   
       orbita.pasoDespegue++;
   
@@ -761,9 +763,15 @@ function avanzarPelota() {
       // Movimiento circular alrededor del centro
       orbita.anguloActual += 0.1; // velocidad angular
   
-      pelota.x = orbita.centro.x + orbita.radio * Math.cos(orbita.anguloActual);
-      pelota.y = orbita.centro.y + orbita.radio * Math.sin(orbita.anguloActual);
+      newPosition = {
+          x: orbita.centro.x + orbita.radio * Math.cos(orbita.anguloActual),
+          y: orbita.centro.y + orbita.radio * Math.sin(orbita.anguloActual)
+      };
     }
+
+    // Actualizar la posición en el objeto ballMovement
+    ballMovement.config.currentPosition = newPosition;
+    return ballMovement.config.currentPosition;
   }
 
 
