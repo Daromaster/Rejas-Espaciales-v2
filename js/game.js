@@ -620,7 +620,7 @@ let totalTiempoDescubierto = 0;
 let contabilizandoTiempo = false; 
 
 
-// funcion algoritmo hecho con ChetGpt
+// funcion algoritmo hecho con ChatGpt
 // Se llama una vez cuando se establece un nuevo destino
 function iniciarViajePelota(origen, destino, distanciaMaxima) {
     // 1. Calcular distancia inicial
@@ -650,7 +650,7 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
     };
   }
   
-  // funcion algoritmo hecho con ChetGpt
+  // funcion algoritmo hecho con ChatGpt
   // Se llama cada frame si el viaje está activo
 function avanzarPelota() {
     if (!viajePelota) return;
@@ -673,10 +673,11 @@ function avanzarPelota() {
     // Terminar si se llegó al destino
     if (viajePelota.pasoActual >= viajePelota.totalPasos) {
       viajePelota = null; // viaje finalizado
+      iniciarOrbita(puntoDestinoActual);  // inicia el estado orbital
     }
   }
   
-  // funcion algoritmo hecho con ChetGpt
+  // funcion algoritmo hecho con ChatGpt
   // la Elasticidad den el recorrido de la pelota
   function easeInOutSine(t) {
     return -(Math.cos(Math.PI * t) - 1) / 2;

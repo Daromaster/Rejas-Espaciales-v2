@@ -147,6 +147,7 @@ let ballMovement = {
     // 🆕 MOVER HACIA OBJETIVO DESCUBIERTO CON SELECT CASE POR NIVEL
     moveToUncoveredTarget: function() {
     
+
         const currentLevel = this.getCurrentLevel();
         
         if (!this.config.currentTarget) {
@@ -646,6 +647,125 @@ let ballMovement = {
         this.config.isAtDestination = false;
     }
 };
+
+// variable Global para que la pelota orbite segun funcion de ChatGpt
+let orbitaPelota = null; // se activa cuando la pelota llegó y se queda girando
+
+// funcion algoritmo hecho par viaje Pelota con ChatGpt
+// Se llama una vez cuando se establece un nuevo destino
+function iniciarViajePelota(origen, destino, distanciaMaxima) {
+    // 1. Calcular distancia inicial
+    const dx = destino.x - origen.x;
+    const dy = destino.y - origen.y;
+    const distanciaInicial = Math.hypot(dx, dy);
+  
+    // 2. Calcular proporción respecto a la distancia máxima
+    const proporcion = distanciaInicial / distanciaMaxima;
+  
+    // 3. Aplicar corrección suave para evitar pasos demasiado pocos
+    //    La curva suma un pequeño "impulso extra" si la distancia es corta
+    const curvaImpulso = (1 - proporcion) ** 2; // cuadrática: más fuerte si es muy corta
+  
+    // 4. Determinar cantidad de pasos base
+    const pasosBase = 44; // número máximo para distancia máxima
+  
+    const cantidadPasos = Math.round(pasosBase * proporcion + pasosBase * 0.25 * curvaImpulso);
+    const totalPasos = Math.max(cantidadPasos, 6); // al menos 6 pasos
+  
+    // 5. Guardar estado del viaje
+    viajePelota = {
+      origen: { x: origen.x, y: origen.y },
+      destino: { x: destino.x, y: destino.y },
+      totalPasos: totalPasos,
+      pasoActual: 0
+    };
+  }
+  
+  // funcion algoritmo pra viaje Pelotahecho con ChatGpt
+  // Se llama cada frame si el viaje está activo
+function avanzarPelota() {
+    if (!viajePelota) return;
+  
+    const { origen, destino, pasoActual, totalPasos } = viajePelota;
+  
+    // Calcular progreso normalizado (entre 0 y 1)
+    const t = pasoActual / (totalPasos - 1);
+  
+    // Aplicar easing elástico
+    const progreso = easeInOutSine(t);
+  
+    // Interpolación
+    pelota.x = origen.x + (destino.x - origen.x) * progreso;
+    pelota.y = origen.y + (destino.y - origen.y) * progreso;
+  
+    // Avanzar paso
+    viajePelota.pasoActual++;
+  
+    // Terminar si se llegó al destino
+    if (viajePelota.pasoActual >= viajePelota.totalPasos) {
+      viajePelota = null; // viaje finalizado
+      iniciarOrbita(puntoDestinoActual);  // inicia el estado orbital
+    }
+  }
+  
+  // funcion algoritmo hecho con ChatGpt
+  // la Elasticidad den el recorrido de la pelota
+  function easeInOutSine(t) {
+    return -(Math.cos(Math.PI * t) - 1) / 2;
+  }
+ 
+  
+
+
+  // funcion algoritmo para Orbitar en destino hecho con ChatGpt
+  // Inicia la orbita
+  function iniciarOrbita(destinoActual) {
+    orbitaPelota = {
+      centro: { x: destinoActual.x, y: destinoActual.y }, // punto destino actualizado dinámicamente
+      radio: 2,
+      fase: "despegue",
+      pasoDespegue: 0,
+      totalDespegue: 4,
+      anguloActual: Math.PI / 4 // 45° para el primer salto diagonal
+    };
+  }
+
+
+// funcion algoritmo para Orbitar en destino hecho con ChatGpt
+// sostiene la orbita
+  function orbitarPelota(puntoDestinoActualizado) {
+    if (!orbitaPelota) return;
+  
+    // Recalcular el nuevo centro porque la reja se mueve
+    orbitaPelota.centro = { x: puntoDestinoActualizado.x, y: puntoDestinoActualizado.y };
+  
+    const orbita = orbitaPelota;
+    
+    if (orbita.fase === "despegue") {
+      // Movimiento recto en dirección 45° (PI/4)
+      const fraccion = (orbita.pasoDespegue + 1) / orbita.totalDespegue;
+      const offset = orbita.radio * fraccion;
+  
+      pelota.x = orbita.centro.x + offset * Math.cos(orbita.anguloActual);
+      pelota.y = orbita.centro.y + offset * Math.sin(orbita.anguloActual);
+  
+      orbita.pasoDespegue++;
+  
+      if (orbita.pasoDespegue >= orbita.totalDespegue) {
+        // Cambiar a fase de órbita circular
+        orbita.fase = "orbita";
+        orbita.anguloActual = orbita.anguloActual; // conservar el ángulo donde quedó
+      }
+  
+    } else if (orbita.fase === "orbita") {
+      // Movimiento circular alrededor del centro
+      orbita.anguloActual += 0.1; // velocidad angular
+  
+      pelota.x = orbita.centro.x + orbita.radio * Math.cos(orbita.anguloActual);
+      pelota.y = orbita.centro.y + orbita.radio * Math.sin(orbita.anguloActual);
+    }
+  }
+
 
 // Exportar al scope global
 window.ballMovement = ballMovement; 
