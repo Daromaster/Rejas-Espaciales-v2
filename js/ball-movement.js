@@ -685,9 +685,6 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
     const t = pasoActual / (totalPasos - 1);
   
     // Aplicar easing elástico
-    //const progreso = easeInOutSine(t);
-    //const progreso = easeInOutSine(easeInOutSine(t));
-    //const progreso = easeInOutExpo(t);
     const progreso = easeInOutSineExtraSoft(t);
 
     // Obtener destino actualizado con transformación
@@ -712,7 +709,7 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
       window.viajePelota = null; // Limpiar estado del viaje
       pasoActual = 0; // reset para próximo viaje
       ballMovement.config.isAtDestination = true; // Establecer que llegamos al destino
-      iniciarOrbita(destinoActualizado);  // inicia el estado orbital
+      iniciarOrbita(ballMovement.config.currentTarget);  // Pasar el target que contiene el índice
     }
 
     return ballMovement.config.currentPosition;
@@ -740,24 +737,27 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
   // Inicia la orbita
   function iniciarOrbita(destinoActual) {
     orbitaPelota = {
-      centro: { x: destinoActual.x, y: destinoActual.y }, // punto destino actualizado dinámicamente
+      indiceInterseccion: destinoActual.indiceInterseccion, // Guardar el índice en lugar del punto
       radio: 2,
       fase: "despegue",
       pasoDespegue: 0,
       totalDespegue: 4,
       anguloActual: Math.PI / 4 // 45° para el primer salto diagonal
     };
-    ballMovement.config.isAtDestination = true; // Asegurar que se establece al iniciar la órbita
+    ballMovement.config.isAtDestination = true;
   }
 
-
-// funcion algoritmo para Orbitar en destino hecho con ChatGpt
-// sostiene la orbita
+  // funcion algoritmo para Orbitar en destino hecho con ChatGpt
+  // sostiene la orbita
   function orbitarPelota(puntoDestinoActualizado) {
     if (!orbitaPelota) return ballMovement.config.currentPosition;
   
-    // Recalcular el nuevo centro porque la reja se mueve
-    orbitaPelota.centro = { x: puntoDestinoActualizado.x, y: puntoDestinoActualizado.y };
+    // Obtener el punto actualizado usando el índice guardado
+    const puntoActual = window.getInterseccionActualizada(orbitaPelota.indiceInterseccion);
+    if (!puntoActual) {
+      console.error("No se pudo obtener la posición actualizada para la órbita");
+      return ballMovement.config.currentPosition;
+    }
   
     const orbita = orbitaPelota;
     let newPosition;
@@ -771,8 +771,8 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
       const offset = orbita.radio * fraccion;
   
       newPosition = {
-          x: orbita.centro.x + offset * Math.cos(orbita.anguloActual),
-          y: orbita.centro.y + offset * Math.sin(orbita.anguloActual)
+          x: puntoActual.x + offset * Math.cos(orbita.anguloActual),
+          y: puntoActual.y + offset * Math.sin(orbita.anguloActual)
       };
   
       orbita.pasoDespegue++;
@@ -788,8 +788,8 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
       orbita.anguloActual += 0.1; // velocidad angular
   
       newPosition = {
-          x: orbita.centro.x + orbita.radio * Math.cos(orbita.anguloActual),
-          y: orbita.centro.y + orbita.radio * Math.sin(orbita.anguloActual)
+          x: puntoActual.x + orbita.radio * Math.cos(orbita.anguloActual),
+          y: puntoActual.y + orbita.radio * Math.sin(orbita.anguloActual)
       };
     }
 
@@ -797,7 +797,6 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
     ballMovement.config.currentPosition = newPosition;
     return ballMovement.config.currentPosition;
   }
-
 
 // Exportar al scope global
 window.ballMovement = ballMovement; 
