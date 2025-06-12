@@ -269,7 +269,7 @@ function updateGameLogic(deltaTime) {
             // ═══════════════════════════════════════════════════════════
             // NIVEL 1: Alternancia fija con tiempos fijos
             // ═══════════════════════════════════════════════════════════
-            const TIEMPO_EN_DESTINO = 950; // ms que debe permanecer en cada destino
+            const TIEMPO_EN_DESTINO = 2950; // ms que debe permanecer en cada destino
             
             // Solo incrementar el tiempo si la pelota está en el destino
             if (ballMovement.isAtDestination()) {
@@ -281,6 +281,9 @@ function updateGameLogic(deltaTime) {
                     gameState.currentState = (gameState.currentState === "covered") ? "uncovered" : "covered";
                     gameState.stateStartTime = currentTime; // Actualizar tiempo de inicio del nuevo estado
                     gameState.frameCount = 0;
+                    
+                    // Limpiar la órbita actual
+                    orbitaPelota = null;
                     
                     // Seleccionar nuevo destino según el estado
                     if (gameState.currentState === "covered") {

@@ -474,8 +474,6 @@ let ballMovement = {
                 // Si hay un viaje en curso, continuarlo
                 if (window.viajePelota) {
                     const newPosition = avanzarPelota(window.viajePelota.origen, targetActualizado);
-                    // Actualizar isAtDestination basado en si el viaje terminó
-                    this.config.isAtDestination = !window.viajePelota;
                     this.config.currentPosition = newPosition;
                     return this.config.currentPosition;
                 }
@@ -483,12 +481,13 @@ let ballMovement = {
                 // Si hay una órbita en curso, continuarla
                 if (window.orbitaPelota) {
                     const newPosition = orbitarPelota(targetActualizado);
-                    this.config.isAtDestination = true;
                     this.config.currentPosition = newPosition;
                     return this.config.currentPosition;
                 }
                 
                 // Si no hay ni viaje ni órbita, iniciar viaje
+                this.config.isAtDestination = false; // Reset explícito al iniciar nuevo viaje
+                window.orbitaPelota = null; // Asegurar que no hay órbita activa
                 iniciarViajePelota(
                     this.config.currentPosition,
                     targetActualizado,
@@ -496,7 +495,6 @@ let ballMovement = {
                 );
                 
                 const newPosition = avanzarPelota(window.viajePelota.origen, targetActualizado);
-                this.config.isAtDestination = false;
                 this.config.currentPosition = newPosition;
                 return this.config.currentPosition;
             }
@@ -641,6 +639,7 @@ let ballMovement = {
     // Resetear estado de destino
     resetTimeAtDestination: function() {
         this.config.isAtDestination = false;
+        window.orbitaPelota = null; // Asegurar que se limpie la órbita
     }
 };
 
@@ -687,8 +686,9 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
   
     // Aplicar easing elástico
     //const progreso = easeInOutSine(t);
-    const progreso = easeInOutSine(easeInOutSine(t));
-
+    //const progreso = easeInOutSine(easeInOutSine(t));
+    //const progreso = easeInOutExpo(t);
+    const progreso = easeInOutSineExtraSoft(t);
 
     // Obtener destino actualizado con transformación
     const destinoActualizado = window.applyTransformMatrix ? 
@@ -711,6 +711,7 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
     if (pasoActual >= totalPasos) {
       window.viajePelota = null; // Limpiar estado del viaje
       pasoActual = 0; // reset para próximo viaje
+      ballMovement.config.isAtDestination = true; // Establecer que llegamos al destino
       iniciarOrbita(destinoActualizado);  // inicia el estado orbital
     }
 
@@ -723,8 +724,17 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
     return -(Math.cos(Math.PI * t) - 1) / 2;
   }
  
+  function easeInOutSineExtraSoft(t) {
+    return easeInOutSine(easeInOutSine(easeInOutSine(t)));
+  }
   
-
+  function easeInOutExpo(t) {
+    if (t === 0) return 0;
+    if (t === 1) return 1;
+    return t < 0.5
+      ? Math.pow(2, 20 * t - 10) / 2
+      : (2 - Math.pow(2, -20 * t + 10)) / 2;
+  }
 
   // funcion algoritmo para Orbitar en destino hecho con ChatGpt
   // Inicia la orbita
@@ -737,6 +747,7 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
       totalDespegue: 4,
       anguloActual: Math.PI / 4 // 45° para el primer salto diagonal
     };
+    ballMovement.config.isAtDestination = true; // Asegurar que se establece al iniciar la órbita
   }
 
 
@@ -750,6 +761,9 @@ function iniciarViajePelota(origen, destino, distanciaMaxima) {
   
     const orbita = orbitaPelota;
     let newPosition;
+    
+    // Asegurar que isAtDestination se mantenga durante la órbita
+    ballMovement.config.isAtDestination = true;
     
     if (orbita.fase === "despegue") {
       // Movimiento recto en dirección 45° (PI/4)
