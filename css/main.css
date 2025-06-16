@@ -1,4 +1,4 @@
-/* Estilos base - Rejas Espaciales */
+/* Rejas Espaciales V2 - Estilos principales */
 
 * {
   margin: 0;
@@ -12,43 +12,88 @@ html, body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #0d0d0d;
   color: #f2f2f2;
+  user-select: none; /* Evitar selección de texto */
 }
 
-/* Zona superior: fija en 10% del alto */
+/* ===========================================
+   LAYOUT HORIZONTAL (orientación landscape)
+   =========================================== */
+
+/* Zona superior: 20% de altura - Información del juego */
 #zona-superior {
-  height: 10vh;
-  background-color: var(--zona-color, #111);
+  height: 20vh;
+  background-color: #111;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0 2vw;
+  position: relative;
+  z-index: 10;
 }
 
-#zona-superior h1 {
-  font-size: 2rem;
+#info-izquierda {
+  flex: 1;
+  text-align: left;
+}
+
+#info-centro {
+  flex: 2;
+  text-align: center;
+}
+
+#info-derecha {
+  flex: 1;
+  text-align: right;
+}
+
+#info-centro h1 {
+  font-size: 2.2rem;
   color: #00ffff;
+  margin-bottom: 0.3rem;
 }
 
-/* Zona central: canvas ocupa 80% del alto */
+#comentario-juego {
+  font-size: 1rem;
+  color: #ccc;
+}
+
+#puntaje-nivel, #puntaje-total {
+  font-size: 1.1rem;
+  color: #ffff00;
+  margin-bottom: 0.3rem;
+}
+
+#cronometro {
+  font-size: 2rem;
+  color: #ff6600;
+  font-weight: bold;
+}
+
+/* Zona central: 70% de altura - Canvas del juego */
 #zona-juego {
-  height: 80vh;
+  height: 70vh;
   background-color: #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-/* El canvas ocupa todo el espacio disponible de su contenedor */
-#canvas-juego {
-  width: 100%;
-  height: 100%;
+/* Canvas principal con proporción 900x600 */
+#canvas-principal {
   background-color: #000;
-  /* bordes y bordes redondeados eliminados por ahora para evitar influencia */
+  border: 2px solid #333;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  aspect-ratio: 3/2;
 }
 
-/* Zona inferior: fija en 10% del alto */
+/* Zona inferior: 10% de altura - Descripción de controles */
 #zona-inferior {
   height: 10vh;
-  background-color: var(--zona-color, #111);
+  background-color: #111;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,34 +101,167 @@ html, body {
   color: #ccc;
 }
 
-/* Ajustes para dispositivos móviles en orientación vertical (retrato) */
+/* Controles laterales (botones táctiles) */
+#controles-izquierda, #controles-derecha {
+  position: fixed;
+  bottom: 12vh;
+  z-index: 20;
+}
+
+#controles-izquierda {
+  left: 2vw;
+}
+
+#controles-derecha {
+  right: 2vw;
+}
+
+.btn-control {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #00ffff;
+  background-color: rgba(0, 255, 255, 0.1);
+  color: #00ffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-control:hover {
+  background-color: rgba(0, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.btn-control:active {
+  transform: scale(0.95);
+  background-color: rgba(0, 255, 255, 0.5);
+}
+
+/* ===========================================
+   LAYOUT VERTICAL (orientación portrait)
+   =========================================== */
+
 @media (orientation: portrait) {
-  /* Zona superior: aumentar a 20% en modo retrato */
+  
+  /* Zona superior: 40% de los márgenes totales - Información */
   #zona-superior {
-    height: 20vh;
+    height: 25vh;
     flex-direction: column;
-    padding: 5px 0;
+    justify-content: center;
+    padding: 1vh 2vw;
   }
   
-  /* Zona central: reducir a 60% en modo retrato */
+  #info-izquierda, #info-centro, #info-derecha {
+    flex: none;
+    margin: 0.5vh 0;
+  }
+  
+  #info-centro h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.2rem;
+  }
+  
+  #comentario-juego {
+    font-size: 0.9rem;
+  }
+  
+  #cronometro {
+    font-size: 1.5rem;
+  }
+  
+  /* Zona central: Canvas toma todo el ancho disponible */
   #zona-juego {
-    height: 60vh;
+    height: 50vh;
   }
   
-  /* Zona inferior: aumentar a 20% en modo retrato */
+  #canvas-principal {
+    width: 95vw;
+    height: auto; /* Mantiene proporción 3:2 */
+  }
+  
+  /* Zona inferior: 60% de los márgenes totales - Botones */
   #zona-inferior {
-    height: 20vh;
-    padding: 10px;
+    height: 25vh;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 2vh;
+  }
+  
+  /* Reorganizar controles en modo vertical */
+  #controles-izquierda, #controles-derecha {
+    position: static;
+    margin: 1vh;
+  }
+  
+  #zona-inferior {
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+  }
+  
+  #descripcion-controles {
+    order: 2;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  
+  #controles-izquierda {
+    order: 1;
+  }
+  
+  #controles-derecha {
+    order: 3;
+  }
+  
+  .btn-control {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
   }
 }
 
-/* Estilos para el modo claro */
-:root {
-  --zona-color: #111;
+/* ===========================================
+   ESTADOS ESPECIALES
+   =========================================== */
+
+/* Estado de audio muteado */
+.btn-control.muted .audio-icon::before {
+  content: '🔇';
 }
 
-:root[data-theme="claro"] {
-  --zona-color: #c8c8c8;
+/* Animaciones y efectos */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
-/* --- Fin del archivo main.css completo - 2025-04-30 15:57:00 GMT-3 --- */
+.btn-control.active {
+  animation: pulse 0.3s ease-in-out;
+}
+
+/* Ocultar elementos cuando no están disponibles */
+.hidden {
+  display: none !important;
+}
+
+/* Responsivo para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  #info-centro h1 {
+    font-size: 1.5rem;
+  }
+  
+  #puntaje-nivel, #puntaje-total {
+    font-size: 1rem;
+  }
+  
+  #cronometro {
+    font-size: 1.3rem;
+  }
+}
+
+/* === Fin del archivo main.css V2 === */
