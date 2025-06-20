@@ -361,13 +361,15 @@ class RejasEspacialesGame {
             this.ctx.fill();
             
             // Indicador de estado
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            this.ctx.font = '12px Arial';
-            this.ctx.fillText(
-                `${pelotaState.viajando ? '🚀' : '🌀'} ${pelotaState.destinoActual.tipo}`,
-                destinoTransformado.x + 12,
-                destinoTransformado.y - 12
-            );
+            if (1==0) {
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    this.ctx.font = '12px Arial';
+                    this.ctx.fillText(
+                        `${pelotaState.viajando ? '🚀' : '🌀'} ${pelotaState.destinoActual.tipo}`,
+                        destinoTransformado.x + 12,
+                        destinoTransformado.y - 12
+                    );
+            }
         }
     }
     
