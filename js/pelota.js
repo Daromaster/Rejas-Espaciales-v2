@@ -24,13 +24,32 @@ let pelotaState = {
     
     // Rotación permanente de la pelota
     anguloRotacion: 0,
-    velocidadRotacion: 0.02, // Radianes por frame (ajustable por nivel)
+    velocidadRotacion: 0.104719755, // ~π/30 radianes por frame = 1 vuelta cada 2 segundos a 30fps
     
     // Configuración visual
     radio: 8,
     color: {
-        normal: { r: 255, g: 170, b: 170 },
-        impacto: { r: 255, g: 170, b: 255 }
+        // Colores base normales (del Ensayo original)
+        normal: {
+            bright: "rgba(255, 170, 170, 1)",  // Color claro para el brillo (rojo)
+            mid: "rgb(218, 28, 28)",           // Color intermedio (rojo)
+            dark: "rgba(128, 0, 0, 1)"         // Color oscuro para el borde (rojo)
+        },
+        // Colores bajo disparo (del Ensayo original)
+        hit: {
+            bright: "rgba(255, 170, 255, 1)",  // Color claro para el brillo (violeta)
+            mid: "rgb(218, 28, 218)",          // Color intermedio (violeta)
+            dark: "rgba(128, 0, 128, 1)"       // Color oscuro para el borde (violeta)
+        }
+    },
+    
+    // Sistema de intensidad de impacto (preparado para P4)
+    impacto: {
+        activo: false,
+        intensidad: 0,           // 0-100 para mezclar entre normal y hit
+        tiempoInicio: 0,
+        duracion: 300,           // Duración de la transición en milisegundos
+        decaimiento: 2           // Velocidad de desvanecimiento
     },
     
     // Estado del sistema
@@ -88,7 +107,7 @@ export function initPelota(nivel) {
         case 1: {
             // Nivel 1: Destinos alternados, tiempo fijo 2000ms
             pelotaState.tiempoPermanenciaDestino = 2000;
-            pelotaState.velocidadRotacion = 0.02; // Rotación estándar
+            pelotaState.velocidadRotacion = 0.104719755; // 1 vuelta cada 2 segundos
             
             // Radio = 70% del tamaño de celda (diámetro 70%, radio 35%)
             const gridConfig = getGridConfig(nivel);
@@ -104,7 +123,7 @@ export function initPelota(nivel) {
             pelotaState.posXAnterior = pelotaState.posX;
             pelotaState.posYAnterior = pelotaState.posY;
             
-            console.log(`Configuración nivel 1: Radio ${pelotaState.radio}px, destinos alternados, 2000ms permanencia, rotación ${pelotaState.velocidadRotacion} rad/frame`);
+            console.log(`Configuración nivel 1: Radio ${pelotaState.radio}px, destinos alternados, 2000ms permanencia, rotación 1 vuelta/2s`);
             
             // Si ya estaba inicializado y cambió el radio, redibujar
             if (pelotaState.isInicializado && radioCambio) {
@@ -117,7 +136,7 @@ export function initPelota(nivel) {
         case 2: {
             // Nivel 2: Destinos probabilísticos (preparado para futuro)
             pelotaState.tiempoPermanenciaDestino = 1500; // Más dinámico
-            pelotaState.velocidadRotacion = 0.02; // Misma rotación por ahora
+            pelotaState.velocidadRotacion = 0.104719755; // 1 vuelta cada 2 segundos
             
             // Radio = 70% del tamaño de celda (diámetro 70%, radio 35%)
             const gridConfig2 = getGridConfig(nivel);
@@ -131,7 +150,7 @@ export function initPelota(nivel) {
             pelotaState.posXAnterior = pelotaState.posX;
             pelotaState.posYAnterior = pelotaState.posY;
             
-            console.log(`Configuración nivel 2: Radio ${pelotaState.radio}px, destinos probabilísticos, 1500ms permanencia, rotación ${pelotaState.velocidadRotacion} rad/frame`);
+            console.log(`Configuración nivel 2: Radio ${pelotaState.radio}px, destinos probabilísticos, 1500ms permanencia, rotación 1 vuelta/2s`);
             
             if (pelotaState.isInicializado && radioCambio2) {
                 console.log('📏 Radio cambió, redibujando pelota base');
@@ -143,7 +162,7 @@ export function initPelota(nivel) {
         default: {
             console.warn(`⚠️ Configuración por defecto para nivel ${nivel}`);
             pelotaState.tiempoPermanenciaDestino = 2000;
-            pelotaState.velocidadRotacion = 0.02; // Rotación estándar
+            pelotaState.velocidadRotacion = 0.104719755; // 1 vuelta cada 2 segundos
             
             // Radio por defecto = 70% del tamaño de celda (diámetro 70%, radio 35%)
             const gridConfigDefault = getGridConfig(nivel);
@@ -492,22 +511,22 @@ function dibujarPelotaBase(nivel) {
             ctx1.beginPath();
             ctx1.arc(0, 0, pelotaState.radio, 0, Math.PI * 2);
             
-            // Gradiente radial
+            // Gradiente radial estilo Ensayo (desplazado para efecto 3D)
+            const gradX = pelotaState.radio * 0.25;  // 25% hacia la derecha
+            const gradY = -pelotaState.radio * 0.25; // 25% hacia arriba
+            
             const gradiente = ctx1.createRadialGradient(
-                -pelotaState.radio * 0.1, -pelotaState.radio * 0.3, 0,
-                0, 0, pelotaState.radio
+                gradX, gradY, 0,
+                gradX, gradY, pelotaState.radio * 2
             );
-            gradiente.addColorStop(0, `rgba(${pelotaState.color.normal.r}, ${pelotaState.color.normal.g}, ${pelotaState.color.normal.b}, 1)`);
-            gradiente.addColorStop(0.7, `rgba(${pelotaState.color.normal.r * 0.8}, ${pelotaState.color.normal.g * 0.5}, ${pelotaState.color.normal.b * 0.5}, 1)`);
-            gradiente.addColorStop(1, `rgba(${pelotaState.color.normal.r * 0.5}, ${pelotaState.color.normal.g * 0.2}, ${pelotaState.color.normal.b * 0.2}, 1)`);
+            
+            // Usar colores normales del sistema (por ahora sin impacto)
+            gradiente.addColorStop(0, pelotaState.color.normal.bright);    // Centro brillante
+            gradiente.addColorStop(0.5, pelotaState.color.normal.mid);     // Intermedio
+            gradiente.addColorStop(1, pelotaState.color.normal.dark);      // Borde oscuro
             
             ctx1.fillStyle = gradiente;
             ctx1.fill();
-            
-            // Borde
-            ctx1.strokeStyle = `rgba(${pelotaState.color.normal.r * 0.3}, ${pelotaState.color.normal.g * 0.1}, ${pelotaState.color.normal.b * 0.1}, 1)`;
-            ctx1.lineWidth = 1;
-            ctx1.stroke();
             
             ctx1.restore();
             
@@ -617,12 +636,46 @@ export function getPelotaState() {
     };
 }
 
+// === SISTEMA DE IMPACTO (PREPARADO PARA P4) ===
 // Función para impacto de pelota (preparada para P4)
 export function pelotaImpacto() {
     console.log('🎯 ¡Pelota impactada!');
-    // TODO: Implementar efectos visuales de impacto en P4
-    // TODO: Cambiar color temporalmente (redibujar base)
-    // TODO: Crear efectos de partículas en canvas virtual adicional
+    
+    // Activar sistema de impacto
+    pelotaState.impacto.activo = true;
+    pelotaState.impacto.tiempoInicio = performance.now();
+    pelotaState.impacto.intensidad = Math.min(100, pelotaState.impacto.intensidad + 60);
+    
+    // TODO P4: Implementar efectos visuales de impacto
+    // TODO P4: Redibujar base con colores mezclados
+    // TODO P4: Crear efectos de partículas en canvas virtual adicional
+    // TODO P4: Sonidos de impacto
+}
+
+// Función para actualizar sistema de colores (preparada para P4)
+function updatePelotaColor() {
+    if (!pelotaState.impacto.activo) return;
+    
+    const tiempoActual = performance.now();
+    const tiempoTranscurrido = tiempoActual - pelotaState.impacto.tiempoInicio;
+    
+    // Comenzar decaimiento después de la duración inicial
+    if (tiempoTranscurrido > pelotaState.impacto.duracion) {
+        pelotaState.impacto.intensidad -= pelotaState.impacto.decaimiento;
+        
+        if (pelotaState.impacto.intensidad <= 0) {
+            pelotaState.impacto.intensidad = 0;
+            pelotaState.impacto.activo = false;
+            // TODO P4: Redibujar base con colores normales
+        }
+    }
+}
+
+// Función para mezclar colores (preparada para P4)
+function blendColors(color1, color2, amount) {
+    // TODO P4: Implementar mezcla de colores RGBA entre normal y hit
+    // Por ahora devolver color normal
+    return color1;
 }
 
 console.log('🎾 Pelota.js cargado - Sistema P3 implementado');
