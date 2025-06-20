@@ -1,4 +1,4 @@
-// Grid.js - Sistema de rejas espaciales V2
+// Grid.js - Sistema de rejas espaciales V2 - P2b
 
 import { GAME_CONFIG, LEVELS_CONFIG, Utils } from './config.js';
 
@@ -25,74 +25,26 @@ let gridState = {
     }
 };
 
-// === MOVIMIENTO FLOTANTE ===
-class GridMovement {
-    constructor() {
-        this.config = {
-            amplitudeY: 12,
-            amplitudeX: 8,
-            frequencyY: 0.001,
-            frequencyX: 0.0007,
-            phaseY: 0,
-            phaseX: 0,
-            speed: 1.2,
-            lastTime: 0,
-            isInitialized: false
-        };
-    }
-
-    // Configuración por nivel
-    getConfigForLevel(level) {
-        switch (level) {
-            case 1:
-                return {
-                    amplitudeY: 12,
-                    amplitudeX: 8,
-                    speed: 1.2
-                };
-            case 2:
-                return {
-                    amplitudeY: 20,
-                    amplitudeX: 15,
-                    speed: 1.8
-                };
-            default:
-                return {
-                    amplitudeY: 12,
-                    amplitudeX: 8,
-                    speed: 1.2
-                };
-        }
-    }
-
-    init(level) {
-        this.config.lastTime = performance.now();
-        this.config.phaseY = Math.random() * Math.PI * 2;
-        this.config.phaseX = Math.random() * Math.PI * 2;
-        
-        const levelConfig = this.getConfigForLevel(level);
-        Object.assign(this.config, levelConfig);
-        
-        this.config.isInitialized = true;
-        console.log(`🌊 Movimiento flotante inicializado para nivel ${level}`);
-    }
-
-    // Calcular offset para un tiempo dado
-    calculateOffset(currentTime) {
-        if (!this.config.isInitialized) return { x: 0, y: 0 };
-        
-        const timeY = currentTime * this.config.frequencyY * this.config.speed;
-        const timeX = currentTime * this.config.frequencyX * this.config.speed;
-
+// === FUNCIONES AUXILIARES MATEMÁTICAS ESTÁNDAR (NO POR NIVEL) ===
+const MathUtils = {
+    // Función sinusoidal estándar
+    sineWave: (time, frequency, amplitude, phase = 0) => {
+        return Math.sin(time * frequency + phase) * amplitude;
+    },
+    
+    // Función coseno estándar
+    cosineWave: (time, frequency, amplitude, phase = 0) => {
+        return Math.cos(time * frequency + phase) * amplitude;
+    },
+    
+    // Movimiento elíptico (para futuros niveles)
+    ellipticalMotion: (time, frequencyX, frequencyY, amplitudeX, amplitudeY, phaseX = 0, phaseY = 0) => {
         return {
-            x: Math.sin(timeX + this.config.phaseX) * this.config.amplitudeX,
-            y: Math.sin(timeY + this.config.phaseY) * this.config.amplitudeY
+            x: Math.sin(time * frequencyX + phaseX) * amplitudeX,
+            y: Math.cos(time * frequencyY + phaseY) * amplitudeY
         };
     }
-}
-
-// Instancia global del movimiento
-const gridMovement = new GridMovement();
+};
 
 // === GESTIÓN DE CANVAS VIRTUALES ===
 function ensureGridCanvas(index) {
@@ -128,7 +80,7 @@ function calcularConfiguracionGrid(width, height, level) {
             const altoZonaReja = dimensionMenor * 0.6;
             const tamCuadrado = altoZonaReja / 4;
             
-            // ✅ CORRECCIÓN: Celdas siempre CUADRADAS
+            // Celdas siempre CUADRADAS
             const anchoEsMenor = width < height;
             let cantidadHoriz, cantidadVert;
             
@@ -140,7 +92,7 @@ function calcularConfiguracionGrid(width, height, level) {
                 cantidadVert = 3;  // 4 barrotes
             }
             
-            // ✅ Dimensiones basadas en tamCuadrado CUADRADO
+            // Dimensiones basadas en tamCuadrado CUADRADO
             const anchoRejaReal = (cantidadHoriz + 1) * tamCuadrado;
             const altoRejaReal = (cantidadVert + 1) * tamCuadrado;
             
@@ -210,13 +162,13 @@ function dibujarRejaBase(level) {
     const width = GAME_CONFIG.LOGICAL_WIDTH;
     const height = GAME_CONFIG.LOGICAL_HEIGHT;
     
-    // ✅ Esta función se ejecuta SOLO al inicio y en resize
+    // Esta función se ejecuta SOLO al inicio y en resize
     switch (level) {
         case 1: {
             // Configuración del nivel 1
             configGrid = calcularConfiguracionGrid(width, height, level);
             
-            // ✅ CANVAS BASE (1): Reja sin transformaciones
+            // CANVAS BASE (1): Reja sin transformaciones
             ensureGridCanvas(1);
             gridCanvases[1].clearRect(0, 0, width, height);
             gridCanvases[1].lineWidth = configGrid.grosorLinea;
@@ -273,7 +225,7 @@ function dibujarRejaBase(level) {
 
 // === COMPOSICIÓN CON TRANSFORMACIONES (CADA FRAME) ===
 function composeGrid(level, alpha = 1.0) {
-    // ✅ INTERPOLACIÓN ENTRE ESTADOS ANTERIOR Y ACTUAL
+    // INTERPOLACIÓN ENTRE ESTADOS ANTERIOR Y ACTUAL
     const interpolatedState = {
         offsetX: Utils.lerp(gridState.previous.offsetX, gridState.current.offsetX, alpha),
         offsetY: Utils.lerp(gridState.previous.offsetY, gridState.current.offsetY, alpha),
@@ -282,15 +234,15 @@ function composeGrid(level, alpha = 1.0) {
     
     switch (level) {
         case 1: {
-            // ✅ CANVAS COMPUESTO (2): Canvas base + transformaciones
+            // CANVAS COMPUESTO (2): Canvas base + transformaciones
             ensureGridCanvas(2);
             gridCanvases[2].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            // ✅ APLICAR TRANSFORMACIONES CORRECTAMENTE
+            // APLICAR TRANSFORMACIONES CORRECTAMENTE
             gridCanvases[2].save();
             gridCanvases[2].translate(interpolatedState.offsetX, interpolatedState.offsetY);
             
-            // ✅ CAPTURAR MATRIZ DE TRANSFORMACIÓN EN EL LUGAR CORRECTO
+            // CAPTURAR MATRIZ DE TRANSFORMACIÓN EN EL LUGAR CORRECTO
             transformMatrix = gridCanvases[2].getTransform();
             
             // Componer imagen final
@@ -317,7 +269,7 @@ function composeGrid(level, alpha = 1.0) {
             gridCanvases[2].translate(-centerX, -centerY);
             gridCanvases[2].translate(interpolatedState.offsetX, interpolatedState.offsetY);
             
-            // ✅ CAPTURAR MATRIZ DE TRANSFORMACIÓN 
+            // CAPTURAR MATRIZ DE TRANSFORMACIÓN 
             transformMatrix = gridCanvases[2].getTransform();
             
             gridCanvases[2].drawImage(gridCanvases[1].canvas, 0, 0);
@@ -332,35 +284,117 @@ function composeGrid(level, alpha = 1.0) {
     }
 }
 
-// === ACTUALIZACIÓN LÓGICA (30 FPS) ===
+// === ✅ P2b: ACTUALIZACIÓN LÓGICA CON MOTORES POR NIVEL (30 FPS) ===
 export function updateGridLogic(deltaTime, level) {
     const currentTime = performance.now();
     
     // Guardar estado anterior
     gridState.previous = { ...gridState.current };
     
-    // Calcular nuevo estado según el nivel
+    // ✅ MOTORES DE MOVIMIENTO CON PERSONALIDAD PROPIA POR NIVEL
     switch (level) {
         case 1: {
-            // NIVEL 1: Solo flotación
-            const offset = gridMovement.calculateOffset(currentTime);
-            gridState.current.offsetX = offset.x;
-            gridState.current.offsetY = offset.y;
-            gridState.current.rotationAngle = 0; // Sin rotación
+            // === MOTOR DE MOVIMIENTO NIVEL 1: FLOTACIÓN SINUSOIDAL ===
+            // Parámetros específicos del nivel 1
+            const amplitudeY = 22;      // Amplitud vertical personalizada
+            const amplitudeX = 18;      // Amplitud horizontal personalizada
+            const frequencyY = 0.001;   // Frecuencia vertical
+            const frequencyX = 0.0007;  // Frecuencia horizontal
+            const speed = 1.2;          // Velocidad general
+            const phaseY = Math.PI / 3; // Fase inicial Y (personalizada)
+            const phaseX = Math.PI / 6; // Fase inicial X (personalizada)
+            
+            // Motor de flotación Y
+            gridState.current.offsetY = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyY, 
+                amplitudeY, 
+                phaseY
+            );
+            
+            // Motor de flotación X  
+            gridState.current.offsetX = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyX, 
+                amplitudeX, 
+                phaseX
+            );
+            
+            // Sin rotación en nivel 1
+            gridState.current.rotationAngle = 0;
+            
             break;
         }
         
         case 2: {
-            // NIVEL 2: Flotación + rotación
-            const offset = gridMovement.calculateOffset(currentTime);
-            gridState.current.offsetX = offset.x;
-            gridState.current.offsetY = offset.y;
-            // TODO: gridState.current.rotationAngle += ROTATION_SPEED * (deltaTime / 1000);
+            // === MOTOR DE MOVIMIENTO NIVEL 2: FLOTACIÓN + ROTACIÓN ===
+            // Parámetros específicos del nivel 2 (personalidad diferente)
+            const amplitudeY = 30;      // Más amplitud que nivel 1
+            const amplitudeX = 25;      // Más amplitud que nivel 1
+            const frequencyY = 0.0015;  // Frecuencia diferente
+            const frequencyX = 0.001;   // Frecuencia diferente
+            const speed = 1.8;          // Más velocidad que nivel 1
+            const phaseY = 0;           // Sin fase inicial
+            const phaseX = Math.PI / 2; // Fase diferente al nivel 1
+            
+            // Motor de flotación Y (diferente al nivel 1)
+            gridState.current.offsetY = MathUtils.cosineWave(  // ¡COSENO en lugar de SENO!
+                currentTime * speed, 
+                frequencyY, 
+                amplitudeY, 
+                phaseY
+            );
+            
+            // Motor de flotación X (diferente al nivel 1)
+            gridState.current.offsetX = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyX, 
+                amplitudeX, 
+                phaseX
+            );
+            
+            // === MOTOR DE ROTACIÓN NIVEL 2 ===
+            const rotationSpeed = Math.PI / 6; // 30 grados por segundo
+            gridState.current.rotationAngle += rotationSpeed * (deltaTime / 1000);
+            
             break;
         }
         
-        default:
+        case 3: {
+            // === MOTOR DE MOVIMIENTO NIVEL 3: MOVIMIENTO ELÍPTICO (EJEMPLO FUTURO) ===
+            // Parámetros completamente diferentes
+            const ellipseData = MathUtils.ellipticalMotion(
+                currentTime * 0.8,  // Velocidad diferente
+                0.0012,             // Frecuencia X elipse
+                0.0008,             // Frecuencia Y elipse  
+                35,                 // Amplitud X elipse
+                20,                 // Amplitud Y elipse
+                0,                  // Fase X
+                Math.PI / 4         // Fase Y diferente
+            );
+            
+            gridState.current.offsetX = ellipseData.x;
+            gridState.current.offsetY = ellipseData.y;
+            
+            // === MOTOR DE ROTACIÓN PENDULAR NIVEL 3 ===
+            const pendulumAmplitude = Math.PI / 4; // 45 grados máximo
+            const pendulumFreq = 0.0005;
+            gridState.current.rotationAngle = MathUtils.sineWave(
+                currentTime, 
+                pendulumFreq, 
+                pendulumAmplitude
+            );
+            
             break;
+        }
+        
+        default: {
+            // Fallback: sin movimiento
+            gridState.current.offsetX = 0;
+            gridState.current.offsetY = 0;
+            gridState.current.rotationAngle = 0;
+            break;
+        }
     }
     
     gridState.current.timestamp = currentTime;
@@ -376,7 +410,7 @@ export function renderGrid(ctx, level) {
     // Componer grid con interpolación
     const canvasIndex = composeGrid(level, alpha);
     
-    // ✅ RENDERIZAR AL CANVAS PRINCIPAL
+    // RENDERIZAR AL CANVAS PRINCIPAL
     if (gridCanvases[canvasIndex]) {
         ctx.drawImage(gridCanvases[canvasIndex].canvas, 0, 0);
     }
@@ -403,7 +437,7 @@ export function getCoordenadasCubiertas(level) {
         configGrid.currentLevel = level;
     }
 
-    // ✅ APLICAR TRANSFORMACIONES A COORDENADAS BASE
+    // APLICAR TRANSFORMACIONES A COORDENADAS BASE
     return configGrid.coordenadasCubiertasBase.map(coord => {
         const transformed = applyTransformMatrix(coord.x, coord.y);
         return {
@@ -420,7 +454,7 @@ export function getCoordenadasDescubiertas(level) {
         configGrid.currentLevel = level;
     }
 
-    // ✅ APLICAR TRANSFORMACIONES A COORDENADAS BASE
+    // APLICAR TRANSFORMACIONES A COORDENADAS BASE
     return configGrid.coordenadasDescubiertasBase.map(coord => {
         const transformed = applyTransformMatrix(coord.x, coord.y);
         return {
@@ -433,24 +467,22 @@ export function getCoordenadasDescubiertas(level) {
 
 // === INICIALIZACIÓN ===
 export function initGrid(level = 1) {
-    console.log(`🎮 Inicializando grid para nivel ${level}`);
+    console.log(`🎮 Inicializando grid para nivel ${level} - P2b`);
     
     resetGridCanvases();
-    
-    // Inicializar movimiento
-    gridMovement.init(level);
     
     // Inicializar estados
     gridState.previous = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: 0 };
     gridState.current = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: performance.now() };
     
-    // ✅ DIBUJAR REJA BASE (SOLO UNA VEZ)
+    // DIBUJAR REJA BASE (SOLO UNA VEZ)
     dibujarRejaBase(level);
     
     // Preparar canvas de composición
     switch (level) {
         case 1:
         case 2:
+        case 3:
             ensureGridCanvas(2); // Canvas para composición
             break;
         default:
@@ -467,4 +499,4 @@ export function getGridConfig() {
     return configGrid;
 }
 
-console.log('Grid.js V2 CORREGIDO - P2 implementado correctamente');
+console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
