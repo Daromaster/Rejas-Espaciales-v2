@@ -11,8 +11,16 @@ import {
     renderGrid, 
     getCoordenadasCubiertas, 
     getCoordenadasDescubiertas, 
-    updateGridLogic 
+    updateGridLogic,
+    getTransformMatrix 
 } from './grid.js';
+import { 
+    initPelota, 
+    updatePelotaLogic, 
+    renderPelota, 
+    getPelotaPosition, 
+    getPelotaState 
+} from './pelota.js';
 
 // === CONTROLADOR PRINCIPAL DEL JUEGO ===
 class RejasEspacialesGame {
@@ -134,6 +142,9 @@ class RejasEspacialesGame {
         
         // Inicializar sistema de grid
         initGrid(this.currentLevel);
+        
+        // Inicializar sistema de pelota
+        initPelota(this.currentLevel);
         
         // Configurar cronómetro
         relojJuego.configurarTiempo(60000); // 60 segundos
@@ -270,6 +281,9 @@ class RejasEspacialesGame {
             const deltaTime = currentTime - this.lastLogicUpdate;
             updateGridLogic(deltaTime, this.currentLevel);
             
+            // Actualizar lógica de la pelota
+            updatePelotaLogic(deltaTime, this.currentLevel);
+            
             // Verificar fin de tiempo
             if (relojJuego.estaTerminado()) {
                 this.gameState = GAME_CONFIG.GAME_STATES.GAME_OVER;
@@ -293,37 +307,75 @@ class RejasEspacialesGame {
         }
         
         if (this.gameStarted) {
-            // Renderizar grid
+            // ORDEN CORRECTO DE CAPAS: Fondo → Pelota → Reja → Efectos → Debug
+            
+            // 1. Fondo (negro por ahora, implementar fondo en futuro)
+            // TODO: Implementar fondo estrellado
+            
+            // 2. Pelota (DEBAJO de la reja)
+            const timeSinceLastLogic = currentTime - this.lastLogicUpdate;
+            const alpha = Math.min(timeSinceLastLogic / this.logicInterval, 1);
+            renderPelota(this.ctx, this.currentLevel, alpha);
+            
+            // 3. Reja (ENCIMA de la pelota)
             renderGrid(this.ctx, this.currentLevel);
             
-            // TODO: Renderizar pelota (P3)
+            // 4. Efectos (P4 - encima de todo)
             // TODO: Renderizar efectos (P4)
             
-            // Debug: mostrar algunas coordenadas
+            // 5. Debug: capa borrador (solo desarrollo)
             this.debugRenderCoords();
         }
     }
     
-    // Debug: renderizar algunas coordenadas para verificar funcionamiento
+    // Debug: renderizar destino actual (solo en desarrollo)
     debugRenderCoords() {
-        const cubiertas = getCoordenadasCubiertas(this.currentLevel);
-        const descubiertas = getCoordenadasDescubiertas(this.currentLevel);
+        // Solo renderizar debug en desarrollo (live server)
+        if (!this.isDevEnvironment()) return;
         
-        // Puntos cubiertos en rojo
-        this.ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-        cubiertas.slice(0, 5).forEach(coord => {
+        // Debug pelota: mostrar destino actual con coordenadas transformadas
+        const pelotaState = getPelotaState();
+        if (pelotaState.destinoActual) {
+            // Aplicar matriz de transformación para obtener coordenadas actuales
+            const transformMatrix = getTransformMatrix();
+            let destinoTransformado = pelotaState.destinoActual;
+            
+            if (transformMatrix && pelotaState.destinoActual.coordenadasBase) {
+                // Aplicar transformación a las coordenadas base
+                const base = pelotaState.destinoActual.coordenadasBase;
+                const transformedX = transformMatrix.a * base.x + transformMatrix.c * base.y + transformMatrix.e;
+                const transformedY = transformMatrix.b * base.x + transformMatrix.d * base.y + transformMatrix.f;
+                
+                destinoTransformado = {
+                    ...pelotaState.destinoActual,
+                    x: transformedX,
+                    y: transformedY
+                };
+            }
+            
+            // Color según tipo: rojo=descubierto, amarillo=cubierto
+            const esDescubierto = pelotaState.destinoActual.tipo === 'descubierto';
+            this.ctx.fillStyle = esDescubierto ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 0, 0.8)';
             this.ctx.beginPath();
-            this.ctx.arc(coord.x, coord.y, 4, 0, Math.PI * 2);
+            this.ctx.arc(destinoTransformado.x, destinoTransformado.y, 8, 0, Math.PI * 2);
             this.ctx.fill();
-        });
-        
-        // Puntos descubiertos en verde
-        this.ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
-        descubiertas.slice(0, 3).forEach(coord => {
-            this.ctx.beginPath();
-            this.ctx.arc(coord.x, coord.y, 6, 0, Math.PI * 2);
-            this.ctx.fill();
-        });
+            
+            // Indicador de estado
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText(
+                `${pelotaState.viajando ? '🚀' : '🌀'} ${pelotaState.destinoActual.tipo}`,
+                destinoTransformado.x + 12,
+                destinoTransformado.y - 12
+            );
+        }
+    }
+    
+    // Detectar si estamos en entorno de desarrollo
+    isDevEnvironment() {
+        // Detectar live server o localhost
+        const hostname = window.location.hostname;
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '' || hostname.includes('local');
     }
 }
 

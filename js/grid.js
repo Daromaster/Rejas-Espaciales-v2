@@ -442,8 +442,10 @@ export function getCoordenadasCubiertas(level) {
         const transformed = applyTransformMatrix(coord.x, coord.y);
         return {
             ...coord,
-            x: transformed.x,
-            y: transformed.y
+            x: transformed.x,        // Coordenadas transformadas
+            y: transformed.y,
+            baseX: coord.x,          // Coordenadas base originales
+            baseY: coord.y
         };
     });
 }
@@ -459,8 +461,10 @@ export function getCoordenadasDescubiertas(level) {
         const transformed = applyTransformMatrix(coord.x, coord.y);
         return {
             ...coord,
-            x: transformed.x,
-            y: transformed.y
+            x: transformed.x,        // Coordenadas transformadas
+            y: transformed.y,
+            baseX: coord.x,          // Coordenadas base originales
+            baseY: coord.y
         };
     });
 }
