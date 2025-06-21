@@ -229,8 +229,14 @@ html, body {
    =========================================== */
 
 /* Estado de audio muteado */
-.btn-control.muted .audio-icon::before {
-  content: '🔇';
+.btn-control.muted {
+  background-color: rgba(255, 0, 0, 0.2);
+  border-color: #ff6666;
+  color: #ff6666;
+}
+
+.btn-control.muted:hover {
+  background-color: rgba(255, 0, 0, 0.4);
 }
 
 /* Animaciones y efectos */

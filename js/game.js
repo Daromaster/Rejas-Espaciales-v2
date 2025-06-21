@@ -21,6 +21,15 @@ import {
     getPelotaPosition, 
     getPelotaState 
 } from './pelota.js';
+import { 
+    initDisparos, 
+    updateDisparosLogic, 
+    renderDisparos, 
+    realizarDisparo, 
+    getDisparosState,
+    toggleMuteAudio,
+    isAudioMuted
+} from './disparos.js';
 
 // === CONTROLADOR PRINCIPAL DEL JUEGO ===
 class RejasEspacialesGame {
@@ -60,11 +69,16 @@ class RejasEspacialesGame {
             console.log('Configurando controles...');
             this.setupControls();
             
+            console.log('Inicializando sistema de audio...');
+            // Inicializar sistema de disparos y audio para cargar configuración
+            initDisparos(1); // Temporal, se reinicializará con el nivel correcto
+            
             console.log('Iniciando bucle principal...');
             this.startGameLoop();
             
             // Mostrar mensaje inicial
             this.updateUI();
+            this.updateAudioButtonState(); // Inicializar estado del botón de audio
             this.drawInitialScreen();
             
             console.log('¡Juego inicializado correctamente!');
@@ -146,6 +160,12 @@ class RejasEspacialesGame {
         // Inicializar sistema de pelota
         initPelota(this.currentLevel);
         
+        // Inicializar sistema de disparos (P4)
+        initDisparos(this.currentLevel);
+        
+        // Actualizar estado visual del botón de audio
+        this.updateAudioButtonState();
+        
         // Configurar cronómetro
         relojJuego.configurarTiempo(60000); // 60 segundos
         
@@ -160,12 +180,14 @@ class RejasEspacialesGame {
             return;
         }
         
-        console.log('¡Disparo realizado!');
+        // Realizar disparo usando el sistema P4
+        const disparoExitoso = realizarDisparo();
         
-        // Iniciar cronómetro con primer disparo
-        relojJuego.iniciarConPrimerDisparo();
-        
-        // TODO: Implementar lógica de disparo en P4
+        if (disparoExitoso) {
+            console.log('🎯 Disparo realizado con éxito');
+        } else {
+            console.log('⏱️ Disparo en cooldown');
+        }
         
         // Efecto visual temporal en el botón
         if (this.elements.shootBtn) {
@@ -176,13 +198,35 @@ class RejasEspacialesGame {
         }
     }
     
-    // Alternar audio (placeholder)
+    // Alternar audio
     toggleAudio() {
-        console.log('Toggle audio');
-        // TODO: Implementar sistema de audio en próximos pasos
+        const isMuted = toggleMuteAudio();
         
+        // Actualizar el botón visual
         if (this.elements.audioBtn) {
-            this.elements.audioBtn.classList.toggle('muted');
+            if (isMuted) {
+                this.elements.audioBtn.classList.add('muted');
+                this.elements.audioBtn.querySelector('.audio-icon').textContent = '🔇';
+            } else {
+                this.elements.audioBtn.classList.remove('muted');
+                this.elements.audioBtn.querySelector('.audio-icon').textContent = '🔊';
+            }
+        }
+        
+        console.log(`🔊 Audio ${isMuted ? 'silenciado' : 'activado'}`);
+    }
+    
+    // Actualizar estado visual del botón de audio
+    updateAudioButtonState() {
+        if (this.elements.audioBtn) {
+            const isMuted = isAudioMuted();
+            if (isMuted) {
+                this.elements.audioBtn.classList.add('muted');
+                this.elements.audioBtn.querySelector('.audio-icon').textContent = '🔇';
+            } else {
+                this.elements.audioBtn.classList.remove('muted');
+                this.elements.audioBtn.querySelector('.audio-icon').textContent = '🔊';
+            }
         }
     }
     
@@ -200,11 +244,14 @@ class RejasEspacialesGame {
     
     // Actualizar interfaz de usuario
     updateUI() {
+        // Obtener puntaje de disparos si el sistema está activo
+        const disparosState = getDisparosState();
+        
         if (this.elements.levelScore) {
-            this.elements.levelScore.textContent = this.levelScore;
+            this.elements.levelScore.textContent = disparosState.puntaje || this.levelScore;
         }
         if (this.elements.totalScore) {
-            this.elements.totalScore.textContent = this.totalScore;
+            this.elements.totalScore.textContent = this.totalScore + (disparosState.puntaje || 0);
         }
         if (this.elements.comment) {
             this.elements.comment.textContent = `Nivel ${this.currentLevel} - ${this.getGameStateText()}`;
@@ -284,6 +331,9 @@ class RejasEspacialesGame {
             // Actualizar lógica de la pelota
             updatePelotaLogic(deltaTime, this.currentLevel);
             
+            // Actualizar lógica de disparos (P4)
+            updateDisparosLogic(deltaTime, this.currentLevel);
+            
             // Verificar fin de tiempo
             if (relojJuego.estaTerminado()) {
                 this.gameState = GAME_CONFIG.GAME_STATES.GAME_OVER;
@@ -320,8 +370,8 @@ class RejasEspacialesGame {
             // 3. Reja (ENCIMA de la pelota)
             renderGrid(this.ctx, this.currentLevel);
             
-            // 4. Efectos (P4 - encima de todo)
-            // TODO: Renderizar efectos (P4)
+            // 4. Disparos y efectos (P4 - encima de todo)
+            renderDisparos(this.ctx, this.currentLevel, alpha);
             
             // 5. Debug: capa borrador (solo desarrollo)
             this.debugRenderCoords();

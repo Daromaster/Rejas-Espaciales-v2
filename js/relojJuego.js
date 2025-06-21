@@ -9,6 +9,7 @@ export class RelojJuego {
         this.pausado = false;
         this.primerDisparo = false;
         this.ultimoTiempo = 0;
+        this.tiempoInicio = 0; // Tiempo cuando se inició el cronómetro
         
         // Estados: 'previo' (antes del primer disparo), 'jugando', 'pausado', 'terminado'
         this.estado = 'previo';
@@ -27,8 +28,25 @@ export class RelojJuego {
             this.iniciado = true;
             this.estado = 'jugando';
             this.ultimoTiempo = performance.now();
+            this.tiempoInicio = this.ultimoTiempo;
             console.log('Cronómetro iniciado con primer disparo');
         }
+    }
+    
+    // Iniciar cronómetro directamente (para uso del sistema de disparos)
+    iniciar() {
+        if (!this.iniciado) {
+            this.iniciado = true;
+            this.estado = 'jugando';
+            this.ultimoTiempo = performance.now();
+            this.tiempoInicio = this.ultimoTiempo;
+            console.log('Cronómetro iniciado');
+        }
+    }
+    
+    // Obtener tiempo de inicio del cronómetro
+    getTiempoInicio() {
+        return this.tiempoInicio;
     }
     
     // Actualizar cronómetro
@@ -82,6 +100,7 @@ export class RelojJuego {
         this.iniciado = false;
         this.pausado = false;
         this.primerDisparo = false;
+        this.tiempoInicio = 0;
         this.estado = 'previo';
     }
     

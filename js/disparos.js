@@ -1,10 +1,633 @@
-// disparos.js - Sistema de disparos del juego
+// disparos.js - Sistema de disparos del juego Rejas Espaciales V2 - P4
 
-console.log('Disparos.js cargado - Pendiente implementación en P4');
+import { GAME_CONFIG } from './config.js';
+import { getCoordenadasCubiertas, getCoordenadasDescubiertas } from './grid.js';
+import { getPelotaPosition, getPelotaState } from './pelota.js';
+import { relojJuego } from './relojJuego.js';
 
-// TODO: Implementar en P4 según especificaciones:
-// - Sistema de disparo con detección geométrica y por píxeles
-// - Efectos visuales y sonoros de disparos
-// - Sistema de partículas para fallos
-// - Canvas virtuales para efectos de disparo
-// - Integración con cronómetro (primer disparo inicia tiempo) 
+// === VARIABLES GLOBALES DEL SISTEMA DE DISPAROS ===
+let disparosState = {
+    // Estado general
+    activo: false,
+    inicializado: false,
+    primerDisparoRealizado: false,
+    
+    // Configuración de disparos
+    duracion: 200,              // Duración visual del disparo en ms
+    cooldown: 250,              // Tiempo entre disparos en ms
+    ultimoTiempoDisparo: 0,     // Último momento de disparo
+    disparosActivos: [],        // Array de disparos en curso
+    
+    // Configuración visual
+    colorInicio: 'rgba(255, 136, 0, 1)',    // Naranja en origen
+    colorFin: 'rgba(225, 0, 255, 0.7)',     // Violeta en destino
+    anchoInicio: 10,            // Ancho en píxeles en origen
+    anchoFin: 2,                // Ancho en píxeles en destino
+    
+    // Puntuación
+    puntaje: 0,
+    
+    // Partículas de fallo
+    particulasActivas: [],
+    
+    // Audio
+    audioInicializado: false,
+    audioMuteado: false,
+    sonidos: {}
+};
+
+// Canvas virtuales para disparos
+let disparosCanvases = {};
+
+// === INICIALIZACIÓN ===
+export function initDisparos(nivel) {
+    console.log(`🎯 Inicializando sistema de disparos - Nivel ${nivel}`);
+    
+    // Crear canvas virtuales
+    ensureDisparosCanvas(1); // Canvas base para disparos
+    ensureDisparosCanvas(2); // Canvas composición
+    // Preparado para más canvas: 3 (partículas), 4 (efectos especiales), etc.
+    
+    // Inicializar audio
+    if (!disparosState.audioInicializado) {
+        initAudioDisparos();
+    }
+    
+    // Configuración por nivel
+    switch (nivel) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5: {
+            // Por ahora todos los niveles usan la misma configuración del Ensayo
+            disparosState.duracion = 200;
+            disparosState.cooldown = 250;
+            disparosState.anchoInicio = 10;
+            disparosState.anchoFin = 2;
+            
+            console.log(`Configuración nivel ${nivel}: disparos estilo Ensayo original`);
+            break;
+        }
+        
+        default: {
+            console.warn(`⚠️ Configuración por defecto para nivel ${nivel}`);
+            break;
+        }
+    }
+    
+    disparosState.inicializado = true;
+    console.log('✅ Sistema de disparos inicializado');
+}
+
+// === GESTIÓN DE CANVAS VIRTUALES ===
+function ensureDisparosCanvas(index) {
+    if (!disparosCanvases[index]) {
+        disparosCanvases[index] = document.createElement('canvas');
+        disparosCanvases[index].width = GAME_CONFIG.LOGICAL_WIDTH;
+        disparosCanvases[index].height = GAME_CONFIG.LOGICAL_HEIGHT;
+        console.log(`📁 Canvas disparos ${index} creado`);
+    }
+}
+
+// === SISTEMA DE AUDIO ===
+function initAudioDisparos() {
+    console.log("🔊 Inicializando sistema de audio de disparos con Howler...");
+    
+    // Verificar que Howler esté disponible
+    if (typeof Howl === 'undefined') {
+        console.error('❌ Howler.js no está disponible');
+        return;
+    }
+    
+    // Cargar estado de mute desde localStorage
+    const muteState = localStorage.getItem('rejasEspaciales_audioMuted');
+    disparosState.audioMuteado = muteState === 'true';
+    
+    disparosState.sonidos = {
+        // Sonido de disparo
+        disparo: new Howl({
+            src: ['assets/audio/Disparo Sinte 1.wav'],
+            volume: 0.7,
+            preload: true,
+            pool: 3
+        }),
+        // Sonido de acierto (ganar puntos)
+        acierto: new Howl({
+            src: ['assets/audio/Acierto Sinte 1.wav'],
+            volume: 0.8,
+            preload: true,
+            pool: 2
+        }),
+        // Sonido de fallo (golpe en reja)
+        fallo: new Howl({
+            src: ['assets/audio/Metal 1.wav'],
+            volume: 0.6,
+            preload: true,
+            pool: 2
+        })
+    };
+    
+    disparosState.audioInicializado = true;
+    console.log('✅ Audio de disparos inicializado');
+}
+
+function reproducirSonido(tipo) {
+    if (!disparosState.audioInicializado || !disparosState.sonidos[tipo] || disparosState.audioMuteado) {
+        return;
+    }
+    
+    disparosState.sonidos[tipo].play();
+}
+
+// === FUNCIONES DE CONTROL DE AUDIO ===
+export function toggleMuteAudio() {
+    disparosState.audioMuteado = !disparosState.audioMuteado;
+    
+    // Guardar estado en localStorage
+    localStorage.setItem('rejasEspaciales_audioMuted', disparosState.audioMuteado.toString());
+    
+    console.log(`🔊 Audio ${disparosState.audioMuteado ? 'silenciado' : 'activado'}`);
+    return disparosState.audioMuteado;
+}
+
+export function isAudioMuted() {
+    return disparosState.audioMuteado;
+}
+
+// === FUNCIÓN PRINCIPAL DE DISPARO ===
+export function realizarDisparo() {
+    if (!disparosState.inicializado) {
+        console.warn('⚠️ Sistema de disparos no inicializado');
+        return false;
+    }
+    
+    const tiempoActual = performance.now();
+    
+    // Verificar cooldown
+    if (tiempoActual - disparosState.ultimoTiempoDisparo < disparosState.cooldown) {
+        return false; // Aún en cooldown
+    }
+    
+    // Marcar primer disparo para iniciar cronómetro
+    if (!disparosState.primerDisparoRealizado) {
+        disparosState.primerDisparoRealizado = true;
+        iniciarCronometroJuego();
+    }
+    
+    // Reproducir sonido de disparo
+    reproducirSonido('disparo');
+    
+    // Crear disparo visual
+    crearDisparoVisual();
+    
+    // Verificar impacto y asignar puntos
+    verificarImpactoYPuntos();
+    
+    // Actualizar estado
+    disparosState.ultimoTiempoDisparo = tiempoActual;
+    disparosState.activo = true;
+    
+    console.log('🎯 Disparo realizado');
+    return true;
+}
+
+// === CREACIÓN DE DISPARO VISUAL ===
+function crearDisparoVisual() {
+    // Obtener dimensiones del canvas
+    const canvasWidth = GAME_CONFIG.LOGICAL_WIDTH;
+    const canvasHeight = GAME_CONFIG.LOGICAL_HEIGHT;
+    
+    // Puntos de origen (esquinas inferiores)
+    const yInicio = canvasHeight - canvasHeight * 0.1; // 10% desde abajo
+    const xIzquierda = canvasWidth * 0.1;  // 10% desde izquierda
+    const xDerecha = canvasWidth * 0.9;    // 90% desde izquierda
+    
+    // Obtener posición de la pelota como destino
+    const posicionPelota = getPelotaPosition();
+    const destinoX = posicionPelota.x;
+    const destinoY = posicionPelota.y;
+    
+    // Crear dos disparos (izquierda y derecha) con pequeño offset en destino
+    const offset = 5;
+    const disparos = [
+        {
+            inicioX: xIzquierda,
+            inicioY: yInicio,
+            finX: destinoX - offset,
+            finY: destinoY,
+            tiempoCreacion: performance.now()
+        },
+        {
+            inicioX: xDerecha,
+            inicioY: yInicio,
+            finX: destinoX + offset,
+            finY: destinoY,
+            tiempoCreacion: performance.now()
+        }
+    ];
+    
+    // Agregar disparos al array activo
+    disparosState.disparosActivos.push(...disparos);
+}
+
+// === DETECCIÓN DE PELOTA DESCUBIERTA/CUBIERTA ===
+function detectarEstadoPelota() {
+    const posicionPelota = getPelotaPosition();
+    
+    // Método geométrico principal (del Ensayo)
+    const margenCelda = 15;        // Tolerancia para centros de celdas
+    const margenInterseccion = 15; // Tolerancia para intersecciones
+    
+    // 1. Verificar distancia a puntos descubiertos (centros de celdas)
+    const puntosDescubiertos = getCoordenadasDescubiertas();
+    if (puntosDescubiertos && puntosDescubiertos.length > 0) {
+        let distanciaMinima = Infinity;
+        
+        for (const punto of puntosDescubiertos) {
+            const distancia = Math.hypot(
+                posicionPelota.x - punto.x,
+                posicionPelota.y - punto.y
+            );
+            distanciaMinima = Math.min(distanciaMinima, distancia);
+        }
+        
+        if (distanciaMinima < margenCelda) {
+            return 'descubierta';
+        }
+    }
+    
+    // 2. Verificar distancia a puntos cubiertos (intersecciones)
+    const puntosCubiertos = getCoordenadasCubiertas();
+    if (puntosCubiertos && puntosCubiertos.length > 0) {
+        let distanciaMinima = Infinity;
+        
+        for (const punto of puntosCubiertos) {
+            const distancia = Math.hypot(
+                posicionPelota.x - punto.x,
+                posicionPelota.y - punto.y
+            );
+            distanciaMinima = Math.min(distanciaMinima, distancia);
+        }
+        
+        if (distanciaMinima < margenInterseccion) {
+            return 'cubierta';
+        }
+    }
+    
+    // Por defecto asumir cubierta si no se puede determinar
+    return 'cubierta';
+}
+
+// === VERIFICACIÓN DE IMPACTO Y PUNTOS ===
+function verificarImpactoYPuntos() {
+    const estadoPelota = detectarEstadoPelota();
+    const posicionPelota = getPelotaPosition();
+    
+    if (estadoPelota === 'descubierta') {
+        // ✅ ACIERTO: Pelota descubierta
+        reproducirSonido('acierto');
+        
+        // Sumar 10 puntos
+        disparosState.puntaje += 10;
+        
+        // Mostrar animación flotante de puntos ganados
+        mostrarAnimacionPuntos(posicionPelota, 10, false);
+        
+        // Activar efecto en pelota (cambio de color)
+        if (typeof window.pelotaImpacto === 'function') {
+            window.pelotaImpacto();
+        }
+        
+        console.log(`✅ ¡Acierto! +10 puntos. Total: ${disparosState.puntaje}`);
+        
+    } else {
+        // ❌ FALLO: Pelota cubierta
+        reproducirSonido('fallo');
+        
+        // Crear efecto de partículas
+        crearEfectoParticulas(posicionPelota);
+        
+        // Determinar penalización según reglas del Ensayo
+        let penalizacion = 0;
+        
+        if (disparosState.puntaje > 20) {
+            // Determinar si estamos en primera o segunda mitad del nivel
+            const tiempoTranscurrido = performance.now() - relojJuego.getTiempoInicio();
+            penalizacion = tiempoTranscurrido > 30000 ? 10 : 5; // 30 segundos = primera mitad
+            
+            disparosState.puntaje -= penalizacion;
+            
+            // Mostrar animación flotante de puntos perdidos
+            mostrarAnimacionPuntos(posicionPelota, -penalizacion, true);
+            
+            console.log(`❌ Fallo: -${penalizacion} puntos. Total: ${disparosState.puntaje}`);
+        } else {
+            console.log('❌ Fallo: Sin penalización (puntos ≤ 20)');
+        }
+    }
+}
+
+// === ANIMACIONES FLOTANTES DE PUNTOS ===
+function mostrarAnimacionPuntos(posicion, puntos, esPenalizacion = false) {
+    // Crear elemento DOM flotante
+    const elemento = document.createElement('div');
+    
+    // Configurar texto y colores
+    if (esPenalizacion) {
+        elemento.textContent = puntos; // Ya incluye el signo negativo
+        elemento.style.color = 'rgba(255, 50, 50, 1)';
+        elemento.style.textShadow = '0 0 10px #ff0000, 0 0 20px #ff0000';
+    } else {
+        elemento.textContent = '+' + puntos;
+        elemento.style.color = 'rgba(0, 255, 0, 1)';
+        elemento.style.textShadow = '0 0 10px #00ff00, 0 0 20px #00ff00';
+    }
+    
+    // Calcular posición absoluta en pantalla, más cerca del perímetro de la pelota
+    const canvas = document.getElementById('canvas-juego') || document.querySelector('canvas');
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    
+    // Obtener el radio actual de la pelota del estado
+    const pelotaState = getPelotaState();
+    const radioPelota = pelotaState.radio || 8; // Radio por defecto si no está disponible
+    
+    // Posicionar el texto DIRECTAMENTE cerca del perímetro de la pelota
+    const offsetDesdePerimetro = 5; // 5 píxeles desde el borde de la pelota
+    
+    // Posicionar arriba de la pelota, muy cerca
+    const x = rect.left + posicion.x; // Centrado horizontalmente con la pelota
+    const y = rect.top + posicion.y - radioPelota - offsetDesdePerimetro; // Justo arriba del borde
+    
+    // Estilos de posicionamiento y animación
+    elemento.style.position = 'fixed';
+    elemento.style.left = x + 'px';
+    elemento.style.top = y + 'px';
+    elemento.style.fontWeight = 'bold';
+    elemento.style.fontSize = '28px'; // Reducido para mejor ajuste cerca de la pelota
+    elemento.style.zIndex = '1001';
+    elemento.style.pointerEvents = 'none';
+    elemento.style.transition = 'all 1.5s ease-out';
+    elemento.style.transform = 'translateX(-50%)'; // Centrar horizontalmente
+    
+    // Agregar al DOM
+    document.body.appendChild(elemento);
+    
+    // Animar
+    setTimeout(() => {
+        elemento.style.opacity = '0';
+        elemento.style.transform = 'translateX(-50%) translateY(-30px) scale(1.3)'; // Mantener centrado
+    }, 10);
+    
+    // Eliminar después de la animación
+    setTimeout(() => {
+        if (elemento.parentNode) {
+            document.body.removeChild(elemento);
+        }
+    }, 1500);
+}
+
+// === SISTEMA DE PARTÍCULAS DE FALLO ===
+function crearEfectoParticulas(posicion) {
+    const tiempoActual = performance.now();
+    const cantidadParticulas = 20; // Cantidad moderada para rendimiento
+    
+    for (let i = 0; i < cantidadParticulas; i++) {
+        const particula = {
+            x: posicion.x,
+            y: posicion.y,
+            velocidadX: (Math.random() - 0.5) * 6,     // Velocidad horizontal aleatoria
+            velocidadY: (Math.random() - 0.5) * 6,     // Velocidad vertical aleatoria
+            vida: 1.0,                                  // Vida inicial (1.0 = 100%)
+            decaimiento: 0.02 + Math.random() * 0.02,   // Velocidad de desvanecimiento
+            tamaño: 2 + Math.random() * 3,              // Tamaño aleatorio
+            color: Math.random() < 0.7 ? 'chispa' : 'metal', // 70% chispas, 30% metal
+            tiempoCreacion: tiempoActual,
+            // Para interpolación
+            xAnterior: posicion.x,
+            yAnterior: posicion.y
+        };
+        
+        disparosState.particulasActivas.push(particula);
+    }
+}
+
+// === INICIO DE CRONÓMETRO ===
+function iniciarCronometroJuego() {
+    if (typeof relojJuego.iniciar === 'function') {
+        relojJuego.iniciar();
+        console.log('⏰ Cronómetro del juego iniciado con primer disparo');
+    }
+}
+
+// === LÓGICA DE ACTUALIZACIÓN (30 FPS) ===
+export function updateDisparosLogic(deltaTime, nivel) {
+    if (!disparosState.inicializado) return;
+    
+    const tiempoActual = performance.now();
+    
+    // Actualizar disparos activos
+    disparosState.disparosActivos = disparosState.disparosActivos.filter(disparo => {
+        const edad = tiempoActual - disparo.tiempoCreacion;
+        return edad <= disparosState.duracion;
+    });
+    
+    // Actualizar partículas activas
+    for (let i = disparosState.particulasActivas.length - 1; i >= 0; i--) {
+        const particula = disparosState.particulasActivas[i];
+        
+        // Guardar posición anterior para interpolación
+        particula.xAnterior = particula.x;
+        particula.yAnterior = particula.y;
+        
+        // Actualizar posición
+        particula.x += particula.velocidadX;
+        particula.y += particula.velocidadY;
+        
+        // Aplicar gravedad
+        particula.velocidadY += 0.2;
+        
+        // Reducir vida
+        particula.vida -= particula.decaimiento;
+        
+        // Eliminar si está muerta
+        if (particula.vida <= 0) {
+            disparosState.particulasActivas.splice(i, 1);
+        }
+    }
+    
+    // Actualizar estado general
+    disparosState.activo = disparosState.disparosActivos.length > 0 || 
+                          disparosState.particulasActivas.length > 0;
+}
+
+// === COMPOSICIÓN DE DISPAROS (SELECT CASE) ===
+function composeDisparos(nivel) {
+    ensureDisparosCanvas(2);
+    const ctxDisparos = disparosCanvases[2].getContext('2d');
+    
+    // Limpiar canvas de composición
+    ctxDisparos.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+    
+    switch (nivel) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5: {
+            // Todos los niveles usan el estilo del Ensayo por ahora
+            
+            // Dibujar disparos activos
+            for (const disparo of disparosState.disparosActivos) {
+                dibujarDisparoEnsayo(ctxDisparos, disparo);
+            }
+            
+            // Dibujar partículas activas
+            for (const particula of disparosState.particulasActivas) {
+                dibujarParticulaEnsayo(ctxDisparos, particula);
+            }
+            
+            return 2; // Canvas final
+        }
+        
+        default: {
+            console.warn(`⚠️ Composición de disparos no implementada para nivel ${nivel}`);
+            return 1;
+        }
+    }
+}
+
+// === DIBUJO DE DISPARO ESTILO ENSAYO ===
+function dibujarDisparoEnsayo(ctx, disparo) {
+    // Crear gradiente lineal del Ensayo
+    const gradiente = ctx.createLinearGradient(
+        disparo.inicioX, disparo.inicioY,
+        disparo.finX, disparo.finY
+    );
+    
+    gradiente.addColorStop(0, disparosState.colorInicio);
+    gradiente.addColorStop(1, disparosState.colorFin);
+    
+    ctx.fillStyle = gradiente;
+    
+    // Calcular ángulo del disparo
+    const dx = disparo.finX - disparo.inicioX;
+    const dy = disparo.finY - disparo.inicioY;
+    const angulo = Math.atan2(dy, dx);
+    
+    // Ángulos perpendiculares para forma cónica
+    const anguloPerp1 = angulo + Math.PI / 2;
+    const anguloPerp2 = angulo - Math.PI / 2;
+    
+    // Mitades de ancho
+    const mitadInicio = disparosState.anchoInicio / 2;
+    const mitadFin = disparosState.anchoFin / 2;
+    
+    // Calcular 4 puntos del cono
+    const p1 = {
+        x: disparo.inicioX + Math.cos(anguloPerp1) * mitadInicio,
+        y: disparo.inicioY + Math.sin(anguloPerp1) * mitadInicio
+    };
+    const p2 = {
+        x: disparo.inicioX + Math.cos(anguloPerp2) * mitadInicio,
+        y: disparo.inicioY + Math.sin(anguloPerp2) * mitadInicio
+    };
+    const p3 = {
+        x: disparo.finX + Math.cos(anguloPerp1) * mitadFin,
+        y: disparo.finY + Math.sin(anguloPerp1) * mitadFin
+    };
+    const p4 = {
+        x: disparo.finX + Math.cos(anguloPerp2) * mitadFin,
+        y: disparo.finY + Math.sin(anguloPerp2) * mitadFin
+    };
+    
+    // Dibujar polígono cónico
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.closePath();
+    ctx.fill();
+}
+
+// === DIBUJO DE PARTÍCULA ESTILO ENSAYO ===
+function dibujarParticulaEnsayo(ctx, particula) {
+    const alpha = Math.max(0, particula.vida);
+    
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    
+    if (particula.color === 'chispa') {
+        // Chispa amarilla/naranja
+        ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`;
+    } else {
+        // Fragmento metálico gris
+        ctx.fillStyle = `rgba(150, 150, 150, ${alpha})`;
+    }
+    
+    ctx.beginPath();
+    ctx.arc(particula.x, particula.y, particula.tamaño, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
+// === RENDERIZADO FINAL (60 FPS CON INTERPOLACIÓN) ===
+export function renderDisparos(ctx, nivel, alpha = 1) {
+    if (!disparosState.inicializado || !disparosState.activo) return;
+    
+    // Para partículas, aplicar interpolación de posición
+    const particulasInterpoladas = disparosState.particulasActivas.map(particula => ({
+        ...particula,
+        x: particula.xAnterior + (particula.x - particula.xAnterior) * alpha,
+        y: particula.yAnterior + (particula.y - particula.yAnterior) * alpha
+    }));
+    
+    // Temporalmente reemplazar para renderizado
+    const particulasOriginales = disparosState.particulasActivas;
+    disparosState.particulasActivas = particulasInterpoladas;
+    
+    // Componer disparos y efectos
+    const canvasFinal = composeDisparos(nivel);
+    
+    // Restaurar partículas originales
+    disparosState.particulasActivas = particulasOriginales;
+    
+    // Renderizar resultado final
+    if (disparosCanvases[canvasFinal]) {
+        ctx.drawImage(disparosCanvases[canvasFinal], 0, 0);
+    }
+}
+
+// === FUNCIONES DE ACCESO ===
+export function getDisparosState() {
+    return {
+        activo: disparosState.activo,
+        puntaje: disparosState.puntaje,
+        primerDisparoRealizado: disparosState.primerDisparoRealizado,
+        disparosActivos: disparosState.disparosActivos.length,
+        particulasActivas: disparosState.particulasActivas.length
+    };
+}
+
+export function resetPuntaje() {
+    disparosState.puntaje = 0;
+    console.log('🔄 Puntaje de disparos reiniciado');
+}
+
+// === FUNCIÓN DE LIMPIEZA ===
+export function clearDisparosCanvases() {
+    Object.keys(disparosCanvases).forEach(key => {
+        const canvas = disparosCanvases[key];
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+        }
+    });
+    console.log('🧹 Canvas de disparos limpiados');
+}
+
+console.log('🎯 Disparos.js cargado - Sistema P4 iniciando...'); 
