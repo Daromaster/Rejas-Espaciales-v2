@@ -30,6 +30,13 @@ import {
     toggleMuteAudio,
     isAudioMuted
 } from './disparos.js';
+import { 
+    initModales, 
+    mostrarPantallaInstrucciones, 
+    mostrarTransicionNivel, 
+    mostrarAnimacionPuntos,
+    modalSystem 
+} from './modales.js';
 
 // === CONTROLADOR PRINCIPAL DEL JUEGO ===
 class RejasEspacialesGame {
@@ -54,6 +61,9 @@ class RejasEspacialesGame {
         // Estado del juego iniciado
         this.gameStarted = false;
         
+        // Modo debug para P5
+        this.debugMode = false;
+        
         console.log(`Inicializando Rejas Espaciales V${GAME_VERSION}`);
     }
     
@@ -73,6 +83,9 @@ class RejasEspacialesGame {
             // Inicializar sistema de disparos y audio para cargar configuración
             initDisparos(1); // Temporal, se reinicializará con el nivel correcto
             
+            console.log('Inicializando sistema de modales P5...');
+            initModales();
+            
             console.log('Iniciando bucle principal...');
             this.startGameLoop();
             
@@ -80,6 +93,11 @@ class RejasEspacialesGame {
             this.updateUI();
             this.updateAudioButtonState(); // Inicializar estado del botón de audio
             this.drawInitialScreen();
+            
+            // Mostrar pantalla de instrucciones inicial (P5-A)
+            setTimeout(() => {
+                mostrarPantallaInstrucciones();
+            }, 500); // Pequeño delay para que cargue todo
             
             console.log('¡Juego inicializado correctamente!');
             
@@ -336,8 +354,21 @@ class RejasEspacialesGame {
             
             // Verificar fin de tiempo
             if (relojJuego.estaTerminado()) {
-                this.gameState = GAME_CONFIG.GAME_STATES.GAME_OVER;
                 console.log('¡Tiempo agotado!');
+                
+                // Obtener puntaje final del nivel
+                const disparosState = getDisparosState();
+                this.levelScore = disparosState.puntaje || 0;
+                this.totalScore += this.levelScore;
+                
+                // Determinar si es fin de juego o transición entre niveles
+                if (this.currentLevel >= 4) {
+                    // Es el último nivel - mostrar fin de juego
+                    this.mostrarFinDeJuego();
+                } else {
+                    // Mostrar transición entre niveles
+                    this.mostrarTransicionEntreNiveles();
+                }
             }
             
             // Actualizar UI
@@ -429,6 +460,135 @@ class RejasEspacialesGame {
         const hostname = window.location.hostname;
         return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '' || hostname.includes('local');
     }
+    
+    // === FUNCIONES PARA P5 - SISTEMA DE MODALES ===
+    
+    // Función para establecer modo debug (llamada desde modales.js)
+    setDebugMode(enabled) {
+        this.debugMode = enabled;
+        console.log(`🐛 Modo debug ${enabled ? 'activado' : 'desactivado'} en game.js`);
+    }
+    
+    // Función para finalizar nivel manualmente (debug)
+    finalizarNivelDebug() {
+        if (!this.debugMode) {
+            console.warn('🐛 Finalizar nivel debug solo disponible en modo debug');
+            return;
+        }
+        
+        console.log('🐛 Finalizando nivel manualmente para testing');
+        
+        // Simular fin de nivel con puntaje actual
+        const disparosState = getDisparosState();
+        const puntajeNivel = disparosState.puntaje || 0;
+        this.levelScore = puntajeNivel;
+        this.totalScore += puntajeNivel;
+        
+        // Mostrar transición de nivel
+        this.mostrarTransicionEntreNiveles();
+    }
+    
+    // Función para avanzar al siguiente nivel
+    avanzarNivel() {
+        console.log(`➡️ Avanzando del nivel ${this.currentLevel} al ${this.currentLevel + 1}`);
+        
+        this.currentLevel++;
+        this.levelScore = 0; // Resetear puntaje del nivel
+        
+        // Reinicializar sistemas para el nuevo nivel
+        initGrid(this.currentLevel);
+        initPelota(this.currentLevel);
+        initDisparos(this.currentLevel);
+        
+        // Configurar cronómetro para nuevo nivel
+        relojJuego.configurarTiempo(60000); // 60 segundos
+        
+        // Cambiar estado a jugando
+        this.gameState = GAME_CONFIG.GAME_STATES.PLAYING;
+        
+        // Actualizar UI
+        this.updateUI();
+        
+        console.log(`✅ Nivel ${this.currentLevel} iniciado`);
+    }
+    
+    // Función para reiniciar el juego completo
+    reiniciarJuego() {
+        console.log('🔄 Reiniciando juego completo');
+        
+        // Resetear estado del juego
+        this.currentLevel = 1;
+        this.levelScore = 0;
+        this.totalScore = 0;
+        this.gameStarted = false;
+        this.gameState = GAME_CONFIG.GAME_STATES.MENU;
+        
+        // Reinicializar sistemas
+        initGrid(this.currentLevel);
+        initPelota(this.currentLevel);
+        initDisparos(this.currentLevel);
+        
+        // Configurar cronómetro
+        relojJuego.configurarTiempo(60000);
+        
+        // Actualizar UI
+        this.updateUI();
+        this.drawInitialScreen();
+        
+        console.log('✅ Juego reiniciado');
+    }
+    
+    // Función para mostrar transición entre niveles
+    mostrarTransicionEntreNiveles() {
+        console.log('🎯 Preparando transición entre niveles');
+        
+        // Pausar el juego
+        this.gameState = GAME_CONFIG.GAME_STATES.PAUSED;
+        
+        // Preparar datos para el modal
+        const resultadoNivel = {
+            nivel: this.currentLevel,
+            puntajeNivel: this.levelScore,
+            puntajeTotal: this.totalScore,
+            esUltimoNivel: this.currentLevel >= 4 // Por ahora máximo 4 niveles
+        };
+        
+        // Mostrar transición usando el sistema de modales P5
+        mostrarTransicionNivel(resultadoNivel);
+    }
+    
+    // Función para mostrar fin de juego
+    mostrarFinDeJuego() {
+        console.log('🏁 Preparando pantalla de fin de juego');
+        
+        // Cambiar estado
+        this.gameState = GAME_CONFIG.GAME_STATES.GAME_OVER;
+        
+        // Mostrar animación de puntos final
+        mostrarAnimacionPuntos(
+            this.levelScore,
+            this.totalScore,
+            true, // Es fin de juego
+            () => {
+                // Callback: mostrar modal de fin de juego después de la animación
+                this.mostrarModalFinDeJuego();
+            }
+        );
+    }
+    
+    // Modal específico para fin de juego
+    mostrarModalFinDeJuego() {
+        // Por ahora usar la misma lógica que transición entre niveles
+        // pero marcando que es el último nivel
+        const resultadoNivel = {
+            nivel: this.currentLevel,
+            puntajeNivel: this.levelScore,
+            puntajeTotal: this.totalScore,
+            esUltimoNivel: true
+        };
+        
+        mostrarTransicionNivel(resultadoNivel);
+    }
 }
 
 // === INICIALIZACIÓN GLOBAL ===
@@ -438,6 +598,7 @@ let game = null;
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         game = new RejasEspacialesGame();
+        window.gameInstance = game; // Hacer disponible globalmente para modales P5
         await game.initialize();
     } catch (error) {
         console.error('Error fatal al inicializar el juego:', error);
