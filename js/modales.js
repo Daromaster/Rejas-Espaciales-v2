@@ -275,7 +275,7 @@ function mostrarModalEntreNiveles(resultadoNivel) {
     modalPanel.id = 'level-transition-panel';
     
     // Detectar si es el último nivel
-    const esUltimoNivel = resultadoNivel.esUltimoNivel || resultadoNivel.nivel >= 4;
+    const esUltimoNivel = resultadoNivel.esUltimoNivel;
     const isMobile = modalSystem.isMobile;
     
     // Estilos del panel
@@ -350,7 +350,7 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
         const handleGuardar = function(e) {
             e.preventDefault();
             console.log('💾 Guardando en ranking');
-            mostrarFormularioRanking(modalPanel, resultadoNivel.puntajeTotal);
+            mostrarFormularioRanking(modalPanel, resultadoNivel.puntajeTotal, resultadoNivel.nivel);
         };
         
         guardarButton.addEventListener('click', handleGuardar);
@@ -462,8 +462,9 @@ function crearBotonesDebug() {
     debugContainer.id = 'debug-container';
     debugContainer.style.cssText = `
         position: fixed;
-        top: 10px;
-        right: 10px;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
         z-index: 4000;
         display: flex;
         flex-direction: column;
@@ -473,7 +474,7 @@ function crearBotonesDebug() {
     // Botón Debug On/Off
     const debugToggleBtn = document.createElement('button');
     debugToggleBtn.id = 'debug-toggle-btn';
-    debugToggleBtn.innerHTML = modalSystem.debugMode ? 'Debug: ON' : 'Debug: OFF';
+    debugToggleBtn.innerHTML = modalSystem.debugMode ? 'Debug: OFF' : 'Debug: ON';
     debugToggleBtn.style.cssText = `
         padding: 8px 12px;
         background-color: ${modalSystem.debugMode ? 'rgba(50, 255, 50, 0.8)' : 'rgba(255, 50, 50, 0.8)'};
@@ -487,7 +488,7 @@ function crearBotonesDebug() {
     
     debugToggleBtn.addEventListener('click', function() {
         modalSystem.debugMode = !modalSystem.debugMode;
-        this.innerHTML = modalSystem.debugMode ? 'Debug: ON' : 'Debug: OFF';
+        this.innerHTML = modalSystem.debugMode ? 'Debug: OFF' : 'Debug: ON';
         this.style.backgroundColor = modalSystem.debugMode ? 'rgba(50, 255, 50, 0.8)' : 'rgba(255, 50, 50, 0.8)';
         
         console.log(`🐛 Modo debug: ${modalSystem.debugMode ? 'ACTIVADO' : 'DESACTIVADO'}`);
@@ -531,85 +532,567 @@ function crearBotonesDebug() {
     document.body.appendChild(debugContainer);
 }
 
-// === PLACEHOLDER PARA FORMULARIO DE RANKING (B2) ===
-function mostrarFormularioRanking(panel, puntaje) {
-    console.log('📝 TODO: Implementar formulario de ranking completo');
+// Formulario completo de ranking con backend (P5-B2)
+function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
+    console.log('📝 Mostrando formulario de ranking');
     
-    // Por ahora, cambiar el contenido del panel para mostrar el formulario básico
     const isMobile = modalSystem.isMobile;
     const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
+    const buttonMargin = isMobile ? '10px 0' : '5px 0';
+    const buttonSize = isMobile ? '20px' : '18px';
     const inputPadding = isMobile ? '15px' : '10px';
     const inputFontSize = isMobile ? '18px' : '16px';
-    
-    // Recuperar nombre guardado
-    let savedPlayerName = modalSystem.playerName;
+
+    // Intentar recuperar el nombre guardado anteriormente
+    let savedPlayerName = '';
     try {
         savedPlayerName = localStorage.getItem('rejasEspacialesPlayerName') || '';
-        modalSystem.playerName = savedPlayerName;
-    } catch(error) {
-        console.warn('No se pudo recuperar nombre desde localStorage:', error);
+        if (savedPlayerName) {
+            console.log("Nombre de jugador recuperado de localStorage:", savedPlayerName);
+        }
+    } catch(storageError) {
+        console.warn("No se pudo recuperar el nombre desde localStorage:", storageError);
     }
-    
+
+    // Cambiar el contenido del panel
     panel.innerHTML = `
         <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 24px;">Guardar Puntuación</h2>
-        <p style="font-size: 16px; margin: 15px 0;">Ingresa tu nombre para guardar en el ranking:</p>
-        <p style="font-size: 28px; margin: 10px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${puntaje} puntos</p>
+        <p style="font-size: 16px; margin: 15px 0;">Ingresa tu nombre para guardar tu puntuación en el ranking:</p>
+        <p style="font-size: 28px; margin: 10px 0; color: rgba(0, 255, 255, 1); font-weight: bold;">${puntajeTotal} puntos</p>
         
         <div style="margin: 20px 0;">
-            <input type="text" id="player-name-input" placeholder="Tu nombre" 
-                   style="padding: ${inputPadding}; width: 80%; font-size: ${inputFontSize}; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" 
-                   maxlength="20" value="${savedPlayerName}">
+            <input type="text" id="player-name-input" placeholder="Tu nombre" style="padding: ${inputPadding}; width: 80%; font-size: ${inputFontSize}; border-radius: 5px; border: 2px solid rgba(0, 255, 255, 0.5); background-color: rgba(0, 0, 0, 0.7); color: white;" maxlength="20" value="${savedPlayerName}">
         </div>
         
         <div id="ranking-submit-message" style="min-height: 20px; margin: 10px 0; color: rgba(255, 255, 0, 0.8);"></div>
         
         <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
-            <button id="save-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; border-radius: 5px; cursor: pointer; font-weight: bold;">GUARDAR</button>
-            <button id="cancel-score-button" style="background-color: rgba(150, 150, 150, 0.8); color: white; border: none; padding: ${buttonPadding}; border-radius: 5px; cursor: pointer; font-weight: bold;">CANCELAR</button>
+            <button id="save-score-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR</button>
+            <button id="cancel-score-button" style="background-color: rgba(150, 150, 150, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">CANCELAR</button>
         </div>
-        
-        <p style="font-size: 12px; margin-top: 15px; color: rgba(255, 255, 255, 0.6);">
-            TODO: Implementar conexión completa con backend y geolocalización
-        </p>
     `;
     
-    // Configurar eventos básicos (implementación completa pendiente)
+    // Configurar botón de guardar
     const saveButton = document.getElementById('save-score-button');
-    const cancelButton = document.getElementById('cancel-score-button');
     const nameInput = document.getElementById('player-name-input');
+    const messageDiv = document.getElementById('ranking-submit-message');
+    const cancelButton = document.getElementById('cancel-score-button');
     
-    if (saveButton && nameInput) {
-        saveButton.addEventListener('click', function() {
+    if (saveButton && nameInput && messageDiv && cancelButton) {
+        // NO aplicar foco automático para evitar apertura del teclado en móviles
+        // El usuario puede tocar el campo si necesita editarlo
+        console.log('📱 Formulario listo - sin foco automático para mejor experiencia móvil');
+        
+        // Handler para guardar
+        const handleSave = async function(e) {
+            e.preventDefault(); // Prevenir comportamiento predeterminado
+            
+            // Deshabilitar botón temporalmente
+            saveButton.disabled = true;
+            saveButton.textContent = "GUARDANDO...";
+            saveButton.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
+            
             const playerName = nameInput.value.trim();
+            
+            // Validar que el nombre no esté vacío
             if (!playerName) {
-                document.getElementById('ranking-submit-message').textContent = 'Por favor ingresa tu nombre';
+                messageDiv.textContent = "Por favor ingresa tu nombre";
+                messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
+                // Reactivar botón
+                saveButton.disabled = false;
+                saveButton.textContent = "GUARDAR";
+                saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
                 return;
             }
             
-            // Guardar nombre localmente
+            const deviceType = isMobile ? 'mobile' : 'desktop';
+            let ubicacion = "desconocida";
+            
+            // Agregar variable para controlar el modo de respaldo
+            let isRetryWithoutGeo = saveButton.dataset.retryWithoutGeo === 'true';
+            
             try {
-                localStorage.setItem('rejasEspacialesPlayerName', playerName);
-                modalSystem.playerName = playerName;
-            } catch(error) {
-                console.warn('No se pudo guardar nombre en localStorage:', error);
+                // Solo intentar geolocalización si no es un reintento sin geo
+                if (!isRetryWithoutGeo) {
+                    messageDiv.textContent = "Obteniendo ubicación...";
+                    
+                    // Verificar si estamos en entorno de desarrollo
+                    const isLocalEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    
+                    if (isLocalEnv) {
+                        // En desarrollo local, usar IP
+                        try {
+                            ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                            console.log("📍 Ubicación obtenida por IP (desarrollo):", ubicacion);
+                        } catch (geoError) {
+                            console.warn("⚠️ Error en geolocalización IP:", geoError);
+                            ubicacion = "desconocida";
+                        }
+                    } else {
+                        // En producción, usar la API de geolocalización del navegador
+                        console.log("🌍 Entorno de producción, usando geolocalización del navegador");
+                        
+                        if (navigator.geolocation) {
+                            try {
+                                // Envolver la geolocalización en una promesa para manejarla mejor
+                                const getPosition = () => {
+                                    return new Promise((resolve, reject) => {
+                                        // Timeouts diferenciados por dispositivo
+                                        const timeoutMs = isMobile ? 3000 : 8000; // Móvil: 3s, Desktop: 8s
+                                        
+                                        console.log(`🎯 Dispositivo: ${isMobile ? 'móvil' : 'desktop'}, timeout: ${timeoutMs}ms`);
+                                        
+                                        const geoTimeout = setTimeout(() => {
+                                            reject(new Error('Geolocation timeout'));
+                                        }, timeoutMs);
+                                        
+                                        const geoOptions = { 
+                                            timeout: isMobile ? 2500 : 6000,        // Móvil: 2.5s, Desktop: 6s
+                                            enableHighAccuracy: isMobile            // Solo alta precisión en móvil
+                                        };
+                                        
+                                        navigator.geolocation.getCurrentPosition(
+                                            position => {
+                                                clearTimeout(geoTimeout);
+                                                resolve(position);
+                                            },
+                                            error => {
+                                                clearTimeout(geoTimeout);
+                                                reject(error);
+                                            },
+                                            geoOptions
+                                        );
+                                    });
+                                };
+                                
+                                try {
+                                    messageDiv.textContent = "Solicitando ubicación GPS...";
+                                    const position = await getPosition();
+                                    
+                                    messageDiv.textContent = "Obteniendo nombre de localidad...";
+                                    
+                                    try {
+                                        // Usar las coordenadas para obtener el nombre de la localidad con un timeout
+                                        if (window.apiClient && window.apiClient.ranking) {
+                                            const locationPromise = window.apiClient.ranking.getLocationFromCoords(
+                                                position.coords.latitude, 
+                                                position.coords.longitude
+                                            );
+                                            
+                                            const timeoutPromise = new Promise((_, reject) => {
+                                                setTimeout(() => reject(new Error('Reverse geocoding timeout')), 3000);
+                                            });
+                                            
+                                            // Race entre la obtención de ubicación y el timeout
+                                            ubicacion = await Promise.race([locationPromise, timeoutPromise])
+                                                .catch(error => {
+                                                    console.warn("⚠️ Error o timeout en geocodificación inversa:", error);
+                                                    return "desconocida";
+                                                });
+                                        }
+                                    } catch (reverseGeoError) {
+                                        console.warn("⚠️ Error en geocodificación inversa:", reverseGeoError);
+                                        ubicacion = "desconocida";
+                                    }
+                                } catch (positionError) {
+                                    console.error("⚠️ Error de geolocalización:", positionError.message);
+                                    messageDiv.textContent = "GPS no disponible, probando método alternativo...";
+                                    
+                                    // Intentar geolocalización por IP como respaldo
+                                    try {
+                                        console.log("🔄 Intentando geolocalización por IP como respaldo...");
+                                        if (window.apiClient && window.apiClient.ranking) {
+                                            ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                                            console.log("✅ Ubicación obtenida por IP como respaldo:", ubicacion);
+                                        }
+                                    } catch (ipGeoError) {
+                                        console.warn("⚠️ Error en geolocalización por IP:", ipGeoError);
+                                        ubicacion = "desconocida";
+                                    }
+                                }
+                            } catch (geoWrapperError) {
+                                console.warn("⚠️ Error en wrapper de geolocalización:", geoWrapperError);
+                                ubicacion = "desconocida";
+                            }
+                        } else {
+                            // Si no hay navigator.geolocation, intentar por IP directamente
+                            console.log("📍 Geolocalización no disponible, usando método por IP...");
+                            try {
+                                if (window.apiClient && window.apiClient.ranking) {
+                                    ubicacion = await window.apiClient.ranking.getLocationFromIP();
+                                    console.log("✅ Ubicación obtenida por IP (navegador sin GPS):", ubicacion);
+                                }
+                            } catch (ipGeoError) {
+                                console.warn("⚠️ Error en geolocalización por IP:", ipGeoError);
+                                ubicacion = "desconocida";
+                            }
+                        }
+                    }
+                } else {
+                    // En modo reintento, saltamos la geolocalización
+                    console.log("🔄 Modo reintento: Saltando geolocalización");
+                    ubicacion = "desconocida";
+                }
+            } catch (outerGeoError) {
+                console.warn("⚠️ Error general al obtener ubicación:", outerGeoError);
+                ubicacion = "desconocida";
             }
             
-            console.log(`📝 Guardando puntaje: ${playerName} - ${puntaje} puntos`);
-            document.getElementById('ranking-submit-message').textContent = 'TODO: Conectar con backend para guardar';
-        });
-    }
-    
-    if (cancelButton) {
-        cancelButton.addEventListener('click', function() {
-            // Volver al modal anterior
-            console.log('❌ Cancelando guardado de ranking');
-            // TODO: Implementar navegación de vuelta
+            messageDiv.textContent = "Guardando puntuación...";
+            
+            try {
+                // Usar el cliente API para guardar la puntuación
+                if (window.apiClient && window.apiClient.ranking) {
+                    // Usar el nivel proporcionado
+                    const currentLevel = nivel ? `${nivel}` : "1";
+                    
+                    console.log(`🎯 Guardando ranking con nivel: ${currentLevel}`);
+                    
+                    // Guardar la puntuación
+                    const savePromise = window.apiClient.ranking.save(playerName, puntajeTotal, deviceType, ubicacion, currentLevel);
+                    
+                    // Aplicar un timeout para evitar bloqueos
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Timeout al guardar")), 8000)
+                    );
+                    
+                    const result = await Promise.race([savePromise, timeoutPromise]);
+                    
+                    console.log("Resultado de guardar puntuación:", result);
+                    
+                    // Guardar el nombre del jugador en localStorage para futuras partidas
+                    try {
+                        localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                        console.log("Nombre del jugador guardado en localStorage:", playerName);
+                    } catch(storageError) {
+                        console.warn("No se pudo guardar el nombre en localStorage:", storageError);
+                    }
+                    
+                    // Mostrar mensaje según el resultado
+                    if (result.fallbackUsed) {
+                        // Se usó el respaldo local
+                        messageDiv.innerHTML = `
+                            <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                                ⚠️ Servidor no disponible<br>
+                                <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
+                            </p>
+                            <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
+                                Se sincronizará cuando el servidor esté disponible
+                            </p>
+                        `;
+                    } else if (result.serverSave) {
+                        // Guardado exitoso en el servidor
+                        messageDiv.innerHTML = `
+                            <p style="color: rgba(0, 255, 0, 0.9);">
+                                ✅ Puntuación guardada exitosamente
+                            </p>
+                        `;
+                    } else {
+                        // Resultado desconocido pero exitoso
+                        messageDiv.innerHTML = `
+                            <p style="color: rgba(0, 255, 0, 0.9);">
+                                ✅ Puntuación guardada
+                            </p>
+                        `;
+                    }
+                    
+                    // Mostrar el ranking inmediatamente sin temporizador
+                    mostrarRankingList(panel, puntajeTotal, playerName);
+                } else {
+                    throw new Error("API Client no disponible");
+                }
+            } catch (saveError) {
+                console.error("❌ Error al guardar puntuación:", saveError);
+                
+                // Si no es un reintento y el error podría estar relacionado con geolocalización,
+                // ofrecer guardar sin geolocalización
+                if (!isRetryWithoutGeo) {
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(255, 100, 100, 0.9); margin-bottom: 10px;">
+                            Error al guardar. Esto podría deberse a problemas de conexión<br>
+                            o con la geolocalización.
+                        </p>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
+                            ¿Intentar guardar sin ubicación?
+                        </p>
+                    `;
+                    
+                    // Cambiar el botón para permitir reintento sin geolocalización
+                    saveButton.disabled = false;
+                    saveButton.textContent = "GUARDAR SIN UBICACIÓN";
+                    saveButton.style.backgroundColor = "rgba(255, 165, 0, 0.8)"; // Color naranja para diferenciarlo
+                    saveButton.dataset.retryWithoutGeo = 'true';
+                    
+                } else {
+                    // Si ya falló el reintento sin geo, mostrar error final
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(255, 50, 50, 0.9);">
+                            Error persistente al guardar.<br>
+                            <span style="font-size: 0.9em;">Verifica tu conexión e intenta más tarde.</span>
+                        </p>
+                    `;
+                    
+                    // Reactivar botón para otro intento completo
+                    saveButton.disabled = false;
+                    saveButton.textContent = "REINTENTAR";
+                    saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
+                    saveButton.dataset.retryWithoutGeo = 'false';
+                }
+            }
+        };
+        
+        // Handler para cancelar
+        const handleCancel = function(e) {
+            e.preventDefault();
+            console.log('📝 Cancelando formulario de ranking');
+            cerrarModalActivo();
+        };
+        
+        // Configurar eventos
+        saveButton.addEventListener('click', handleSave);
+        cancelButton.addEventListener('click', handleCancel);
+        
+        // Enter en input
+        nameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleSave(e);
+            }
         });
     }
 }
 
+// Mostrar ranking completo (P5-B2)
+async function mostrarRankingList(panel, playerScore, playerName) {
+    console.log('📊 Mostrando ranking completo');
+    
+    const isMobile = modalSystem.isMobile;
+    const tableCellPadding = isMobile ? '8px 4px' : '6px 8px';
+    const tableHeaderSize = isMobile ? '14px' : '16px';
+    
+    // Variable para controlar si el panel fue cerrado
+    let panelClosed = false;
+    
+    // Crear HTML inicial con loading
+    panel.innerHTML = `
+        <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 24px;">🏆 Ranking Global</h2>
+        
+        <div style="margin: 15px 0; font-size: 18px; color: rgba(0, 255, 255, 1);">
+            Tu puntuación: <strong>${playerScore} puntos</strong>
+        </div>
+        
+        <div id="ranking-status" style="font-size: 12px; margin: 10px 0; color: rgba(255, 255, 0, 0.8); display: none;"></div>
+        
+        <div id="ranking-loading" style="text-align: center; margin: 20px 0; color: rgba(255, 255, 255, 0.8);">
+            🔄 Cargando ranking...
+        </div>
+        
+        <div id="ranking-list" style="display: none; max-height: 300px; overflow-y: auto; margin: 15px 0;"></div>
+        
+        <div id="retry-server-container" style="display: none; margin: 10px 0;">
+            <button id="retry-server-button" style="background-color: rgba(255, 165, 0, 0.8); color: black; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px;">🔄 Reintentar servidor</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button id="close-ranking-button" style="background-color: rgba(100, 100, 100, 0.8); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; width: 100%;">CONTINUAR</button>
+        </div>
+    `;
+    
+    // Obtener referencias a elementos
+    const rankingListDiv = document.getElementById('ranking-list');
+    const loadingDiv = document.getElementById('ranking-loading');
+    const rankingStatusDiv = document.getElementById('ranking-status');
+    const retryServerContainer = document.getElementById('retry-server-container');
+    const retryServerButton = document.getElementById('retry-server-button');
+    const closeButton = document.getElementById('close-ranking-button');
+    
+    // Configurar botón de cerrar
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            panelClosed = true;
+            cerrarModalActivo();
+        });
+    }
+    
+    // Configurar botón de reintentar servidor
+    if (retryServerButton) {
+        retryServerButton.addEventListener('click', async function() {
+            // Recargar datos del servidor
+            retryServerButton.disabled = true;
+            retryServerButton.textContent = "Cargando...";
+            
+            // Mostrar loading nuevamente
+            if (loadingDiv) loadingDiv.style.display = 'block';
+            if (rankingListDiv) rankingListDiv.style.display = 'none';
+            
+            // Recargar datos
+            await cargarRankingData();
+            
+            retryServerButton.disabled = false;
+            retryServerButton.textContent = "🔄 Reintentar servidor";
+        });
+    }
+    
+    // Función para cargar datos del ranking
+    const cargarRankingData = async function() {
+        if (rankingListDiv && loadingDiv) {
+            try {
+                let rankingData = [];
+                let isLocalData = false;
+                
+                if (window.apiClient && window.apiClient.ranking && !panelClosed) {
+                    
+                    // Añadir timeout para prevenir bloqueos
+                    const fetchPromise = window.apiClient.ranking.getAll();
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Timeout obteniendo ranking')), 6000);
+                    });
+                    
+                    try {
+                        rankingData = await Promise.race([fetchPromise, timeoutPromise]);
+                        
+                        // Verificar si son datos locales
+                        isLocalData = rankingData.length > 0 && rankingData[0].local === true;
+                        
+                    } catch (fetchError) {
+                        console.error("Error o timeout al obtener ranking:", fetchError);
+                        isLocalData = true;
+                        // Continuar con rankingData vacío
+                    }
+                }
+                
+                // Si el panel fue cerrado durante la carga, abortar
+                if (panelClosed) {
+                    console.log("Panel cerrado durante la carga de datos, abortando renderizado");
+                    return;
+                }
+                
+                // Verificar nuevamente que el panel sigue existiendo
+                if (!panel || !panel.parentNode) {
+                    console.error("ERROR: Panel ya no existe durante la carga de datos");
+                    return;
+                }
+                
+                // Verificar que los elementos siguen existiendo
+                if (!rankingListDiv || !loadingDiv) {
+                    console.error("ERROR: Elementos del ranking ya no existen durante la carga de datos");
+                    return;
+                }
+                
+                // Ocultar mensaje de carga
+                loadingDiv.style.display = 'none';
+                rankingListDiv.style.display = 'block';
+                
+                // Mostrar estado del ranking
+                if (rankingStatusDiv) {
+                    rankingStatusDiv.style.display = 'block';
+                    if (isLocalData) {
+                        rankingStatusDiv.innerHTML = '📱 Mostrando datos locales (servidor no disponible)';
+                        // Mostrar botón de reintentar servidor
+                        if (retryServerContainer) {
+                            retryServerContainer.style.display = 'block';
+                        }
+                    } else {
+                        rankingStatusDiv.innerHTML = '🌐 Datos del servidor';
+                        // Ocultar botón de reintentar servidor
+                        if (retryServerContainer) {
+                            retryServerContainer.style.display = 'none';
+                        }
+                    }
+                }
+                
+                // Formatear y mostrar el ranking
+                if (rankingData && rankingData.length > 0) {
+                    actualizarTablaRanking(rankingData, playerScore, playerName, tableCellPadding, tableHeaderSize, isMobile);
+                } else {
+                    rankingListDiv.innerHTML = '<p style="text-align: center;">No hay puntuaciones registradas todavía.</p>';
+                }
+                
+            } catch (generalError) {
+                console.error("Error general al cargar ranking:", generalError);
+                
+                // Si el panel fue cerrado, no mostrar error
+                if (panelClosed) return;
+                
+                if (loadingDiv) {
+                    loadingDiv.innerHTML = '<p style="color: rgba(255, 100, 100, 0.9);">❌ Error al cargar el ranking</p>';
+                }
+            }
+        }
+    };
+    
+    // Cargar el ranking
+    await cargarRankingData();
+}
+
+// Función auxiliar para actualizar la tabla de ranking
+function actualizarTablaRanking(rankingData, playerScore, playerName, tableCellPadding, tableHeaderSize, isMobile) {
+    const rankingListDiv = document.getElementById('ranking-list');
+    if (!rankingListDiv) return;
+    
+    // Construir tabla de ranking
+    let tableHTML = `
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <tr style="border-bottom: 1px solid rgba(0, 255, 255, 0.5);">
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">#</th>
+                <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Jugador</th>
+                <th style="padding: ${tableCellPadding}; text-align: right; font-size: ${tableHeaderSize};">Puntos</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Dispositivo</th>
+                <th style="padding: ${tableCellPadding}; font-size: ${tableHeaderSize};">Ubicación</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Nivel</th>
+                <th style="padding: ${tableCellPadding}; text-align: center; font-size: ${tableHeaderSize};">Fecha/Hora</th>
+            </tr>
+    `;
+    
+    // Añadir filas
+    rankingData.forEach((entry, index) => {
+        // Destacar la entrada del jugador actual
+        const isCurrentPlayer = entry.nombre === playerName && entry.puntaje === playerScore;
+        let rowStyle = '';
+        
+        if (isCurrentPlayer) {
+            rowStyle = 'background-color: rgba(0, 255, 255, 0.2); font-weight: bold;';
+        } else if (entry.local) {
+            // Entradas locales con fondo ligeramente diferente
+            rowStyle = 'background-color: rgba(255, 165, 0, 0.1);';
+        } else {
+            // Entradas del servidor con alternancia normal
+            rowStyle = (index % 2 === 0) ? 'background-color: rgba(30, 30, 30, 0.5);' : '';
+        }
+        
+        // Formatear dispositivo (desktop o mobile)
+        const deviceIcon = (entry.dispositivo === 'mobile') ? '📱' : '💻';
+        
+        // Formatear ubicación (mostrar "desconocida" si no está disponible)
+        const location = entry.ubicacion || "desconocida";
+        
+        // Formatear nivel (mostrar "1" si no está disponible)
+        const nivel = entry.nivel || "1";
+        
+        // Formatear fecha/hora (mostrar "--" si no está disponible)
+        const fechaHora = entry.fechaHora || "--";
+        
+        // Añadir indicador visual para entradas locales
+        const localIndicator = entry.local ? ' 📱' : '';
+        
+        tableHTML += `
+            <tr style="${rowStyle}">
+                <td style="padding: ${tableCellPadding}; text-align: center;">${index + 1}</td>
+                <td style="padding: ${tableCellPadding}; font-size: ${isMobile ? '12px' : '14px'};">${entry.nombre}${localIndicator}</td>
+                <td style="padding: ${tableCellPadding}; text-align: right; font-weight: bold;">${entry.puntaje}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center;">${deviceIcon}</td>
+                <td style="padding: ${tableCellPadding}; font-size: ${isMobile ? '10px' : '12px'};">${location}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center; font-weight: bold;">${nivel}</td>
+                <td style="padding: ${tableCellPadding}; text-align: center; font-size: ${isMobile ? '10px' : '12px'};">${fechaHora}</td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += '</table>';
+    rankingListDiv.innerHTML = tableHTML;
+}
+
 // === FUNCIONES DE UTILIDAD ===
-function cerrarModalActivo() {
+function cerrarModal() {
     console.log('❌ Cerrando modal activo');
     
     const activeModal = modalSystem.currentModal || 
@@ -622,6 +1105,10 @@ function cerrarModalActivo() {
         document.body.removeChild(activeModal);
         modalSystem.currentModal = null;
     }
+}
+
+function cerrarModalActivo() {
+    cerrarModal();
 }
 
 // === INICIALIZACIÓN ===
@@ -650,6 +1137,9 @@ window.modalSystem = modalSystem;
 window.mostrarPantallaInstrucciones = mostrarPantallaInstrucciones;
 window.mostrarTransicionNivel = mostrarTransicionNivel;
 window.mostrarAnimacionPuntos = mostrarAnimacionPuntos;
+window.mostrarFormularioRanking = mostrarFormularioRanking;
+window.mostrarRankingList = mostrarRankingList;
+window.cerrarModal = cerrarModal;
 window.cerrarModalActivo = cerrarModalActivo;
 window.initModales = initModales;
 
@@ -658,6 +1148,9 @@ export {
     mostrarPantallaInstrucciones,
     mostrarTransicionNivel,
     mostrarAnimacionPuntos,
+    mostrarFormularioRanking,
+    mostrarRankingList,
+    cerrarModal,
     cerrarModalActivo,
     initModales
 }; 

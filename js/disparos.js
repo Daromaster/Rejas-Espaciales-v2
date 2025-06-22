@@ -43,6 +43,14 @@ let disparosCanvases = {};
 export function initDisparos(nivel) {
     console.log(`🎯 Inicializando sistema de disparos - Nivel ${nivel}`);
     
+    // Resetear estado para nuevo nivel
+    disparosState.activo = false;
+    disparosState.primerDisparoRealizado = false; // Permitir wake-up en cada nuevo nivel
+    disparosState.disparosActivos = [];
+    disparosState.particulasActivas = [];
+    disparosState.puntaje = 0;
+    disparosState.ultimoTiempoDisparo = 0;
+    
     // Crear canvas virtuales
     ensureDisparosCanvas(1); // Canvas base para disparos
     ensureDisparosCanvas(2); // Canvas composición
@@ -419,6 +427,25 @@ function iniciarCronometroJuego() {
     if (typeof relojJuego.iniciar === 'function') {
         relojJuego.iniciar();
         console.log('⏰ Cronómetro del juego iniciado con primer disparo');
+        
+        // 🚀 WAKE-UP CRÍTICO: Despertar backend al iniciar nivel con primer disparo
+        if (window.apiClient && typeof window.apiClient.wakeUpForLevel === 'function') {
+            // Obtener nivel actual
+            const nivelActual = window.gameEngine ? window.gameEngine.currentLevel : 1;
+            
+            // Wake-up asíncrono para no bloquear el juego
+            window.apiClient.wakeUpForLevel(nivelActual)
+                .then(success => {
+                    if (success) {
+                        console.log(`✅ Backend preparado para recibir ranking del nivel ${nivelActual}`);
+                    } else {
+                        console.log(`⚠️ Backend no responde para nivel ${nivelActual}, se usará respaldo local`);
+                    }
+                })
+                .catch(error => {
+                    console.log(`❌ Error en wake-up para nivel ${nivelActual}: ${error.message}`);
+                });
+        }
     }
 }
 

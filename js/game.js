@@ -2,6 +2,9 @@
 const GAME_VERSION = "2.1.001";
 window.GAME_VERSION = GAME_VERSION;
 
+// Control de niveles máximos implementados
+const MAX_NIVELES_IMPLEMENTADOS = 2; // Actualizar a medida que se programen más niveles
+
 // Game.js - Controlador principal del juego Rejas Espaciales V2
 
 import { GAME_CONFIG, CanvasManager } from './config.js';
@@ -86,13 +89,16 @@ class RejasEspacialesGame {
             console.log('Inicializando sistema de modales P5...');
             initModales();
             
+            // Inicializar grid para mostrar en pantalla de instrucciones
+            console.log('Inicializando grid para pantalla de instrucciones...');
+            initGrid(1); // Inicializar grid nivel 1 para que se vea por detrás del modal
+            
             console.log('Iniciando bucle principal...');
             this.startGameLoop();
             
             // Mostrar mensaje inicial
             this.updateUI();
             this.updateAudioButtonState(); // Inicializar estado del botón de audio
-            this.drawInitialScreen();
             
             // Mostrar pantalla de instrucciones inicial (P5-A)
             setTimeout(() => {
@@ -265,11 +271,15 @@ class RejasEspacialesGame {
         // Obtener puntaje de disparos si el sistema está activo
         const disparosState = getDisparosState();
         
+        // Puntaje del nivel actual
+        const currentLevelScore = disparosState.puntaje || 0;
+        
         if (this.elements.levelScore) {
-            this.elements.levelScore.textContent = disparosState.puntaje || this.levelScore;
+            this.elements.levelScore.textContent = currentLevelScore;
         }
         if (this.elements.totalScore) {
-            this.elements.totalScore.textContent = this.totalScore + (disparosState.puntaje || 0);
+            // Total = puntaje acumulado de niveles anteriores + puntaje del nivel actual
+            this.elements.totalScore.textContent = this.totalScore + currentLevelScore;
         }
         if (this.elements.comment) {
             this.elements.comment.textContent = `Nivel ${this.currentLevel} - ${this.getGameStateText()}`;
@@ -295,27 +305,7 @@ class RejasEspacialesGame {
         }
     }
     
-    // Dibujar pantalla inicial
-    drawInitialScreen() {
-        // Limpiar canvas
-        this.ctx.fillStyle = '#000';
-        this.ctx.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
-        
-        // Texto central
-        this.ctx.fillStyle = '#00ffff';
-        this.ctx.font = '48px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('Rejas Espaciales V2', GAME_CONFIG.LOGICAL_WIDTH / 2, GAME_CONFIG.LOGICAL_HEIGHT / 2 - 50);
-        
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '24px Arial';
-        this.ctx.fillText('Presiona ESPACIO para empezar', GAME_CONFIG.LOGICAL_WIDTH / 2, GAME_CONFIG.LOGICAL_HEIGHT / 2 + 20);
-        
-        this.ctx.fillStyle = '#ccc';
-        this.ctx.font = '16px Arial';
-        this.ctx.fillText(`Sistema preparado - Canvas ${GAME_CONFIG.LOGICAL_WIDTH}x${GAME_CONFIG.LOGICAL_HEIGHT}`, 
-                         GAME_CONFIG.LOGICAL_WIDTH / 2, GAME_CONFIG.LOGICAL_HEIGHT / 2 + 60);
-    }
+
     
     // Bucle principal del juego
     startGameLoop() {
@@ -338,13 +328,14 @@ class RejasEspacialesGame {
     
     // Actualizar lógica del juego (30 FPS)
     updateGameLogic(currentTime) {
+        const deltaTime = currentTime - this.lastLogicUpdate;
+        
+        // Actualizar lógica del grid SIEMPRE (para que se vea en pantalla de instrucciones)
+        updateGridLogic(deltaTime, this.gameState === GAME_CONFIG.GAME_STATES.MENU ? 1 : this.currentLevel);
+        
         if (this.gameState === GAME_CONFIG.GAME_STATES.PLAYING) {
             // Actualizar cronómetro
             relojJuego.actualizar(currentTime);
-            
-            // Actualizar lógica del grid
-            const deltaTime = currentTime - this.lastLogicUpdate;
-            updateGridLogic(deltaTime, this.currentLevel);
             
             // Actualizar lógica de la pelota
             updatePelotaLogic(deltaTime, this.currentLevel);
@@ -359,10 +350,12 @@ class RejasEspacialesGame {
                 // Obtener puntaje final del nivel
                 const disparosState = getDisparosState();
                 this.levelScore = disparosState.puntaje || 0;
+                
+                // Solo sumar al total si no se ha sumado ya
                 this.totalScore += this.levelScore;
                 
                 // Determinar si es fin de juego o transición entre niveles
-                if (this.currentLevel >= 4) {
+                if (this.currentLevel >= MAX_NIVELES_IMPLEMENTADOS) {
                     // Es el último nivel - mostrar fin de juego
                     this.mostrarFinDeJuego();
                 } else {
@@ -383,7 +376,14 @@ class RejasEspacialesGame {
         this.ctx.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
         
         if (this.gameState === GAME_CONFIG.GAME_STATES.MENU) {
-            this.drawInitialScreen();
+            // En modo MENU, solo mostrar la reja del nivel 1 flotando para que se vea por detrás del modal de instrucciones
+            if (this.gameStarted) {
+                // Si el juego ya empezó pero está en menú, renderizar normalmente
+                renderGrid(this.ctx, 1); // Reja del nivel 1
+            } else {
+                // Si aún no empezó, solo renderizar la reja flotando
+                renderGrid(this.ctx, 1);
+            }
             return;
         }
         
@@ -480,9 +480,8 @@ class RejasEspacialesGame {
         
         // Simular fin de nivel con puntaje actual
         const disparosState = getDisparosState();
-        const puntajeNivel = disparosState.puntaje || 0;
-        this.levelScore = puntajeNivel;
-        this.totalScore += puntajeNivel;
+        this.levelScore = disparosState.puntaje || 0;
+        this.totalScore += this.levelScore;
         
         // Mostrar transición de nivel
         this.mostrarTransicionEntreNiveles();
@@ -533,7 +532,6 @@ class RejasEspacialesGame {
         
         // Actualizar UI
         this.updateUI();
-        this.drawInitialScreen();
         
         console.log('✅ Juego reiniciado');
     }
@@ -550,7 +548,7 @@ class RejasEspacialesGame {
             nivel: this.currentLevel,
             puntajeNivel: this.levelScore,
             puntajeTotal: this.totalScore,
-            esUltimoNivel: this.currentLevel >= 4 // Por ahora máximo 4 niveles
+            esUltimoNivel: this.currentLevel >= MAX_NIVELES_IMPLEMENTADOS
         };
         
         // Mostrar transición usando el sistema de modales P5
