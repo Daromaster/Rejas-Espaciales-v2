@@ -289,6 +289,21 @@ class RejasEspacialesGame {
         }
         if (this.elements.timer) {
             this.elements.timer.textContent = relojJuego.getTiempoFormateado();
+            
+            // Cambiar color cuando quedan menos de 10 segundos
+            const tiempoRestante = relojJuego.getTiempoRestante();
+            if (tiempoRestante <= 10000) {
+                this.elements.timer.classList.add('warning');
+                
+                // Parpadeo en los últimos 5 segundos
+                if (tiempoRestante <= 5000) {
+                    const blinkState = Math.floor(Date.now() / 500) % 2 === 0;
+                    this.elements.timer.style.opacity = blinkState ? '1' : '0.5';
+                }
+            } else {
+                this.elements.timer.classList.remove('warning');
+                this.elements.timer.style.opacity = '1';
+            }
         }
     }
     

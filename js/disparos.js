@@ -302,6 +302,9 @@ function verificarImpactoYPuntos() {
         // Mostrar animación flotante de puntos ganados
         mostrarAnimacionPuntos(posicionPelota, 10, false);
         
+        // Agregar efecto de pulso al puntaje (como en juego Ensayo)
+        agregarEfectoPulsoPuntaje(false);
+        
         // Activar efecto en pelota (cambio de color)
         if (typeof window.pelotaImpacto === 'function') {
             window.pelotaImpacto();
@@ -328,6 +331,9 @@ function verificarImpactoYPuntos() {
             
             // Mostrar animación flotante de puntos perdidos
             mostrarAnimacionPuntos(posicionPelota, -penalizacion, true);
+            
+            // Agregar efecto de pulso al puntaje (color rojo para penalización)
+            agregarEfectoPulsoPuntaje(true);
             
             console.log(`❌ Fallo: -${penalizacion} puntos. Total: ${disparosState.puntaje}`);
         } else {
@@ -655,6 +661,55 @@ export function clearDisparosCanvases() {
         }
     });
     console.log('🧹 Canvas de disparos limpiados');
+}
+
+// === EFECTO DE PULSO EN PUNTAJES (Solo texto, sutil y rápido) ===
+function agregarEfectoPulsoPuntaje(esPenalizacion = false) {
+    // Encontrar elemento de puntaje del nivel
+    const elementoPuntajeNivel = document.getElementById('puntaje-nivel');
+    const elementoPuntajeTotal = document.getElementById('puntaje-total');
+    
+    // Efecto en puntaje del nivel actual
+    if (elementoPuntajeNivel) {
+        // Configurar transición más rápida y solo escala + color de texto
+        elementoPuntajeNivel.style.transition = 'all 0.1s ease-in-out';
+        elementoPuntajeNivel.style.transform = 'scale(1.15)'; // Pulso más sutil
+        
+        if (esPenalizacion) {
+            // Cambiar solo el color del texto, no el fondo
+            elementoPuntajeNivel.style.color = 'rgba(255, 100, 100, 1)'; // Rojo para penalización
+        } else {
+            // Cambiar solo el color del texto, no el fondo
+            elementoPuntajeNivel.style.color = 'rgba(100, 255, 100, 1)'; // Verde brillante para acierto
+        }
+        
+        // Volver al estado normal después de 100ms (más rápido)
+        setTimeout(() => {
+            elementoPuntajeNivel.style.transform = 'scale(1)';
+            elementoPuntajeNivel.style.color = 'rgba(0, 255, 255, 1)'; // Color original cyan
+        }, 100);
+    }
+    
+    // Efecto en puntaje total (si está visible y es nivel 2+)
+    if (elementoPuntajeTotal && elementoPuntajeTotal.style.display !== 'none') {
+        // Configurar transición más rápida y solo escala + color de texto
+        elementoPuntajeTotal.style.transition = 'all 0.1s ease-in-out';
+        elementoPuntajeTotal.style.transform = 'scale(1.15)'; // Pulso más sutil
+        
+        if (esPenalizacion) {
+            // Cambiar solo el color del texto, no el fondo
+            elementoPuntajeTotal.style.color = 'rgba(255, 100, 100, 1)'; // Rojo para penalización
+        } else {
+            // Cambiar solo el color del texto, no el fondo
+            elementoPuntajeTotal.style.color = 'rgba(255, 255, 150, 1)'; // Amarillo más brillante para acierto
+        }
+        
+        // Volver al estado normal después de 100ms (más rápido)
+        setTimeout(() => {
+            elementoPuntajeTotal.style.transform = 'scale(1)';
+            elementoPuntajeTotal.style.color = 'rgba(255, 255, 0, 1)'; // Color original amarillo
+        }, 100);
+    }
 }
 
 console.log('🎯 Disparos.js cargado - Sistema P4 iniciando...'); 

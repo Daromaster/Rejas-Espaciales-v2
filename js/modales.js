@@ -182,7 +182,7 @@ function mostrarAnimacionPuntos(puntajeNivel, puntajeTotal, esFinJuego = false, 
     if (esFinJuego) {
         contenidoHTML += `
             <p style="font-size: 20px; margin: 20px 0 10px 0; color: rgba(255, 255, 255, 0.8);">Tu puntuación final:</p>
-            <div id="animated-score" style="font-size: ${scoreSize}; font-weight: bold; color: rgba(50, 255, 50, 1); margin: 20px 0; font-family: 'Courier New', monospace;">0</div>
+            <div id="animated-score" style="font-size: ${scoreSize}; font-weight: bold; color: rgba(255, 255, 150, 1); margin: 20px 0; font-family: 'Courier New', monospace;">0</div>
             <p style="font-size: 18px; margin: 0; color: rgba(255, 255, 255, 0.6);">puntos</p>
         `;
     } else {

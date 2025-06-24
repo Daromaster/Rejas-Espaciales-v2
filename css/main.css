@@ -58,15 +58,36 @@ html, body {
 }
 
 #puntaje-nivel, #puntaje-total {
-  font-size: 1.1rem;
-  color: #ffff00;
+  font-size: 18px;
+  color: rgba(0, 255, 255, 1);
+  font-family: Arial, sans-serif;
+  font-weight: bold;
   margin-bottom: 0.3rem;
+  padding: 5px 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  text-shadow: 1px 1px 2px #000;
+}
+
+#puntaje-total {
+  font-size: 14px;
+  color: rgba(255, 255, 0, 1);
 }
 
 #cronometro {
-  font-size: 2rem;
-  color: #ff6600;
+  font-size: 22px;
+  color: rgba(0, 255, 255, 1);
+  font-family: Arial, sans-serif;
   font-weight: bold;
+  padding: 5px 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  text-shadow: 1px 1px 2px #000;
+}
+
+/* Estilo para cronómetro en últimos 10 segundos */
+#cronometro.warning {
+  color: rgba(255, 50, 50, 1);
 }
 
 /* Zona central: 70% de altura - Canvas del juego */
@@ -170,7 +191,7 @@ html, body {
   }
   
   #cronometro {
-    font-size: 1.5rem;
+    font-size: 19px;
   }
   
   /* Zona central: Canvas toma todo el ancho disponible */
@@ -262,11 +283,11 @@ html, body {
   }
   
   #puntaje-nivel, #puntaje-total {
-    font-size: 1rem;
+    font-size: 16px;
   }
   
   #cronometro {
-    font-size: 1.3rem;
+    font-size: 19px;
   }
 }
 
