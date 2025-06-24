@@ -178,21 +178,31 @@ function mostrarAnimacionPuntos(puntajeNivel, puntajeTotal, esFinJuego = false, 
         <h1 style="font-size: ${titleSize}; margin: 0 0 30px 0; color: ${titleColor};">${title}</h1>
     `;
     
-    // Agregar puntaje total arriba si no es nivel 1 y no es fin de juego
-    if (!esFinJuego && puntajeTotal > puntajeNivel) {
+    // Si es fin de juego, solo mostrar total final
+    if (esFinJuego) {
         contenidoHTML += `
-            <p style="font-size: 16px; margin: 0 0 10px 0; color: rgba(255, 255, 255, 0.6);">Puntaje total acumulado:</p>
-            <div id="animated-total-score" style="font-size: ${mediumScoreSize}; font-weight: bold; color: rgba(255, 255, 150, 1); margin: 10px 0; font-family: 'Courier New', monospace;">0</div>
+            <p style="font-size: 20px; margin: 20px 0 10px 0; color: rgba(255, 255, 255, 0.8);">Tu puntuación final:</p>
+            <div id="animated-score" style="font-size: ${scoreSize}; font-weight: bold; color: rgba(50, 255, 50, 1); margin: 20px 0; font-family: 'Courier New', monospace;">0</div>
+            <p style="font-size: 18px; margin: 0; color: rgba(255, 255, 255, 0.6);">puntos</p>
+        `;
+    } else {
+        // Entre niveles: Mostrar total acumulado ARRIBA (si existe) y puntaje del nivel ABAJO (grande)
+        
+        // Solo mostrar total acumulado si hay puntaje acumulado (nivel 2+) - ARRIBA
+        if (puntajeTotal > puntajeNivel) {
+            contenidoHTML += `
+                <p style="font-size: 16px; margin: 10px 0 5px 0; color: rgba(255, 255, 255, 0.6);">Puntaje total acumulado:</p>
+                <div id="animated-total-score" style="font-size: ${mediumScoreSize}; font-weight: bold; color: rgba(255, 255, 150, 1); margin: 5px 0 20px 0; font-family: 'Courier New', monospace;">0</div>
+            `;
+        }
+        
+        // Puntaje del nivel ABAJO (grande y verde)
+        contenidoHTML += `
+            <p style="font-size: 20px; margin: 20px 0 10px 0; color: rgba(255, 255, 255, 0.8);">Puntuación del nivel:</p>
+            <div id="animated-score" style="font-size: ${scoreSize}; font-weight: bold; color: rgba(50, 255, 50, 1); margin: 20px 0; font-family: 'Courier New', monospace;">0</div>
+            <p style="font-size: 18px; margin: 0; color: rgba(255, 255, 255, 0.6);">puntos</p>
         `;
     }
-    
-    // Puntaje principal (nivel actual o total si es fin de juego)
-    const scoreLabel = esFinJuego ? 'Tu puntuación final:' : 'Puntuación del nivel:';
-    contenidoHTML += `
-        <p style="font-size: 20px; margin: 20px 0 10px 0; color: rgba(255, 255, 255, 0.8);">${scoreLabel}</p>
-        <div id="animated-score" style="font-size: ${scoreSize}; font-weight: bold; color: rgba(50, 255, 50, 1); margin: 20px 0; font-family: 'Courier New', monospace;">0</div>
-        <p style="font-size: 18px; margin: 0; color: rgba(255, 255, 255, 0.6);">puntos</p>
-    `;
     
     // Espacio para banner futuro según orientación
     const bannerWidth = esVertical ? '90%' : '33%';
@@ -212,16 +222,23 @@ function mostrarAnimacionPuntos(puntajeNivel, puntajeTotal, esFinJuego = false, 
     const scoreElement = document.getElementById('animated-score');
     const totalScoreElement = document.getElementById('animated-total-score');
     
-    // Duración: 3 segundos animación + 1 segundo pausa = 4 segundos total
-    const animationDuration = 3000;
+    // Duración según el tipo: fin de juego (6s + 2s) vs entre niveles (3s + 1s)
+    const animationDuration = esFinJuego ? 6000 : 3000;
+    const pauseDuration = esFinJuego ? 2000 : 1000;
     const updateInterval = 50;
     const totalUpdates = animationDuration / updateInterval;
     
     let currentScore = 0;
     let currentTotalScore = 0;
+    
+    // Para fin de juego: animar desde 0 hasta el total final
+    // Para entre niveles: animar desde 0 hasta el puntaje del nivel
     const scoreTarget = esFinJuego ? puntajeTotal : puntajeNivel;
     const scoreIncrement = scoreTarget / totalUpdates;
-    const totalIncrement = totalScoreElement ? (puntajeTotal - puntajeNivel) / totalUpdates : 0;
+    
+    // Para el total acumulado (solo entre niveles): animar desde 0 hasta el total acumulado previo
+    const totalTarget = totalScoreElement ? (puntajeTotal - puntajeNivel) : 0;
+    const totalIncrement = totalScoreElement ? totalTarget / totalUpdates : 0;
     
     console.log(`🎰 Animando: Nivel=${puntajeNivel}, Total=${puntajeTotal}, Target=${scoreTarget}`);
     
@@ -238,19 +255,19 @@ function mostrarAnimacionPuntos(puntajeNivel, puntajeTotal, esFinJuego = false, 
             currentScore = scoreTarget;
             scoreElement.textContent = Math.floor(currentScore);
             if (totalScoreElement) {
-                totalScoreElement.textContent = puntajeTotal - puntajeNivel;
+                totalScoreElement.textContent = totalTarget;
             }
             
-            console.log('🎰 Animación completada, esperando 1 segundo...');
+            console.log(`🎰 Animación completada, esperando ${pauseDuration}ms...`);
             
-            // Esperar 1 segundo adicional
+            // Esperar según el tipo (1s entre niveles, 2s fin de juego)
             setTimeout(() => {
                 setModalActive(false);
                 document.body.removeChild(animationPanel);
                 
                 console.log('🎰 Animación finalizada, ejecutando callback');
                 if (callback) callback();
-            }, 1000);
+            }, pauseDuration);
             
         } else {
             // Continuar animación
@@ -312,19 +329,15 @@ function mostrarModalEntreNiveles(resultadoNivel) {
             <button id="guardar-ranking-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR EN RANKING</button>
     `;
     
-    // Agregar botón de siguiente nivel si no es el último
+    // Agregar botón según si es último nivel o no
     if (!esUltimoNivel) {
         contenidoModal += `
             <button id="siguiente-nivel-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">SIGUIENTE NIVEL</button>
         `;
     } else {
-        // Mensaje para último nivel
+        // Botón especial para finalizar el último nivel
         contenidoModal += `
-            <p style="font-size: 16px; margin: 15px 0; color: rgba(255, 255, 100, 1); line-height: 1.4;">
-                <strong>¡Alcanzaste el último nivel actual de este juego!</strong><br>
-                Puntaje final: ${resultadoNivel.puntajeTotal} puntos<br>
-                <span style="font-size: 14px; color: rgba(255, 255, 255, 0.8);">Pronto se incorporarán nuevos niveles!!!</span>
-            </p>
+            <button id="finalizar-juego-button" style="background-color: rgba(255, 215, 0, 0.9); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">🏆 FINALIZAR JUEGO</button>
         `;
     }
     
@@ -398,6 +411,45 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
                 });
             }
         }
+    } else {
+        // Botón finalizar juego (si es el último nivel)
+        const finalizarButton = document.getElementById('finalizar-juego-button');
+        if (finalizarButton) {
+            const handleFinalizar = function(e) {
+                e.preventDefault();
+                console.log('🏁 Finalizando juego - mostrar tragamonedas final');
+                
+                // Cerrar modal actual
+                setModalActive(false);
+                document.body.removeChild(modalPanel);
+                
+                // Mostrar tragamonedas final (6 segundos + 2 segundos pausa)
+                mostrarAnimacionPuntos(
+                    resultadoNivel.puntajeNivel,
+                    resultadoNivel.puntajeTotal,
+                    true, // ES fin de juego
+                    () => {
+                        // Callback: mostrar modal de fin de juego
+                        if (window.gameInstance && typeof window.gameInstance.mostrarModalFinDeJuego === 'function') {
+                            window.gameInstance.mostrarModalFinDeJuego();
+                        }
+                    }
+                );
+            };
+            
+            finalizarButton.addEventListener('click', handleFinalizar);
+            finalizarButton.addEventListener('touchend', handleFinalizar);
+            
+            if (isMobile) {
+                finalizarButton.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    this.style.transform = 'scale(0.95)';
+                });
+                finalizarButton.addEventListener('touchend', function(e) {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+        }
     }
     
     // Botón reiniciar juego
@@ -436,16 +488,32 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
 function mostrarTransicionNivel(resultadoNivel) {
     console.log('🎯 Iniciando transición completa de nivel', resultadoNivel);
     
-    // Primero mostrar animación de puntos, luego el modal de opciones
-    mostrarAnimacionPuntos(
-        resultadoNivel.puntajeNivel,
-        resultadoNivel.puntajeTotal,
-        false, // No es fin de juego
-        () => {
-            // Callback: mostrar modal de opciones después de la animación
-            mostrarModalEntreNiveles(resultadoNivel);
-        }
-    );
+    // Si es el último nivel, mostrar primero tragamonedas del nivel, después el final
+    if (resultadoNivel.esUltimoNivel) {
+        console.log('🏁 Es el último nivel - flujo: tragamonedas nivel → tragamonedas final');
+        
+        // 1. Primero: tragamonedas del nivel (como cualquier nivel)
+        mostrarAnimacionPuntos(
+            resultadoNivel.puntajeNivel,
+            resultadoNivel.puntajeTotal,
+            false, // No es fin de juego AÚN
+            () => {
+                // 2. Después: modal entre niveles normal
+                mostrarModalEntreNiveles(resultadoNivel);
+            }
+        );
+    } else {
+        // Nivel normal: solo tragamonedas del nivel y modal
+        mostrarAnimacionPuntos(
+            resultadoNivel.puntajeNivel,
+            resultadoNivel.puntajeTotal,
+            false, // No es fin de juego
+            () => {
+                // Callback: mostrar modal de opciones después de la animación
+                mostrarModalEntreNiveles(resultadoNivel);
+            }
+        );
+    }
 }
 
 // === C) BOTONES DE DEBUG ===

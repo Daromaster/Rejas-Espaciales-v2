@@ -100,6 +100,10 @@ class RejasEspacialesGame {
             this.updateUI();
             this.updateAudioButtonState(); // Inicializar estado del botón de audio
             
+            // Ocultar puntaje total al inicio (solo se muestra desde nivel 2)
+            const totalContainer = document.getElementById('puntaje-total');
+            if (totalContainer) totalContainer.style.display = 'none';
+            
             // Mostrar pantalla de instrucciones inicial (P5-A)
             setTimeout(() => {
                 mostrarPantallaInstrucciones();
@@ -266,8 +270,19 @@ class RejasEspacialesGame {
             this.elements.levelScore.textContent = currentLevelScore;
         }
         if (this.elements.totalScore) {
-            // Total = puntaje acumulado de niveles anteriores + puntaje del nivel actual
-            this.elements.totalScore.textContent = this.totalScore + currentLevelScore;
+            // Mostrar puntaje total solo desde el nivel 2
+            if (this.currentLevel === 1) {
+                // Ocultar todo el contenedor del puntaje total en nivel 1
+                const totalContainer = document.getElementById('puntaje-total');
+                if (totalContainer) totalContainer.style.display = 'none';
+            } else {
+                // Mostrar el contenedor del puntaje total desde nivel 2
+                const totalContainer = document.getElementById('puntaje-total');
+                if (totalContainer) totalContainer.style.display = 'block';
+                
+                // Total = puntaje acumulado de niveles anteriores + puntaje del nivel actual
+                this.elements.totalScore.textContent = this.totalScore + currentLevelScore;
+            }
         }
         if (this.elements.comment) {
             this.elements.comment.textContent = `Nivel ${this.currentLevel} - ${this.getGameStateText()}`;
@@ -342,14 +357,9 @@ class RejasEspacialesGame {
                 // Solo sumar al total si no se ha sumado ya
                 this.totalScore += this.levelScore;
                 
-                // Determinar si es fin de juego o transición entre niveles
-                if (this.currentLevel >= MAX_NIVELES_IMPLEMENTADOS) {
-                    // Es el último nivel - mostrar fin de juego
-                    this.mostrarFinDeJuego();
-                } else {
-                    // Mostrar transición entre niveles
-                    this.mostrarTransicionEntreNiveles();
-                }
+                // SIEMPRE mostrar transición entre niveles primero
+                // El sistema determinará si es fin de juego en el modal
+                this.mostrarTransicionEntreNiveles();
             }
             
             // Actualizar UI
