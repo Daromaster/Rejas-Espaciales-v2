@@ -61,14 +61,21 @@ function ensureGridCanvas(index) {
 }
 
 function resetGridCanvases() {
+    // Limpiar contextos existentes
     gridCanvases.forEach((context, index) => {
         if (context && context.canvas) {
             context.clearRect(0, 0, context.canvas.width, context.canvas.height);
         }
     });
     
-    gridCanvases = [];
-    console.log("🔄 Canvas virtuales reseteados");
+    // Resetear array manteniendo estructura
+    gridCanvases.length = 0;
+    
+    // Resetear configuración
+    configGrid = null;
+    transformMatrix = null;
+    
+    console.log("🔄 Canvas virtuales y configuración reseteados");
 }
 
 // === CONFIGURACIÓN POR NIVEL ===
@@ -212,8 +219,49 @@ function dibujarRejaBase(level) {
         }
         
         case 2: {
-            // NIVEL 2: Canvas base verde para rotación futura
-            console.log("📝 Nivel 2 reja base pendiente");
+            // NIVEL 2: Misma reja base que nivel 1 (la diferencia está en la rotación)
+            configGrid = calcularConfiguracionGrid(width, height, 2);
+            
+            // CANVAS BASE (1): Reja sin transformaciones (igual que nivel 1 pero con posible color diferente)
+            ensureGridCanvas(1);
+            gridCanvases[1].clearRect(0, 0, width, height);
+            gridCanvases[1].lineWidth = configGrid.grosorLinea;
+            
+            // Colores para nivel 2 (verde para diferenciarlo)
+            const gradientColors = {
+                dark: "rgb(0, 31, 20)",
+                bright: "rgba(0, 255, 100, 1)"
+            };
+            
+            // Dibujar líneas horizontales
+            for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
+                const y = configGrid.baseY + i * configGrid.tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(configGrid.baseX, y);
+                gridCanvases[1].lineTo(configGrid.baseX + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado, y);
+                gridCanvases[1].stroke();
+            }
+            
+            // Dibujar líneas verticales
+            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, configGrid.baseY);
+                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                gridCanvases[1].stroke();
+            }
+            
+            console.log("✨ Reja base nivel 2 dibujada CORRECTAMENTE en gridCanvases[1] con color verde");
             break;
         }
         

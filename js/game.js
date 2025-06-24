@@ -175,25 +175,13 @@ class RejasEspacialesGame {
     // Iniciar el juego
     startGame() {
         console.log('🎮 Iniciando juego...');
-        this.gameStarted = true;
-        this.gameState = GAME_CONFIG.GAME_STATES.PLAYING;
         
-        // Inicializar sistema de grid
-        initGrid(this.currentLevel);
-        
-        // Inicializar sistema de pelota
-        initPelota(this.currentLevel);
-        
-        // Inicializar sistema de disparos (P4)
-        initDisparos(this.currentLevel);
+        // Usar función centralizada de inicialización
+        this.initializeLevel(this.currentLevel, { resetTotalScore: false });
         
         // Actualizar estado visual del botón de audio
         this.updateAudioButtonState();
         
-        // Configurar cronómetro
-        relojJuego.configurarTiempo(60000); // 60 segundos
-        
-        this.updateUI();
         console.log('¡Juego iniciado!');
     }
     
@@ -491,47 +479,20 @@ class RejasEspacialesGame {
     avanzarNivel() {
         console.log(`➡️ Avanzando del nivel ${this.currentLevel} al ${this.currentLevel + 1}`);
         
-        this.currentLevel++;
-        this.levelScore = 0; // Resetear puntaje del nivel
+        const nextLevel = this.currentLevel + 1;
         
-        // Reinicializar sistemas para el nuevo nivel
-        initGrid(this.currentLevel);
-        initPelota(this.currentLevel);
-        initDisparos(this.currentLevel);
+        // Usar función centralizada de inicialización
+        this.initializeLevel(nextLevel, { resetTotalScore: false });
         
-        // Configurar cronómetro para nuevo nivel
-        relojJuego.configurarTiempo(60000); // 60 segundos
-        
-        // Cambiar estado a jugando
-        this.gameState = GAME_CONFIG.GAME_STATES.PLAYING;
-        
-        // Actualizar UI
-        this.updateUI();
-        
-        console.log(`✅ Nivel ${this.currentLevel} iniciado`);
+        console.log(`✅ Nivel ${nextLevel} iniciado`);
     }
     
     // Función para reiniciar el juego completo
     reiniciarJuego() {
         console.log('🔄 Reiniciando juego completo');
         
-        // Resetear estado del juego
-        this.currentLevel = 1;
-        this.levelScore = 0;
-        this.totalScore = 0;
-        this.gameStarted = false;
-        this.gameState = GAME_CONFIG.GAME_STATES.MENU;
-        
-        // Reinicializar sistemas
-        initGrid(this.currentLevel);
-        initPelota(this.currentLevel);
-        initDisparos(this.currentLevel);
-        
-        // Configurar cronómetro
-        relojJuego.configurarTiempo(60000);
-        
-        // Actualizar UI
-        this.updateUI();
+        // Usar función centralizada de inicialización
+        this.initializeLevel(1, { resetTotalScore: true, isGameRestart: true });
         
         console.log('✅ Juego reiniciado');
     }
@@ -586,6 +547,86 @@ class RejasEspacialesGame {
         };
         
         mostrarTransicionNivel(resultadoNivel);
+    }
+
+    // === FUNCIÓN CENTRALIZADA DE INICIALIZACIÓN DE NIVELES ===
+    // Esta función maneja TODA la inicialización/reinicialización de niveles
+    initializeLevel(level, options = {}) {
+        console.log(`🚀 INICIALIZANDO NIVEL ${level} - Función centralizada`);
+        
+        const {
+            resetTotalScore = false,  // ¿Resetear puntaje total? (solo para reinicio completo)
+            isGameRestart = false     // ¿Es reinicio de juego desde el principio?
+        } = options;
+        
+        // === 1. CONFIGURAR ESTADO DEL JUEGO ===
+        this.currentLevel = level;
+        this.gameStarted = true;
+        this.gameState = GAME_CONFIG.GAME_STATES.PLAYING;
+        
+        // === 2. MANEJAR PUNTAJES ===
+        this.levelScore = 0; // Siempre resetear puntaje del nivel
+        
+        if (resetTotalScore || isGameRestart) {
+            this.totalScore = 0; // Resetear total solo si se especifica
+            console.log('🔄 Puntaje total reseteado');
+        }
+        
+        // === 3. REINICIALIZAR CRONÓMETRO ===
+        relojJuego.reiniciar();
+        relojJuego.configurarTiempo(60000); // 60 segundos
+        console.log('⏰ Cronómetro reinicializado');
+        
+        // === 4. REINICIALIZAR SISTEMAS DE JUEGO ===
+        try {
+            // Sistema de Grid
+            console.log('📊 Reinicializando sistema Grid...');
+            initGrid(level);
+            
+            // Sistema de Pelota
+            console.log('⚽ Reinicializando sistema Pelota...');
+            initPelota(level);
+            
+            // Sistema de Disparos
+            console.log('🎯 Reinicializando sistema Disparos...');
+            initDisparos(level);
+            
+            console.log('✅ Todos los sistemas reinicializados exitosamente');
+            
+        } catch (systemError) {
+            console.error('❌ Error al reinicializar sistemas:', systemError);
+            // Intentar inicialización básica de emergencia
+            this.emergencyInitialization(level);
+        }
+        
+        // === 5. ACTUALIZAR INTERFAZ ===
+        this.updateUI();
+        
+        // === 6. LOG FINAL ===
+        console.log(`✅ NIVEL ${level} INICIALIZADO CORRECTAMENTE`);
+        console.log(`   📊 Puntaje nivel: ${this.levelScore}`);
+        console.log(`   🏆 Puntaje total: ${this.totalScore}`);
+        console.log(`   🎮 Estado: ${this.getGameStateText()}`);
+    }
+    
+    // Inicialización de emergencia si falla la normal
+    emergencyInitialization(level) {
+        console.warn('⚠️ Iniciando reinicialización de emergencia...');
+        
+        try {
+            // Intentar al menos inicializar el grid básico
+            if (typeof initGrid === 'function') {
+                initGrid(1); // Fallback al nivel 1
+            }
+            
+            // Resetear estados básicos
+            this.levelScore = 0;
+            this.gameState = GAME_CONFIG.GAME_STATES.PLAYING;
+            
+            console.log('🆘 Inicialización de emergencia completada');
+        } catch (emergencyError) {
+            console.error('💥 Fallo crítico en inicialización de emergencia:', emergencyError);
+        }
     }
 }
 
