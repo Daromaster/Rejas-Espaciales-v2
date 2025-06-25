@@ -90,7 +90,24 @@ const PelotaMath = {
         smoothed = 0.5 * (1 - Math.cos(smoothed * Math.PI)); // Primera aplicación
         smoothed = 0.5 * (1 - Math.cos(smoothed * Math.PI)); // Segunda aplicación
         return smoothed;
+    },
+
+    easeInOutSine:(t) => {
+        return -(Math.cos(Math.PI * t) - 1) / 2;
+    },
+
+    easeInOutExpo:(t) => {
+        if (t === 0) return 0;
+        if (t === 1) return 1;
+        return t < 0.5
+          ? Math.pow(2, 20 * t - 10) / 2
+          : (2 - Math.pow(2, -20 * t + 10)) / 2;
     }
+
+
+
+
+
 };
 
 // === INICIALIZACIÓN DEL SISTEMA ===
@@ -319,7 +336,9 @@ function avanzarPelota() {
     const t = viaje.pasoActual / (viaje.totalPasos - 1);
     
     // Aplicar easing suave del Ensayo original
-    const progreso = PelotaMath.easeInOutSineExtraSoft(t);
+   // const progreso = PelotaMath.easeInOutSineExtraSoft(t);
+    const progreso = PelotaMath.easeInOutExpo(t);
+    
     
     // Obtener destino actualizado con transformación (las coordenadas ya están actualizadas)
     const destinoActualizado = {
