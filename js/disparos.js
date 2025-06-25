@@ -358,29 +358,45 @@ function mostrarAnimacionPuntos(posicion, puntos, esPenalizacion = false) {
         elemento.style.textShadow = '0 0 10px #00ff00, 0 0 20px #00ff00';
     }
     
-    // Calcular posición absoluta en pantalla, más cerca del perímetro de la pelota
-    const canvas = document.getElementById('canvas-juego') || document.querySelector('canvas');
-    if (!canvas) return;
+    // Obtener el canvas correcto por ID
+    const canvas = document.getElementById('canvas-principal');
+    if (!canvas) {
+        console.warn('⚠️ Canvas principal no encontrado para animación de puntos');
+        return;
+    }
     
     const rect = canvas.getBoundingClientRect();
     
+    // === CÁLCULO CORRECTO DE COORDENADAS CON SCALING ===
+    // El canvas lógico es 900x600, pero el canvas real puede ser de cualquier tamaño
+    const logicalWidth = GAME_CONFIG.LOGICAL_WIDTH;  // 900
+    const logicalHeight = GAME_CONFIG.LOGICAL_HEIGHT; // 600
+    
+    // Calcular factores de escala
+    const scaleX = rect.width / logicalWidth;   // Factor de escala horizontal
+    const scaleY = rect.height / logicalHeight; // Factor de escala vertical
+    
+    // Convertir coordenadas lógicas a coordenadas reales en pantalla
+    const xReal = posicion.x * scaleX;
+    const yReal = posicion.y * scaleY;
+    
     // Obtener el radio actual de la pelota del estado
     const pelotaState = getPelotaState();
-    const radioPelota = pelotaState.radio || 8; // Radio por defecto si no está disponible
+    const radioPelota = (pelotaState.radio || 8) * Math.min(scaleX, scaleY); // Escalar también el radio
     
     // Posicionar el texto DIRECTAMENTE cerca del perímetro de la pelota
-    const offsetDesdePerimetro = 5; // 5 píxeles desde el borde de la pelota
+    const offsetDesdePerimetro = 5 * Math.min(scaleX, scaleY); // Escalar también el offset
     
-    // Posicionar arriba de la pelota, muy cerca
-    const x = rect.left + posicion.x; // Centrado horizontalmente con la pelota
-    const y = rect.top + posicion.y - radioPelota - offsetDesdePerimetro; // Justo arriba del borde
+    // Posición final en pantalla (coordenadas absolutas)
+    const x = rect.left + xReal;
+    const y = rect.top + yReal - radioPelota - offsetDesdePerimetro;
     
     // Estilos de posicionamiento y animación
     elemento.style.position = 'fixed';
     elemento.style.left = x + 'px';
     elemento.style.top = y + 'px';
     elemento.style.fontWeight = 'bold';
-    elemento.style.fontSize = '28px'; // Reducido para mejor ajuste cerca de la pelota
+    elemento.style.fontSize = Math.max(16, 28 * Math.min(scaleX, scaleY)) + 'px'; // Escalar fuente también
     elemento.style.zIndex = '1001';
     elemento.style.pointerEvents = 'none';
     elemento.style.transition = 'all 1.5s ease-out';
