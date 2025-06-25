@@ -11,13 +11,13 @@
 
   <!-- Zona superior - Información del juego -->
   <header id="zona-superior">
-    <!-- Primera línea: Info central (título y estado) -->
+    <!-- Título y subtítulo SIEMPRE centrados arriba -->
     <div id="info-centro">
       <h1>Rejas Espaciales</h1>
       <div id="comentario-juego">Nivel 1 - Preparado</div>
     </div>
     
-    <!-- Segunda línea: Datos distribuidos (puntajes vs cronómetro) -->
+    <!-- Línea de datos: puntajes izquierda, cronómetro derecha -->
     <div class="linea-datos">
       <div id="info-izquierda">
         <div id="puntaje-nivel">Puntaje: <span id="puntaje-nivel-valor">0</span></div>
@@ -56,19 +56,15 @@
     </div>
   </footer>
 
-  <!-- Scripts: ordenados por dependencia -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
-  
-  <!-- Módulos del juego (a implementar en próximos pasos) -->
-      <script src="js/api-client.js"></script>
-    <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/relojJuego.js"></script>
-    <script type="module" src="js/grid.js"></script>
-    <script type="module" src="js/pelota.js"></script>
-    <script type="module" src="js/disparos.js"></script>
-    <script type="module" src="js/modales.js"></script>
-    <script type="module" src="js/game.js"></script>
-  
+  <!-- Scripts del juego -->
+  <script type="module" src="js/config.js"></script>
+  <script type="module" src="js/fondo.js"></script>
+  <script type="module" src="js/grid.js"></script>
+  <script type="module" src="js/pelota.js"></script>
+  <script type="module" src="js/disparos.js"></script>
+  <script type="module" src="js/relojJuego.js"></script>
+  <script type="module" src="js/modales.js"></script>
+  <script type="module" src="js/game.js"></script>
 </body>
 </html>
 

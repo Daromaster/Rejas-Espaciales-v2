@@ -19,48 +19,56 @@ html, body {
    LAYOUT HORIZONTAL (orientación landscape)
    =========================================== */
 
-/* Zona superior: 20% o 10%de altura - Información del juego */
+/* Zona superior: 10% de altura - Información del juego */
 #zona-superior {
   height: 10vh;
   background-color: #000000;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2vw;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 2px 2vw 0 2vw; /* 2px desde el borde superior */
   position: relative;
   z-index: 10;
 }
 
-#info-izquierda {
-  flex: 1;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* Para horizontal, alineado a la izquierda */
-}
-
+/* Título y subtítulo SIEMPRE centrados arriba */
 #info-centro {
-  flex: 2;
   text-align: center;
-}
-
-#info-derecha {
-  flex: 1;
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* Para horizontal, alineado a la derecha */
+  margin-bottom: 4px; /* Separación mínima con la línea de datos */
 }
 
 #info-centro h1 {
   font-size: 2.0rem;
   color: #00ffff;
-  margin-bottom: 0.1rem;
+  margin: 0 0 2px 0; /* Solo 2px de separación */
+  line-height: 1;
 }
 
 #comentario-juego {
   font-size: 1rem;
   color: #ccc;
+  margin: 0;
+  line-height: 1;
+}
+
+/* Línea de datos: puntajes izquierda, cronómetro derecha */
+.linea-datos {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* Alineación superior para control preciso */
+  flex: 1;
+}
+
+#info-izquierda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px; /* Par de px entre puntaje y total */
+}
+
+#info-derecha {
+  display: flex;
+  align-items: flex-start;
 }
 
 #puntaje-nivel, #puntaje-total {
@@ -68,27 +76,25 @@ html, body {
   color: rgba(0, 255, 255, 1);
   font-family: Arial, sans-serif;
   font-weight: bold;
-  margin-top: 0.3rem;
-  margin-bottom: 0.3rem;
+  margin: 0; /* Sin márgenes para control preciso */
   padding: 5px 10px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   text-shadow: 1px 1px 2px #000;
-  text-align: center; /* Alineación centrada para efecto de pulso */
+  text-align: center;
 }
 
 #puntaje-total {
   font-size: 18px;
-  color: rgba(0, 255, 255, 1); /* Mantener color CIAN del CSS */
+  color: rgba(0, 255, 255, 1);
   font-family: Arial, sans-serif;
   font-weight: bold;
-  margin-top: 0.3rem;
-  margin-bottom: 0.3rem;
+  margin: 0;
   padding: 5px 10px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   text-shadow: 1px 1px 2px #000;
-  text-align: center; /* Alineación centrada para efecto de pulso */
+  text-align: center;
 }
 
 #cronometro {
@@ -97,6 +103,7 @@ html, body {
   font-family: Arial, sans-serif;
   font-weight: bold;
   padding: 5px 10px;
+  margin: 0;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   text-shadow: 1px 1px 2px #000;
@@ -108,10 +115,10 @@ html, body {
   color: rgba(255, 50, 50, 1);
 }
 
-/* Zona central: 70% o 85%de altura - Canvas del juego */
+/* Zona central: 85% de altura - Canvas del juego */
 #zona-juego {
   height: 85vh;
-  background-color: #000000; /* Negro completo para áreas laterales */
+  background-color: #000000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -129,7 +136,7 @@ html, body {
   aspect-ratio: 3/2;
 }
 
-/* Zona inferior: 10% o 5% de altura - Descripción de controles */
+/* Zona inferior: 5% de altura - Descripción de controles */
 #zona-inferior {
   height: 5vh;
   background-color: #000000;
@@ -186,65 +193,61 @@ html, body {
 
 @media (orientation: portrait) {
   
-  /* Zona superior reorganizada: info centrado arriba, luego línea con puntajes y cronómetro */
+  /* Zona superior: más alta para acomodar título+subtítulo arriba y datos abajo */
   #zona-superior {
     height: 20vh;
     background-color: #000000;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 1vh 2vw;
-    gap: 1vh;
+    padding: 2px 2vw 0 2vw; /* 2px desde el borde superior */
+    gap: 6px; /* Separación entre título/subtítulo y línea de datos */
   }
   
-  /* Primera línea: Info central */
+  /* Título y subtítulo siguen centrados arriba */
   #info-centro {
-    flex: none;
-    order: 1;
     text-align: center;
-    width: 100%;
-  }
-  
-  /* Segunda línea: Puntajes a la izquierda, cronómetro a la derecha */
-  .linea-datos {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    order: 2;
-  }
-  
-  #info-izquierda {
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Centrado para efecto de pulso correcto */
-    gap: 0.5vh;
-  }
-  
-  #info-derecha {
-    flex: none;
-    display: flex;
-    align-items: center;
+    margin-bottom: 0;
   }
   
   #info-centro h1 {
     font-size: 1.8rem;
-    margin-bottom: 0.2rem;
+    margin: 0 0 2px 0;
   }
   
   #comentario-juego {
     font-size: 0.9rem;
+    margin: 0;
+  }
+  
+  /* Línea de datos: puntajes a la izquierda, cronómetro a la derecha */
+  .linea-datos {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+  }
+  
+  #info-izquierda {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Mantiene alineación izquierda */
+    gap: 2px; /* Par de px entre puntaje y total */
+  }
+  
+  #info-derecha {
+    display: flex;
+    align-items: flex-start;
   }
   
   #cronometro {
     font-size: 19px;
   }
   
-  /* Zona central: Canvas toma todo el ancho disponible */
+  /* Zona central: Canvas toma el espacio restante */
   #zona-juego {
     height: 56vh;
-    background-color: #000000; /* Negro completo */
+    background-color: #000000;
   }
   
   #canvas-principal {
