@@ -377,11 +377,16 @@ export function updateGridLogic(deltaTime, level) {
         case 2: {
             // === MOTOR DE MOVIMIENTO NIVEL 2: FLOTACIÓN + ROTACIÓN ===
             // Parámetros específicos del nivel 2 (personalidad diferente)
-            const amplitudeY = 30;      // Más amplitud que nivel 1
-            const amplitudeX = 25;      // Más amplitud que nivel 1
-            const frequencyY = 0.0015;  // Frecuencia diferente
-            const frequencyX = 0.001;   // Frecuencia diferente
-            const speed = 1.8;          // Más velocidad que nivel 1
+            const amplitudeY = 40;      // Más amplitud que nivel 1
+            const amplitudeX = 45;      // Más amplitud que nivel 1
+            const frequencyY = 0.00015;  // Frecuencia diferente
+            const frequencyX = 0.0001;   // Frecuencia diferente
+
+            //const periodSideToSide = 10_000;                   // ms
+            //const frequencyY = Math.PI / periodSideToSide;     // rad/ms
+            //const frequencyX = Math.PI / periodSideToSide;     // idem
+
+            const speed = 1;          //velocidad 
             const phaseY = 0;           // Sin fase inicial
             const phaseX = Math.PI / 2; // Fase diferente al nivel 1
             
