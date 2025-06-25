@@ -291,102 +291,222 @@ function mostrarModalEntreNiveles(resultadoNivel) {
     const modalPanel = document.createElement('div');
     modalPanel.id = 'level-transition-panel';
     
-    // Detectar si es el último nivel
+    // Detectar si es el último nivel y orientación
     const esUltimoNivel = resultadoNivel.esUltimoNivel;
     const isMobile = modalSystem.isMobile;
+    const esVertical = window.innerHeight > window.innerWidth;
     
-    // Estilos del panel
+    // Estilos del panel adaptados a orientación
+    const panelWidth = esVertical ? '95vw' : '85vw';
+    const panelMaxWidth = esVertical ? '400px' : '500px';
+    const panelPadding = esVertical ? '20px' : '30px';
+    
     modalPanel.style.cssText = `
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background-color: rgba(0, 40, 80, 0.95);
+        background: linear-gradient(145deg, rgba(10, 25, 50, 0.98), rgba(25, 10, 80, 0.98));
         color: white;
-        padding: 30px;
-        border-radius: 15px;
+        padding: ${panelPadding};
+        border-radius: 20px;
         text-align: center;
         z-index: 3000;
-        min-width: 350px;
-        max-width: 90%;
-        max-height: 80%;
+        width: ${panelWidth};
+        max-width: ${panelMaxWidth};
+        max-height: 85vh;
         overflow-y: auto;
-        box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+        box-shadow: 0 0 40px rgba(0, 255, 255, 0.7), inset 0 0 20px rgba(0, 100, 255, 0.2);
+        border: 2px solid rgba(0, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
     `;
     
-    // Tamaños de botones
-    const buttonPadding = isMobile ? '16px 20px' : '12px 20px';
-    const buttonMargin = isMobile ? '10px 0' : '5px 0';
-    const buttonSize = isMobile ? '20px' : '18px';
+    // Tamaños adaptados a orientación
+    const titleSize = esVertical ? '22px' : '28px';
+    const textSize = esVertical ? '16px' : '18px';
+    const buttonPadding = esVertical ? '18px 25px' : '16px 30px';
+    const buttonSize = esVertical ? '18px' : '20px';
+    const buttonMargin = esVertical ? '12px 0' : '10px 0';
     
-    // Contenido del modal
+    // Contenido del modal con estética gaming
     let contenidoModal = `
-        <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: 28px;">Nivel ${resultadoNivel.nivel} Completado</h2>
-        <p style="font-size: 18px; margin: 15px 0;">Puntaje del nivel: <strong style="color: rgba(50, 255, 50, 1);">${resultadoNivel.puntajeNivel} puntos</strong></p>
-        <p style="font-size: 18px; margin: 15px 0;">Puntaje total: <strong style="color: rgba(255, 255, 150, 1);">${resultadoNivel.puntajeTotal} puntos</strong></p>
-        
-        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
-            <button id="guardar-ranking-button" style="background-color: rgba(50, 205, 50, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">GUARDAR EN RANKING</button>
+        <div style="position: relative;">
+            <h2 style="color: rgba(0, 255, 255, 1); margin: 0 0 20px 0; font-size: ${titleSize}; text-shadow: 0 0 10px rgba(0, 255, 255, 0.8); font-family: 'Arial Black', Arial, sans-serif;">🎯 Nivel ${resultadoNivel.nivel} Completado! 🎯</h2>
+            
+            <div style="background: rgba(0, 0, 0, 0.4); padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px solid rgba(0, 255, 255, 0.3);">
+                <p style="font-size: ${textSize}; margin: 8px 0; text-shadow: 0 0 5px rgba(50, 255, 50, 0.8);">🏆 Puntaje del nivel: <strong style="color: rgba(50, 255, 50, 1);">${resultadoNivel.puntajeNivel} puntos</strong></p>
+                <p style="font-size: ${textSize}; margin: 8px 0; text-shadow: 0 0 5px rgba(255, 255, 0, 0.8);">⭐ Puntaje total: <strong style="color: rgba(255, 255, 0, 1);">${resultadoNivel.puntajeTotal} puntos</strong></p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: ${buttonMargin}; margin-top: 25px;">
     `;
     
-    // Agregar botón según si es último nivel o no
+    // PRIMER BOTÓN: Siguiente nivel o Finalizar (más prominente)
     if (!esUltimoNivel) {
         contenidoModal += `
-            <button id="siguiente-nivel-button" style="background-color: rgba(0, 255, 255, 0.8); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">SIGUIENTE NIVEL</button>
+            <button id="siguiente-nivel-button" class="game-button-primary" style="
+                background: linear-gradient(145deg, rgba(0, 255, 255, 0.9), rgba(0, 200, 255, 1));
+                color: black;
+                border: none;
+                padding: ${buttonPadding};
+                margin: ${buttonMargin};
+                border-radius: 15px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: ${buttonSize};
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+                box-shadow: 0 6px 15px rgba(0, 255, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                transition: all 0.2s ease;
+                position: relative;
+                overflow: hidden;
+            ">🚀 SIGUIENTE NIVEL 🚀</button>
         `;
     } else {
         // Botón especial para finalizar el último nivel
         contenidoModal += `
-            <button id="finalizar-juego-button" style="background-color: rgba(255, 215, 0, 0.9); color: black; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">🏆 FINALIZAR JUEGO</button>
+            <button id="finalizar-juego-button" class="game-button-primary" style="
+                background: linear-gradient(145deg, rgba(255, 215, 0, 0.9), rgba(255, 180, 0, 1));
+                color: black;
+                border: none;
+                padding: ${buttonPadding};
+                margin: ${buttonMargin};
+                border-radius: 15px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: ${buttonSize};
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+                box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                transition: all 0.2s ease;
+                position: relative;
+                overflow: hidden;
+            ">🏆 FINALIZAR JUEGO 🏆</button>
         `;
     }
     
+    // SEGUNDO BOTÓN: Ranking
     contenidoModal += `
-            <button id="reiniciar-juego-button" style="background-color: rgba(150, 150, 150, 0.8); color: white; border: none; padding: ${buttonPadding}; margin: ${buttonMargin}; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: ${buttonSize};">REINICIAR JUEGO</button>
+        <button id="guardar-ranking-button" class="game-button-secondary" style="
+            background: linear-gradient(145deg, rgba(50, 205, 50, 0.8), rgba(34, 180, 34, 1));
+            color: white;
+            border: none;
+            padding: ${buttonPadding};
+            margin: ${buttonMargin};
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: ${buttonSize};
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 4px 12px rgba(50, 205, 50, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transition: all 0.2s ease;
+            border: 2px solid rgba(50, 255, 50, 0.4);
+        ">📊 GUARDAR EN RANKING 📊</button>
+    `;
+    
+    // TERCER BOTÓN: Reiniciar (abajo)
+    contenidoModal += `
+        <button id="reiniciar-juego-button" class="game-button-tertiary" style="
+            background: linear-gradient(145deg, rgba(120, 120, 120, 0.8), rgba(80, 80, 80, 1));
+            color: white;
+            border: none;
+            padding: ${buttonPadding};
+            margin: ${buttonMargin};
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: ${buttonSize};
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+            border: 1px solid rgba(150, 150, 150, 0.3);
+            margin-top: 15px;
+        ">🔄 REINICIAR JUEGO</button>
+            </div>
         </div>
     `;
     
     modalPanel.innerHTML = contenidoModal;
     document.body.appendChild(modalPanel);
     
+    // Agregar efectos hover CSS dinámicos
+    agregarEstilosInteractivos();
+    
     // Configurar eventos de botones
     configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimoNivel);
+}
+
+// Función para agregar estilos interactivos dinámicos
+function agregarEstilosInteractivos() {
+    // Crear stylesheet temporal si no existe
+    let gameStyleSheet = document.getElementById('game-modal-styles');
+    if (!gameStyleSheet) {
+        gameStyleSheet = document.createElement('style');
+        gameStyleSheet.id = 'game-modal-styles';
+        document.head.appendChild(gameStyleSheet);
+    }
+    
+    gameStyleSheet.textContent = `
+        .game-button-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+        .game-button-primary:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 8px rgba(0, 255, 255, 0.4), inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .game-button-secondary:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 6px 16px rgba(50, 205, 50, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        .game-button-secondary:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 6px rgba(50, 205, 50, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .game-button-tertiary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        .game-button-tertiary:active {
+            transform: translateY(0) scale(0.97);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (orientation: portrait) {
+            .game-button-primary, .game-button-secondary, .game-button-tertiary {
+                font-size: 16px !important;
+                padding: 16px 20px !important;
+            }
+        }
+    `;
 }
 
 // Configurar eventos para el modal entre niveles
 function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimoNivel) {
     const isMobile = modalSystem.isMobile;
     
-    // Botón guardar ranking
+    // Botón guardar ranking (SEGUNDO en orden)
     const guardarButton = document.getElementById('guardar-ranking-button');
     if (guardarButton) {
         const handleGuardar = function(e) {
             e.preventDefault();
+            e.stopPropagation();
             console.log('💾 Guardando en ranking');
             mostrarFormularioRanking(modalPanel, resultadoNivel.puntajeTotal, resultadoNivel.nivel);
         };
         
         guardarButton.addEventListener('click', handleGuardar);
-        guardarButton.addEventListener('touchend', handleGuardar);
-        
         if (isMobile) {
-            guardarButton.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                this.style.transform = 'scale(0.95)';
-            });
-            guardarButton.addEventListener('touchend', function(e) {
-                this.style.transform = 'scale(1)';
-            });
+            guardarButton.addEventListener('touchend', handleGuardar);
         }
     }
     
-    // Botón siguiente nivel (si no es el último)
+    // Botón siguiente nivel (PRIMERO - si no es el último)
     if (!esUltimoNivel) {
         const siguienteButton = document.getElementById('siguiente-nivel-button');
         if (siguienteButton) {
             const handleSiguiente = function(e) {
                 e.preventDefault();
-                console.log('➡️ Avanzando al siguiente nivel');
+                e.stopPropagation();
+                console.log('🚀 Avanzando al siguiente nivel');
                 
                 // Cerrar modal
                 setModalActive(false);
@@ -399,24 +519,17 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
             };
             
             siguienteButton.addEventListener('click', handleSiguiente);
-            siguienteButton.addEventListener('touchend', handleSiguiente);
-            
             if (isMobile) {
-                siguienteButton.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    this.style.transform = 'scale(0.95)';
-                });
-                siguienteButton.addEventListener('touchend', function(e) {
-                    this.style.transform = 'scale(1)';
-                });
+                siguienteButton.addEventListener('touchend', handleSiguiente);
             }
         }
     } else {
-        // Botón finalizar juego (si es el último nivel)
+        // Botón finalizar juego (PRIMERO - si es el último nivel)
         const finalizarButton = document.getElementById('finalizar-juego-button');
         if (finalizarButton) {
             const handleFinalizar = function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 console.log('🏁 Finalizando juego - mostrar tragamonedas final');
                 
                 // Cerrar modal actual
@@ -438,25 +551,18 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
             };
             
             finalizarButton.addEventListener('click', handleFinalizar);
-            finalizarButton.addEventListener('touchend', handleFinalizar);
-            
             if (isMobile) {
-                finalizarButton.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    this.style.transform = 'scale(0.95)';
-                });
-                finalizarButton.addEventListener('touchend', function(e) {
-                    this.style.transform = 'scale(1)';
-                });
+                finalizarButton.addEventListener('touchend', handleFinalizar);
             }
         }
     }
     
-    // Botón reiniciar juego
+    // Botón reiniciar juego (TERCERO - abajo)
     const reiniciarButton = document.getElementById('reiniciar-juego-button');
     if (reiniciarButton) {
         const handleReiniciar = function(e) {
             e.preventDefault();
+            e.stopPropagation();
             console.log('🔄 Reiniciando juego');
             
             // Cerrar modal
@@ -470,16 +576,8 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
         };
         
         reiniciarButton.addEventListener('click', handleReiniciar);
-        reiniciarButton.addEventListener('touchend', handleReiniciar);
-        
         if (isMobile) {
-            reiniciarButton.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                this.style.transform = 'scale(0.95)';
-            });
-            reiniciarButton.addEventListener('touchend', function(e) {
-                this.style.transform = 'scale(1)';
-            });
+            reiniciarButton.addEventListener('touchend', handleReiniciar);
         }
     }
 }

@@ -89,7 +89,7 @@ function calcularConfiguracionGrid(width, height, level) {
             const tamCuadrado = altoZonaReja / 4;
             
             // Asignar distancia máxima global
-            distanciaMaxima = tamCuadrado * 4;
+            distanciaMaxima = tamCuadrado * 3;
             
             // Celdas siempre CUADRADAS
             const anchoEsMenor = width < height;

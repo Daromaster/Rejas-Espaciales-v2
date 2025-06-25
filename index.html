@@ -11,16 +11,21 @@
 
   <!-- Zona superior - Información del juego -->
   <header id="zona-superior">
-    <div id="info-izquierda">
-      <div id="puntaje-nivel">Puntaje: <span id="puntaje-nivel-valor">0</span></div>
-      <div id="puntaje-total">Total: <span id="puntaje-total-valor">0</span></div>
-    </div>
+    <!-- Primera línea: Info central (título y estado) -->
     <div id="info-centro">
       <h1>Rejas Espaciales</h1>
       <div id="comentario-juego">Nivel 1 - Preparado</div>
     </div>
-    <div id="info-derecha">
-      <div id="cronometro">60.0</div>
+    
+    <!-- Segunda línea: Datos distribuidos (puntajes vs cronómetro) -->
+    <div class="linea-datos">
+      <div id="info-izquierda">
+        <div id="puntaje-nivel">Puntaje: <span id="puntaje-nivel-valor">0</span></div>
+        <div id="puntaje-total">Total: <span id="puntaje-total-valor">0</span></div>
+      </div>
+      <div id="info-derecha">
+        <div id="cronometro">60.0</div>
+      </div>
     </div>
   </header>
 
@@ -31,23 +36,25 @@
 
   <!-- Zona inferior - Controles e información -->
   <footer id="zona-inferior">
+    <!-- Control audio izquierda -->
+    <div id="controles-izquierda">
+      <button id="btn-audio" class="btn-control">
+        <span class="audio-icon">🔊</span>
+      </button>
+    </div>
+    
+    <!-- Descripción central -->
     <div id="descripcion-controles">
       Presiona ESPACIO o botón DISPARO para disparar
     </div>
+    
+    <!-- Control disparo derecha -->
+    <div id="controles-derecha">
+      <button id="btn-disparo" class="btn-control">
+        <span class="disparo-icon">🎯</span>
+      </button>
+    </div>
   </footer>
-
-  <!-- Controles laterales - Botones para dispositivos táctiles -->
-  <div id="controles-izquierda">
-    <button id="btn-audio" class="btn-control">
-      <span class="audio-icon">🔊</span>
-    </button>
-  </div>
-
-  <div id="controles-derecha">
-    <button id="btn-disparo" class="btn-control">
-      <span class="disparo-icon">🎯</span>
-    </button>
-  </div>
 
   <!-- Scripts: ordenados por dependencia -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>

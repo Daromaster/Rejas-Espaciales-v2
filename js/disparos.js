@@ -717,13 +717,13 @@ function agregarEfectoPulsoPuntaje(esPenalizacion = false) {
             elementoPuntajeTotal.style.color = 'rgba(255, 100, 100, 1)'; // Rojo para penalización
         } else {
             // Cambiar solo el color del texto, no el fondo
-            elementoPuntajeTotal.style.color = 'rgba(255, 255, 150, 1)'; // Amarillo más brillante para acierto
+            elementoPuntajeTotal.style.color = 'rgba(150, 255, 255, 1)'; // Cian más brillante para acierto
         }
         
         // Volver al estado normal después de 100ms (más rápido)
         setTimeout(() => {
             elementoPuntajeTotal.style.transform = 'scale(1)';
-            elementoPuntajeTotal.style.color = 'rgba(255, 255, 0, 1)'; // Color original amarillo
+            elementoPuntajeTotal.style.color = 'rgba(0, 255, 255, 1)'; // Color original CIAN del CSS
         }, 100);
     }
 }

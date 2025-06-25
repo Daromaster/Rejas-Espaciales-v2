@@ -296,7 +296,7 @@ function iniciarViajePelota(destino) {
     
     // Algoritmo del Ensayo: calcular pasos según distancia máxima
     const proporcion = distanciaInicial / distanciaMaxima;
-    
+    console.log("Proporcion",proporcion, distanciaInicial, distanciaMaxima);
     // Aplicar corrección suave para evitar pasos demasiado pocos
     const curvaImpulso = (1 - proporcion) ** 2; // cuadrática: más fuerte si es muy corta
     
@@ -336,7 +336,8 @@ function avanzarPelota() {
     
     // Aplicar easing suave del Ensayo original
    // const progreso = PelotaMath.easeInOutSineExtraSoft(t);
-    const progreso = PelotaMath.easeInOutExpo(t);
+   //const progreso = PelotaMath.easeInOutExpo(t);
+   const progreso = PelotaMath.easeInOutSine(t);
     
     
     // Obtener destino actualizado con transformación (las coordenadas ya están actualizadas)
