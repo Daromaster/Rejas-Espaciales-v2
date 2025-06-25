@@ -612,6 +612,18 @@ function dibujarParticulaEnsayo(ctx, particula) {
 export function renderDisparos(ctx, nivel, alpha = 1) {
     if (!disparosState.inicializado || !disparosState.activo) return;
     
+    // SINCRONIZACIÓN CRÍTICA: Actualizar destinos de disparos activos con posición actual de la pelota
+    // Esto asegura que los disparos sigan a la pelota durante rotaciones rápidas (nivel 2+)
+    const posicionPelotaActual = getPelotaPosition();
+    const offset = 5; // Mismo offset que en crearDisparoVisual
+    
+    const disparosActualizados = disparosState.disparosActivos.map((disparo, index) => ({
+        ...disparo,
+        // Actualizar destino con posición actual de la pelota
+        finX: posicionPelotaActual.x + (index === 0 ? -offset : offset), // Izquierdo/Derecho
+        finY: posicionPelotaActual.y
+    }));
+    
     // Para partículas, aplicar interpolación de posición
     const particulasInterpoladas = disparosState.particulasActivas.map(particula => ({
         ...particula,
@@ -620,13 +632,17 @@ export function renderDisparos(ctx, nivel, alpha = 1) {
     }));
     
     // Temporalmente reemplazar para renderizado
+    const disparosOriginales = disparosState.disparosActivos;
     const particulasOriginales = disparosState.particulasActivas;
+    
+    disparosState.disparosActivos = disparosActualizados;
     disparosState.particulasActivas = particulasInterpoladas;
     
     // Componer disparos y efectos
     const canvasFinal = composeDisparos(nivel);
     
-    // Restaurar partículas originales
+    // Restaurar arrays originales
+    disparosState.disparosActivos = disparosOriginales;
     disparosState.particulasActivas = particulasOriginales;
     
     // Renderizar resultado final
