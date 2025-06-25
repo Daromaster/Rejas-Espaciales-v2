@@ -583,6 +583,20 @@ function composePelota(nivel, posX, posY, anguloRotacion = 0) {
 export function renderPelota(ctx, nivel, alpha = 1) {
     if (!pelotaState.isInicializado) return;
     
+    // SINCRONIZACIÓN CRÍTICA: Actualizar destino con matriz actual en renderizado
+    // Esto asegura que la pelota use la misma matriz interpolada que el grid
+    if (pelotaState.destinoActual && pelotaState.destinoActual.coordenadasBase) {
+        const transformMatrix = getTransformMatrix(); // Matriz actual (60 FPS)
+        if (transformMatrix) {
+            const base = pelotaState.destinoActual.coordenadasBase;
+            const coordenadasTransformadas = PelotaMath.applyTransform(base.x, base.y, transformMatrix);
+            
+            // Actualizar coordenadas del destino con matriz de renderizado actual
+            pelotaState.destinoActual.x = coordenadasTransformadas.x;
+            pelotaState.destinoActual.y = coordenadasTransformadas.y;
+        }
+    }
+    
     // Interpolación de posición para renderizado suave
     const posXInterpolada = PelotaMath.lerp(pelotaState.posXAnterior, pelotaState.posX, alpha);
     const posYInterpolada = PelotaMath.lerp(pelotaState.posYAnterior, pelotaState.posY, alpha);
