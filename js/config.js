@@ -2,9 +2,14 @@
 
 // === DIMENSIONES LÓGICAS DEL CANVAS ===
 export const GAME_CONFIG = {
-    // Dimensiones lógicas del juego
-    LOGICAL_WIDTH: 900,
-    LOGICAL_HEIGHT: 600,
+    // Dimensiones lógicas dinámicas según orientación
+    get LOGICAL_WIDTH() {
+        return 900; // Siempre 900 de ancho
+    },
+    get LOGICAL_HEIGHT() {
+        // Horizontal: 600, Vertical: 1200
+        return window.matchMedia('(orientation: portrait)').matches ? 1200 : 600;
+    },
     
     // Sistema de actualizaciones
     LOGIC_FPS: 30, // 30 steps por segundo para la lógica
