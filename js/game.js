@@ -9,6 +9,7 @@ const MAX_NIVELES_IMPLEMENTADOS = 2; // Actualizar a medida que se programen má
 
 import { GAME_CONFIG, CanvasManager } from './config.js';
 import { relojJuego } from './relojJuego.js';
+import { renderFondo, initFondo } from './fondo.js';
 import { 
     initGrid, 
     renderGrid, 
@@ -89,8 +90,9 @@ class RejasEspacialesGame {
             console.log('Inicializando sistema de modales P5...');
             initModales();
             
-            // Inicializar grid para mostrar en pantalla de instrucciones
-            console.log('Inicializando grid para pantalla de instrucciones...');
+            // Inicializar sistemas para mostrar en pantalla de instrucciones
+            console.log('Inicializando sistemas para pantalla de instrucciones...');
+            initFondo(1); // Inicializar fondo nivel 1
             initGrid(1); // Inicializar grid nivel 1 para que se vea por detrás del modal
             
             console.log('Iniciando bucle principal...');
@@ -388,38 +390,36 @@ class RejasEspacialesGame {
         this.ctx.fillStyle = '#000';
         this.ctx.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
         
-        if (this.gameState === GAME_CONFIG.GAME_STATES.MENU) {
-            // En modo MENU, solo mostrar la reja del nivel 1 flotando para que se vea por detrás del modal de instrucciones
-            if (this.gameStarted) {
-                // Si el juego ya empezó pero está en menú, renderizar normalmente
-                renderGrid(this.ctx, 1); // Reja del nivel 1
-            } else {
-                // Si aún no empezó, solo renderizar la reja flotando
-                renderGrid(this.ctx, 1);
-            }
-            return;
-        }
+        // === RENDERIZADO GENERAL SIEMPRE ===
+        // Se ejecuta tanto en menú como durante el juego para que se vea funcionando bajo los modales
         
-        if (this.gameStarted) {
-            // ORDEN CORRECTO DE CAPAS: Fondo → Pelota → Reja → Efectos → Debug
-            
-            // 1. Fondo (negro por ahora, implementar fondo en futuro)
-            // TODO: Implementar fondo estrellado
-            
-            // 2. Pelota (DEBAJO de la reja)
+        // Determinar nivel a renderizar: nivel actual o nivel 1 si está en menú
+        const nivelARenderizar = this.gameState === GAME_CONFIG.GAME_STATES.MENU ? 1 : this.currentLevel;
+        
+        // === ORDEN CORRECTO DE CAPAS (abajo hacia arriba) ===
+        
+        // 1. FONDO (estrellado)
+        renderFondo(this.ctx, nivelARenderizar);
+        
+        // 2. PELOTA (debajo de la reja)
+        if (this.gameStarted || this.gameState === GAME_CONFIG.GAME_STATES.MENU) {
             const timeSinceLastLogic = currentTime - this.lastLogicUpdate;
             const alpha = Math.min(timeSinceLastLogic / this.logicInterval, 1);
-            renderPelota(this.ctx, this.currentLevel, alpha);
-            
-            // 3. Reja (ENCIMA de la pelota)
-            renderGrid(this.ctx, this.currentLevel);
-            
-            // 4. Disparos y efectos (P4 - encima de todo)
-            renderDisparos(this.ctx, this.currentLevel, alpha);
-            
-            // 5. Debug: capa borrador (solo desarrollo)
-            this.debugRenderCoords();
+            renderPelota(this.ctx, nivelARenderizar, alpha);
         }
+        
+        // 3. GRID (encima de la pelota)
+        renderGrid(this.ctx, nivelARenderizar);
+        
+        // 4. EFECTOS, DISPAROS, ETC. (solo durante el juego)
+        if (this.gameStarted && this.gameState === GAME_CONFIG.GAME_STATES.PLAYING) {
+            const timeSinceLastLogic = currentTime - this.lastLogicUpdate;
+            const alpha = Math.min(timeSinceLastLogic / this.logicInterval, 1);
+            renderDisparos(this.ctx, nivelARenderizar, alpha);
+        }
+        
+        // 5. BORRADOR / DEBUG (siempre al final)
+        this.debugRenderCoords();
     }
     
     // Debug: renderizar destino actual (solo en desarrollo)
@@ -604,6 +604,10 @@ class RejasEspacialesGame {
         
         // === 4. REINICIALIZAR SISTEMAS DE JUEGO ===
         try {
+            // Sistema de Fondo
+            console.log('🌌 Reinicializando sistema Fondo...');
+            initFondo(level);
+            
             // Sistema de Grid
             console.log('📊 Reinicializando sistema Grid...');
             initGrid(level);
