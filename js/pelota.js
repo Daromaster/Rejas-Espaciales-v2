@@ -145,8 +145,8 @@ export function initPelota(nivel) {
             const radioCambio2 = pelotaState.radio !== nuevoRadio2;
             pelotaState.radio = nuevoRadio2;
             
-            pelotaState.posX = GAME_CONFIG.LOGICAL_WIDTH / 2;
-            pelotaState.posY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+            pelotaState.posX = GAME_CONFIG.LOGICAL_WIDTH  *1.1;
+            pelotaState.posY = GAME_CONFIG.LOGICAL_HEIGHT *0.7;
             pelotaState.posXAnterior = pelotaState.posX;
             pelotaState.posYAnterior = pelotaState.posY;
             
@@ -231,8 +231,8 @@ function seleccionarProximoDestino(nivel) {
         }
         
         case 2: {
-            // Motor de destinos nivel 2: Probabilístico (60% cubierto, 40% descubierto)
-            const esCubierto = Math.random() < 0.6;
+            // Motor de destinos nivel 2: Probabilístico (45% cubierto, 55% descubierto)
+            const esCubierto = Math.random() < 0.45;
             const coordenadas = esCubierto 
                 ? getCoordenadasCubiertas(nivel)
                 : getCoordenadasDescubiertas(nivel);
