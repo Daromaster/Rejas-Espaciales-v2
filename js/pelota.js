@@ -1,7 +1,7 @@
 // pelota.js - Sistema de pelota del juego Rejas Espaciales V2
 
 import { GAME_CONFIG } from './config.js';
-import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridConfig, getTransformMatrix } from './grid.js';
+import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridConfig, getTransformMatrix, distanciaMaxima } from './grid.js';
 import { relojJuego } from './relojJuego.js';
 
 // === VARIABLES GLOBALES DE PELOTA ===
@@ -295,7 +295,6 @@ function iniciarViajePelota(destino) {
     const distanciaInicial = Math.sqrt(dx * dx + dy * dy);
     
     // Algoritmo del Ensayo: calcular pasos según distancia máxima
-    const distanciaMaxima = 500; // Valor de referencia del Ensayo
     const proporcion = distanciaInicial / distanciaMaxima;
     
     // Aplicar corrección suave para evitar pasos demasiado pocos

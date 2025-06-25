@@ -6,6 +6,7 @@ import { GAME_CONFIG, LEVELS_CONFIG, Utils } from './config.js';
 let configGrid = null; // Configuración única para todos los niveles
 let gridCanvases = []; // Array de canvas virtuales para composición
 let transformMatrix = null; // Matriz de transformación para cálculos
+let distanciaMaxima = 200; // Variable global para viaje de pelota
 
 // === ESTADO DE INTERPOLACIÓN ===
 let gridState = {
@@ -86,6 +87,9 @@ function calcularConfiguracionGrid(width, height, level) {
             const dimensionMenor = Math.min(width, height);
             const altoZonaReja = dimensionMenor * 0.6;
             const tamCuadrado = altoZonaReja / 4;
+            
+            // Asignar distancia máxima global
+            distanciaMaxima = tamCuadrado * 4;
             
             // Celdas siempre CUADRADAS
             const anchoEsMenor = width < height;
@@ -555,5 +559,8 @@ export function getTransformMatrix() {
 export function getGridConfig() {
     return configGrid;
 }
+
+// === EXPORTAR VARIABLE GLOBAL ===
+export { distanciaMaxima };
 
 console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
