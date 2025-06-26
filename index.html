@@ -60,6 +60,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
   
   <!-- Scripts del juego -->
+   
   <script type="module" src="js/config.js"></script>
   <script type="module" src="js/fondo.js"></script>
   <script type="module" src="js/grid.js"></script>
@@ -68,6 +69,41 @@
   <script type="module" src="js/relojJuego.js"></script>
   <script type="module" src="js/modales.js"></script>
   <script type="module" src="js/game.js"></script>
+  <script type="module" src="js/layout.js"></script>    
+  <script type="module" src="js/setupCanvas.js"></script>
+  
+
+  <script type="module">
+    import { detectLayout, layoutPreset } from './js/layout.js';
+    import { setupCanvas, G, resizeGame } from './js/setupCanvas.js';
+    // import { initGame, gameLoop } from './js/game.js';
+
+    const canvas = document.getElementById('canvas-principal');
+
+    /* Debounce casero de 150 ms */
+    function debounce(fn, ms = 150) {
+      let id;
+      return (...args) => {
+        clearTimeout(id);
+        id = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    /* Callback único de resize / load */
+    function onResize() {
+      detectLayout();                                  // Proceso 0
+      setupCanvas(canvas, layoutPreset.logicWidth);    // Proceso 1
+      resizeGame(G);                                // ajusta HUD, sprites, etc.
+    }
+
+    window.addEventListener('resize', debounce(onResize));
+    window.addEventListener('load',   () => {
+      onResize();          // inicia todo
+      // initGame(G);
+      // requestAnimationFrame(gameLoop);
+    });
+  </script>
+
 </body>
 </html>
 

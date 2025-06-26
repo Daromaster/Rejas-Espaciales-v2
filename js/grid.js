@@ -95,13 +95,18 @@ function calcularConfiguracionGrid(width, height, level) {
             const anchoEsMenor = width < height;
             let cantidadHoriz, cantidadVert;
             
-            if (anchoEsMenor) {
-                cantidadHoriz = 3; // 4 barrotes
-                cantidadVert = 5;  // 6 barrotes
-            } else {
-                cantidadHoriz = 5; // 6 barrotes
-                cantidadVert = 3;  // 4 barrotes
+            if (1==0) {
+                if (anchoEsMenor) {
+                    cantidadHoriz = 3; // 4 barrotes
+                    cantidadVert = 5;  // 6 barrotes
+                } else {
+                    cantidadHoriz = 5; // 6 barrotes
+                    cantidadVert = 3;  // 4 barrotes
+                }
             }
+
+            cantidadHoriz = 5; // 6 barrotes
+            cantidadVert = 3;  // 4 barrotes
             
             // Dimensiones basadas en tamCuadrado CUADRADO
             const anchoRejaReal = (cantidadHoriz + 1) * tamCuadrado;
@@ -109,7 +114,8 @@ function calcularConfiguracionGrid(width, height, level) {
             
             const baseX = (width - anchoRejaReal) / 2;
             const baseY = (height - altoRejaReal) / 2;
-            const grosorLinea = Math.max(8, Math.floor(dimensionMenor * 0.03));
+            //const grosorLinea = Math.max(8, Math.floor(width * 0.03));
+            const grosorLinea = tamCuadrado / 6;
             
             // Calcular coordenadas base (SIN transformaciones)
             const coordenadasCubiertasBase = [];

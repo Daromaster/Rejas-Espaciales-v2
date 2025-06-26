@@ -251,8 +251,8 @@ html, body {
   }
   
   #canvas-principal {
-    width: 95vw;
-    height: auto; /* Mantiene proporción 3:2 */
+    width: 100vw;
+    height: 133vw; /* Mantiene proporción 3:4 */
   }
   
   /* Zona inferior: Botones y descripción visibles */
