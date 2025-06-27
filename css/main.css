@@ -15,10 +15,7 @@ html, body {
   user-select: none; /* Evitar selección de texto */
 }
 
-body {
-  display: flex;
-  flex-direction: column;
-}
+
 
 /* ===========================================
    LAYOUT HORIZONTAL (orientación landscape)
@@ -133,11 +130,10 @@ body {
 /* Canvas principal con proporción 900x600 */
 #canvas-principal {
   background-color: #000;
-  border: 2px solid #000000;
   max-width: 100%;
   max-height: 100%;
-  width: auto;
-  height: auto;
+  width: auto;        /* Ancho se calcula por aspect-ratio */
+  height: 100%;       /* Usar toda la altura disponible (85vh) */
   aspect-ratio: 3/2;
 }
 
@@ -197,6 +193,12 @@ body {
    =========================================== */
 
 @media (orientation: portrait) {
+  
+  /* Activar flexbox para layout vertical */
+  body {
+    display: flex;
+    flex-direction: column;
+  }
   
   /* Zona superior: más alta para acomodar título+subtítulo arriba y datos abajo */
   #zona-superior {

@@ -62,7 +62,7 @@ function dibujarFondo(level) {
             
         default:
             // Fallback: fondo negro simple
-            fondoCanvas.fillStyle = '#000000';
+            fondoCanvas.fillStyle = 'rgb(0, 0, 0)';
             fondoCanvas.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             break;
     }
@@ -71,7 +71,7 @@ function dibujarFondo(level) {
 // === FONDO ESTRELLADO PARA NIVELES 1-2 ===
 function dibujarFondoEstrellado() {
     // Fondo negro base
-    fondoCanvas.fillStyle = '#000000';
+    fondoCanvas.fillStyle = 'rgb(57, 32, 132)';
     fondoCanvas.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
     
     // Generar estrellas si es necesario
