@@ -15,6 +15,11 @@ html, body {
   user-select: none; /* Evitar selección de texto */
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+}
+
 /* ===========================================
    LAYOUT HORIZONTAL (orientación landscape)
    =========================================== */
@@ -246,24 +251,28 @@ html, body {
   
   /* Zona central: Canvas toma el espacio restante */
   #zona-juego {
-    height: 56vh;
+    flex: 1; /* Toma todo el espacio restante */
     background-color: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   #canvas-principal {
     width: 100vw;
-    height: 133vw; /* Mantiene proporción 3:4 */
+    aspect-ratio: 3/4; /* CSS calcula height automáticamente */
+    max-height: 100%; /* Control de desbordamiento */
   }
   
   /* Zona inferior: Botones y descripción visibles */
   #zona-inferior {
-    height: 24vh;
     background-color: #000000;
     display: flex;
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
     padding: 2vh;
+    flex-shrink: 0; /* No se encoge */
   }
   
   /* Reorganizar controles en modo vertical */

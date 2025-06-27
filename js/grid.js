@@ -86,7 +86,8 @@ function calcularConfiguracionGrid(width, height, level) {
             // NIVEL 1: Configuración responsive básica
             const dimensionMenor = Math.min(width, height);
             const altoZonaReja = dimensionMenor * 0.6;
-            const tamCuadrado = altoZonaReja / 4;
+            //const tamCuadrado = altoZonaReja / 4;
+            const tamCuadrado = width / 8.5;
             
             // Asignar distancia máxima global
             distanciaMaxima = tamCuadrado * 3;
