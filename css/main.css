@@ -202,7 +202,7 @@ html, body {
   
   /* Zona superior: más alta para acomodar título+subtítulo arriba y datos abajo */
   #zona-superior {
-    height: 20vh;
+    height: 10vh;
     background-color: #000000;
     display: flex;
     flex-direction: column;
@@ -262,8 +262,10 @@ html, body {
   
   #canvas-principal {
     width: 100vw;
+    height: auto;
     aspect-ratio: 3/4; /* CSS calcula height automáticamente */
-    max-height: 100%; /* Control de desbordamiento */
+    max-width: 100%;  /* Control de desbordamiento horizontal */
+    max-height: 100%; /* Control de desbordamiento vertical */
   }
   
   /* Zona inferior: Botones y descripción visibles */
@@ -275,12 +277,14 @@ html, body {
     align-items: center;
     padding: 2vh;
     flex-shrink: 0; /* No se encoge */
+    
   }
   
   /* Reorganizar controles en modo vertical */
   #controles-izquierda, #controles-derecha {
     position: static;
     margin: 0;
+    padding-bottom: 80px;
   }
   
   #controles-izquierda {
@@ -303,6 +307,7 @@ html, body {
     width: 50px;
     height: 50px;
     font-size: 1.2rem;
+    
   }
 }
 
