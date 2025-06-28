@@ -91,11 +91,11 @@
     }
 
     /* Callback único de resize / load */
-    async function onResize() {
-      //detectLayout();                                  // Ya no necesario - se calcula automáticamente
-      ///setupCanvas(canvas, layoutPreset.logicWidth);    // Ya no necesario - se maneja en resizeGame
+    function onResize() {
+      //detectLayout();                                  // Proceso 0
+      ///setupCanvas(canvas, layoutPreset.logicWidth);    // Proceso 1
       //resizeGame(G);   
-      await resizeGame();                                 // Maneja todo: dimensiones + redibujado
+      resizeGame();                             // ajusta HUD, sprites, etc.
     }
 
     window.addEventListener('resize', debounce(onResize));
