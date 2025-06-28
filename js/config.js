@@ -24,7 +24,10 @@ export const GAME_CONFIG = {
         PLAYING: 'playing',
         PAUSED: 'paused',
         GAME_OVER: 'game_over'
-    }
+    },
+    
+    // Estado actual del nivel
+    CURRENT_LEVEL: 1
 };
 
 // === CONFIGURACIÓN DEL CANVAS ===
@@ -109,6 +112,25 @@ export const AUDIO_CONFIG = {
         hit: 'assets/sounds/hit.mp3',
         miss: 'assets/sounds/miss.mp3',
         levelComplete: 'assets/sounds/level_complete.mp3'
+    }
+};
+
+// === GESTIÓN DE NIVEL ===
+export const GameLevel = {
+    // Obtener nivel actual
+    getCurrentLevel: () => GAME_CONFIG.CURRENT_LEVEL,
+    
+    // Cambiar nivel
+    setLevel: (level) => {
+        GAME_CONFIG.CURRENT_LEVEL = level;
+        console.log(`Nivel cambiado a: ${level}`);
+    },
+    
+    // Avanzar al siguiente nivel
+    nextLevel: () => {
+        GAME_CONFIG.CURRENT_LEVEL++;
+        console.log(`Avanzando al nivel: ${GAME_CONFIG.CURRENT_LEVEL}`);
+        return GAME_CONFIG.CURRENT_LEVEL;
     }
 };
 

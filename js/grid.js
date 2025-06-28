@@ -176,11 +176,13 @@ function calcularConfiguracionGrid(width, height, level) {
 }
 
 // === DIBUJO DE REJA BASE (SOLO UNA VEZ AL INICIO) ===
-function dibujarRejaBase(level) {
+export function dibujarRejaBase(level) {
+     // Esta función se ejecuta SOLO al inicio y en resize
+
     const width = GAME_CONFIG.LOGICAL_WIDTH;
     const height = GAME_CONFIG.LOGICAL_HEIGHT;
     
-    // Esta función se ejecuta SOLO al inicio y en resize
+   
     switch (level) {
         case 1: {
             // Configuración del nivel 1

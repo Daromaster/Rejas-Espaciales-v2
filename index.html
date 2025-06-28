@@ -74,8 +74,9 @@
   
 
   <script type="module">
-    import { detectLayout, layoutPreset } from './js/layout.js';
-    import { setupCanvas, G, resizeGame } from './js/setupCanvas.js';
+    //import { detectLayout, layoutPreset } from './js/layout.js';
+    //import { setupCanvas, G, resizeGame } from './js/setupCanvas.js';
+    import { resizeGame } from './js/setupCanvas.js';
     // import { initGame, gameLoop } from './js/game.js';
 
     const canvas = document.getElementById('canvas-principal');
@@ -91,9 +92,10 @@
 
     /* Callback único de resize / load */
     function onResize() {
-      detectLayout();                                  // Proceso 0
-      setupCanvas(canvas, layoutPreset.logicWidth);    // Proceso 1
-      resizeGame(G);                                // ajusta HUD, sprites, etc.
+      //detectLayout();                                  // Proceso 0
+      ///setupCanvas(canvas, layoutPreset.logicWidth);    // Proceso 1
+      //resizeGame(G);   
+      resizeGame();                             // ajusta HUD, sprites, etc.
     }
 
     window.addEventListener('resize', debounce(onResize));
