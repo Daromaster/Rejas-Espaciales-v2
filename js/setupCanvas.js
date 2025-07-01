@@ -18,17 +18,17 @@ export async function resizeGame() {
  const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
  if (!canvas) {
      console.warn('Canvas no encontrado para medir dimensiones');
-     resolve(false);
      return;
  }
 
-
+ // ⚠️ NO MODIFICAR canvas.style.width/height - El CSS ya maneja esto correctamente
+ // Solo configurar el buffer interno del canvas
  console.log("2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5    css.width", dimensions.css.width , "css.height", dimensions.css.height);
- //canvas.style.width  = dimensions.css.width + 'px';
- //canvas.style.height = dimensions.css.height + 'px';
+ 
+ // SOLO configurar el buffer interno (NO el CSS)
  canvas.width  = Math.round(dimensions.LogicW * dimensions.dpr);
  canvas.height = Math.round(dimensions.LogicH * dimensions.dpr);
- console.log("3333333333333333333333333333333333333333333333333333333333333 canvas.PUM", dimensions.css.width + 'px', dimensions.css.height + 'px', dimensions.LogicW * dimensions.dpr, dimensions.LogicH * dimensions.dpr  );
+ console.log("3333333333333333333333333333333333333333333333333333333333333 canvas.PUM", "buffer interno:", dimensions.LogicW * dimensions.dpr, dimensions.LogicH * dimensions.dpr  );
 
  /* 9 · Escala lógica → píxeles físicos (sin cizalla ni traslación) */
  const ctx = canvas.getContext('2d');
@@ -62,4 +62,14 @@ export async function resizeGame() {
     }
     
     console.log("✅ resizeGame completado - Canvas y sistemas actualizados");
+}
+
+// Función con delay opcional para casos específicos como cambio de orientación
+export async function resizeGameWithDelay(delayMs = 0) {
+    if (delayMs > 0) {
+        console.log(`⏳ Esperando ${delayMs}ms antes del resize...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    
+    return await resizeGame();
 }

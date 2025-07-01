@@ -74,12 +74,15 @@
   
 
   <script type="module">
-    import { resizeGame } from './js/setupCanvas.js';
+    import { resizeGame, resizeGameWithDelay } from './js/setupCanvas.js';
 
     const canvas = document.getElementById('canvas-principal');
     
     // Variable para controlar si es la primera inicialización
     let isFirstLoad = true;
+    
+    // Variables para detectar cambios de orientación
+    let lastOrientation = window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
 
     /* Debounce casero de 150 ms */
     function debounce(fn, ms = 150) {
@@ -92,7 +95,20 @@
 
     /* Callback único de resize / load */
     async function onResize() {
-      await resizeGame();                                 // Maneja todo: dimensiones + redibujado
+      // Detectar si es un cambio de orientación
+      const currentOrientation = window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+      const isOrientationChange = currentOrientation !== lastOrientation;
+      
+      // Actualizar valor para la próxima comparación
+      lastOrientation = currentOrientation;
+      
+      // Si es cambio de orientación, usar delay
+      if (isOrientationChange) {
+        console.log(`🔄 Detectado cambio de orientación: ${currentOrientation} - usando delay`);
+        await resizeGameWithDelay(500); // 500ms de delay para cambio de orientación
+      } else {
+        await resizeGame(); // Sin delay para otros cambios
+      }
       
       // Solo en la primera carga, inicializar el juego después de configurar el canvas
       if (isFirstLoad) {

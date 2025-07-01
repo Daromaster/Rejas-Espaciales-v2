@@ -140,87 +140,93 @@ export const CanvasDimensions = {
     // SOLO OBTENER dimensiones reales del canvas (NO aplicar cambios todavía)
     getCanvasDimensions: () => {
         return new Promise((resolve) => {
-            // DOBLE requestAnimationFrame para garantizar que CSS + layout estén completamente aplicados
+            // TRIPLE requestAnimationFrame para garantizar que CSS + layout estén completamente aplicados
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
-                    if (!canvas) {
-                        console.warn('Canvas no encontrado para medir dimensiones');
-                        resolve(false);
-                        return;
-                    }
-                    
-                    // Forzar recálculo de layout antes de medir
-                    canvas.offsetHeight; // Trigger reflow
-                    
-                    // Obtener dimensiones reales después de CSS completo
-                    const rect = canvas.getBoundingClientRect();
-                    const cssW = rect.width;
-                    const cssH = rect.height;
-                    console.log("22222222222222222222222222222222222222222222222222 canvasPum DESPUÉS del doble rAF","cssW", cssW, "cssH", cssH, cssH/cssW  );
-                    
-                    
-                    // Calcular y almacenar dimensiones lógicas
-                    const logicalDims = CanvasDimensions.calculateLogicalDimensions(cssW, cssH);
-                    CanvasDimensions.LogicW = logicalDims.width;
-                    CanvasDimensions.LogicH = logicalDims.height;
-                    
-                    // Obtener dimensiones lógicas actuales (sin cambiarlas)
-                    const currentLogicalW = GAME_CONFIG.LOGICAL_WIDTH;
-                    const currentLogicalH = GAME_CONFIG.LOGICAL_HEIGHT;
-                    
-                    // Calcular qué dimensiones lógicas PODRÍAMOS usar
-                    const suggestedDims = CanvasDimensions.calculateLogicalDimensions(cssW, cssH);
-                    
-                    console.log(`📏 REPORTE DE DIMENSIONES:`);
-                    console.log(`   CSS canvas: ${cssW}x${cssH}px`);
-                    console.log(`   Lógico actual: ${currentLogicalW}x${currentLogicalH}px`);
-                    console.log(`   Lógico sugerido: ${suggestedDims.width}x${suggestedDims.height}px`);
-                    console.log(`   ¿Coinciden?: ${currentLogicalW === suggestedDims.width && currentLogicalH === suggestedDims.height ? '✅ SÍ' : '❌ NO'}`);
-                    
-                    const DPR_CAP     = 2;                // dpr máximo aceptado en móviles modestos
-                    const MAX_REAL_PX = 1_200_000;        // techo de píxeles reales a dibujar
-                    const ASPECT_H    = 3 / 2;            // proporción en horizontal  (3:2)
-                    const ASPECT_V    = 3 / 4;            // proporción en vertical    (3:4)
-                    
-                    /* 2 · Densidad de píxel físico, limitada para evitar sobrecargar */
-                    const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+                    requestAnimationFrame(() => {
+                        const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
+                        if (!canvas) {
+                            console.warn('Canvas no encontrado para medir dimensiones');
+                            resolve(false);
+                            return;
+                        }
+                        
+                        // Forzar recálculo de layout antes de medir
+                        canvas.offsetHeight; // Trigger reflow
+                        
+                        // Obtener dimensiones reales después de CSS completo
+                        const rect = canvas.getBoundingClientRect();
+                        const cssW = rect.width;
+                        const cssH = rect.height;
+                        console.log("22222222222222222222222222222222222222222222222222 canvasPum DESPUÉS del triple rAF","cssW", cssW, "cssH", cssH, "ratio:", (cssH/cssW).toFixed(3)  );
+                        
+                        // Verificar que las dimensiones CSS sean válidas
+                        if (cssW <= 0 || cssH <= 0) {
+                            console.warn('⚠️ Dimensiones CSS inválidas, usando valores por defecto');
+                            resolve(false);
+                            return;
+                        }
+                        
+                        // Calcular y almacenar dimensiones lógicas
+                        const logicalDims = CanvasDimensions.calculateLogicalDimensions(cssW, cssH);
+                        CanvasDimensions.LogicW = logicalDims.width;
+                        CanvasDimensions.LogicH = logicalDims.height;
+                        
+                        // Obtener dimensiones lógicas actuales (sin cambiarlas)
+                        const currentLogicalW = GAME_CONFIG.LOGICAL_WIDTH;
+                        const currentLogicalH = GAME_CONFIG.LOGICAL_HEIGHT;
+                        
+                        // Calcular qué dimensiones lógicas PODRÍAMOS usar
+                        const suggestedDims = CanvasDimensions.calculateLogicalDimensions(cssW, cssH);
+                        
+                        console.log(`📏 REPORTE DE DIMENSIONES:`);
+                        console.log(`   CSS canvas: ${cssW}x${cssH}px`);
+                        console.log(`   Lógico actual: ${currentLogicalW}x${currentLogicalH}px`);
+                        console.log(`   Lógico sugerido: ${suggestedDims.width}x${suggestedDims.height}px`);
+                        console.log(`   ¿Coinciden?: ${currentLogicalW === suggestedDims.width && currentLogicalH === suggestedDims.height ? '✅ SÍ' : '❌ NO'}`);
+                        
+                        const DPR_CAP     = 2;                // dpr máximo aceptado en móviles modestos
+                        const MAX_REAL_PX = 1_200_000;        // techo de píxeles reales a dibujar
+                        const ASPECT_H    = 3 / 2;            // proporción en horizontal  (3:2)
+                        const ASPECT_V    = 3 / 4;            // proporción en vertical    (3:4)
+                        
+                        /* 2 · Densidad de píxel físico, limitada para evitar sobrecargar */
+                        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
 
-                    /* 3 · Orientación y proporción lógica correspondiente */
-                    const portrait = cssH > cssW;
-                    const aspect   = portrait ? ASPECT_V : ASPECT_H;
+                        /* 3 · Orientación y proporción lógica correspondiente */
+                        const portrait = cssH > cssW;
+                        const aspect   = portrait ? ASPECT_V : ASPECT_H;
 
-                    /* 4 · Ancho lógico inicial                                               */
-                    let logicW = suggestedDims.width ?? cssW;     // si hay preset, úsalo; si no, ancho CSS
-                    logicW = Math.min(logicW, cssW);           // nunca mayor que el ancho real disponible
-                    let logicH = logicW / aspect;
+                        /* 4 · Ancho lógico inicial                                               */
+                        let logicW = suggestedDims.width ?? cssW;     // si hay preset, úsalo; si no, ancho CSS
+                        logicW = Math.min(logicW, cssW);           // nunca mayor que el ancho real disponible
+                        let logicH = logicW / aspect;
 
-                    /* 5 · Asegurar que la lógica cabe dentro del alto CSS */
-                    if (logicH > cssH) { logicH = cssH; logicW = logicH * aspect; }
+                        /* 5 · Asegurar que la lógica cabe dentro del alto CSS */
+                        if (logicH > cssH) { logicH = cssH; logicW = logicH * aspect; }
 
-                    /* 6 · Cumplir con el techo de píxeles reales (lógica × dpr² ≤ MAX_REAL_PX) */
-                    const realPx = logicW * logicH * dpr * dpr;
-                    if (realPx > MAX_REAL_PX) {
-                        const factor = Math.sqrt(MAX_REAL_PX / realPx);
-                        logicW *= factor;
-                        logicH *= factor;
-                    }
+                        /* 6 · Cumplir con el techo de píxeles reales (lógica × dpr² ≤ MAX_REAL_PX) */
+                        const realPx = logicW * logicH * dpr * dpr;
+                        if (realPx > MAX_REAL_PX) {
+                            const factor = Math.sqrt(MAX_REAL_PX / realPx);
+                            logicW *= factor;
+                            logicH *= factor;
+                        }
 
-                    /* 7 · Redondear a múltiplos de 4 px lógicos para evitar sub-pixeles en sprites */
-                    logicW = Math.floor(logicW / 4) * 4;
-                    logicH = Math.floor(logicH / 4) * 4;
-            
+                        /* 7 · Redondear a múltiplos de 4 px lógicos para evitar sub-pixeles en sprites */
+                        logicW = Math.floor(logicW / 4) * 4;
+                        logicH = Math.floor(logicH / 4) * 4;
 
-
-                    resolve({
-                        LogicW: logicW,
-                        LogicH: logicH,
-                        css: { width: cssW, height: cssH },
-                        currentLogical: { width: currentLogicalW, height: currentLogicalH },
-                        suggestedLogical: suggestedDims,
-                        dpr: dpr,
-                        uml: logicW / 1000   // unidad de medida lógica base
-                    });
+                        resolve({
+                            LogicW: logicW,
+                            LogicH: logicH,
+                            css: { width: cssW, height: cssH },
+                            currentLogical: { width: currentLogicalW, height: currentLogicalH },
+                            suggestedLogical: suggestedDims,
+                            dpr: dpr,
+                            uml: logicW / 1000   // unidad de medida lógica base
+                        });
+                    }); // Cierre del tercer requestAnimationFrame
                 }); // Cierre del segundo requestAnimationFrame
             }); // Cierre del primer requestAnimationFrame
         });

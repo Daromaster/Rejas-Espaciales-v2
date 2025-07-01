@@ -87,7 +87,7 @@ function calcularConfiguracionGrid(width, height, level) {
             const dimensionMenor = Math.min(width, height);
             const altoZonaReja = dimensionMenor * 0.6;
             //const tamCuadrado = altoZonaReja / 4;
-            const tamCuadrado = width / 8.5;
+            const tamCuadrado = width / 7.5;
             
             // Asignar distancia máxima global
             distanciaMaxima = tamCuadrado * 3;
@@ -195,7 +195,7 @@ export function dibujarRejaBase(level) {
             
             // Colores cyan
             const gradientColors = {
-                dark: "rgb(2, 31, 39)",
+                dark: "rgb(0, 19, 24)",
                 bright: "rgba(0, 255, 255, 1)"
             };
             
