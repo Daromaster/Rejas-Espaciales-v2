@@ -74,12 +74,12 @@
   
 
   <script type="module">
-    //import { detectLayout, layoutPreset } from './js/layout.js';
-    //import { setupCanvas, G, resizeGame } from './js/setupCanvas.js';
     import { resizeGame } from './js/setupCanvas.js';
-    // import { initGame, gameLoop } from './js/game.js';
 
     const canvas = document.getElementById('canvas-principal');
+    
+    // Variable para controlar si es la primera inicialización
+    let isFirstLoad = true;
 
     /* Debounce casero de 150 ms */
     function debounce(fn, ms = 150) {
@@ -92,18 +92,19 @@
 
     /* Callback único de resize / load */
     async function onResize() {
-      //detectLayout();                                  // Ya no necesario - se calcula automáticamente
-      ///setupCanvas(canvas, layoutPreset.logicWidth);    // Ya no necesario - se maneja en resizeGame
-      //resizeGame(G);   
       await resizeGame();                                 // Maneja todo: dimensiones + redibujado
+      
+      // Solo en la primera carga, inicializar el juego después de configurar el canvas
+      if (isFirstLoad) {
+        isFirstLoad = false;
+        // El juego se inicializa automáticamente cuando se carga el módulo game.js
+        // debido al DOMContentLoaded listener que está al final del archivo
+        console.log('🎮 Primera carga completada - El juego se inicializará automáticamente');
+      }
     }
 
     window.addEventListener('resize', debounce(onResize));
-    window.addEventListener('load',   () => {
-      onResize();          // inicia todo
-      // initGame(G);
-      // requestAnimationFrame(gameLoop);
-    });
+    window.addEventListener('load', onResize);
   </script>
 
 </body>

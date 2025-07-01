@@ -7,7 +7,7 @@ const MAX_NIVELES_IMPLEMENTADOS = 2; // Actualizar a medida que se programen má
 
 // Game.js - Controlador principal del juego Rejas Espaciales V2
 
-import { GAME_CONFIG, CanvasManager } from './config.js';
+import { GAME_CONFIG } from './config.js';
 import { relojJuego } from './relojJuego.js';
 import { renderFondo, initFondo } from './fondo.js';
 import { 
@@ -45,7 +45,7 @@ import {
 // === CONTROLADOR PRINCIPAL DEL JUEGO ===
 class RejasEspacialesGame {
     constructor() {
-        this.canvasManager = new CanvasManager();
+        // this.canvasManager = new CanvasManager(); // DESACTIVADO - Nuevo sistema de canvas
         this.ctx = null;
         this.gameState = GAME_CONFIG.GAME_STATES.MENU;
         this.currentLevel = 1;
@@ -75,7 +75,13 @@ class RejasEspacialesGame {
     async initialize() {
         try {
             console.log('Inicializando canvas...');
-            this.ctx = this.canvasManager.initialize();
+            // this.ctx = this.canvasManager.initialize(); // DESACTIVADO - Nuevo sistema de canvas
+            // El canvas se inicializa en resizeGame(), aquí solo obtenemos el contexto
+            const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
+            if (!canvas) {
+                throw new Error('Canvas no encontrado');
+            }
+            this.ctx = canvas.getContext('2d');
             
             console.log('Configurando elementos del DOM...');
             this.setupDOMElements();
@@ -153,7 +159,11 @@ class RejasEspacialesGame {
         }
         
         // Prevenir menú contextual en el canvas
-        this.canvasManager.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        // this.canvasManager.canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // DESACTIVADO
+        const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
+        if (canvas) {
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
     }
     
     // Manejar teclas presionadas

@@ -1,8 +1,11 @@
-import { dibujarRejaBase } from "./grid.js";
-import { GameLevel, CanvasDimensions, GAME_CONFIG, CanvasSetup } from "./config.js";
+import { dibujarRejaBase, initGrid } from "./grid.js";
+import { initFondo } from "./fondo.js";
+import { initPelota } from "./pelota.js";
+import { initDisparos } from "./disparos.js";
+import { GameLevel, CanvasDimensions, GAME_CONFIG } from "./config.js";
 
 export async function resizeGame() {
-    console.log("🔄 Iniciando resizeGame - Aplicando 3 procesos...");
+    console.log("🔄 SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSIniciando resizeGame - Aplicando 3 procesos...");
     
     // Obtener dimensiones sugeridas
     const dimensions = await CanvasDimensions.getCanvasDimensions();
@@ -19,39 +22,42 @@ export async function resizeGame() {
      return;
  }
 
- canvas.style.width  = dimensions.cssW + 'px';
- canvas.style.height = dimensions.cssH + 'px';
- canvas.width  = Math.round(dimensions.logicW * dimensions.dpr);
- canvas.height = Math.round(dimensions.logicH * dimensions.dpr);
+ canvas.style.width  = dimensions.css.width + 'px';
+ canvas.style.height = dimensions.css.height + 'px';
+ canvas.width  = Math.round(dimensions.LogicW * dimensions.dpr);
+ canvas.height = Math.round(dimensions.LogicH * dimensions.dpr);
+ console.log("canvas.PUM", dimensions.css.width + 'px', dimensions.css.height + 'px', dimensions.LogicW * dimensions.dpr, dimensions.LogicH * dimensions.dpr  );
 
  /* 9 · Escala lógica → píxeles físicos (sin cizalla ni traslación) */
  const ctx = canvas.getContext('2d');
  ctx.setTransform(dimensions.dpr, 0, 0, dimensions.dpr, 0, 0);
 
-  
-    
-    
-
     // PROCESO 1: Actualizar GAME_CONFIG.LOGICAL_WIDTH/HEIGHT
-    //const suggestedW = dimensions.suggestedLogical.width;
-    //const suggestedH = dimensions.suggestedLogical.height;
     GAME_CONFIG.setLogicalDimensions(dimensions.LogicW, dimensions.LogicH);
     
-    // PROCESO 2: Configurar canvas físico con DPR y límites
-    const canvasResult = CanvasSetup.applyCanvasSettings(suggestedW, suggestedH);
-    
-    if (!canvasResult) {
-        console.error("❌ Error configurando canvas físico");
-        return;
-    }
-    
-    // PROCESO 3: Ejecutar dibujarRejaBase con nuevas dimensiones
+    // PROCESO 2: Reinicializar sistemas si el juego ya está corriendo
     const currentLevel = GameLevel.getCurrentLevel();
     
-    console.log(`🎮 Redibujando reja para nivel ${currentLevel}`);
+    console.log(`🎮 Reinicializando sistemas para nivel ${currentLevel}`);
     console.log(`   LOGICAL_WIDTH: ${GAME_CONFIG.LOGICAL_WIDTH}, LOGICAL_HEIGHT: ${GAME_CONFIG.LOGICAL_HEIGHT}`);
     
-    dibujarRejaBase(currentLevel);
+    try {
+        // Reinicializar todos los canvas virtuales con las nuevas dimensiones
+        initFondo(currentLevel);
+        initGrid(currentLevel);
+        
+        // Solo inicializar pelota y disparos si el juego está activo
+        if (window.gameInstance && window.gameInstance.gameStarted) {
+            initPelota(currentLevel);
+            initDisparos(currentLevel);
+        }
+        
+        console.log("✅ Sistemas reinicializados correctamente");
+    } catch (error) {
+        console.warn("⚠️ Error reinicializando algunos sistemas:", error);
+        // Al menos dibujar la reja base como fallback
+        dibujarRejaBase(currentLevel);
+    }
     
-    console.log("✅ resizeGame completado - 3 procesos aplicados");
+    console.log("✅ resizeGame completado - Canvas y sistemas actualizados");
 }
