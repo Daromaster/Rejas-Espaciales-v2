@@ -120,7 +120,7 @@
     }
 
     window.addEventListener('resize', debounce(onResize));
-    window.addEventListener('load', onResize);
+    window.addEventListener('load', debounce(onResize));
   </script>
 
 </body>

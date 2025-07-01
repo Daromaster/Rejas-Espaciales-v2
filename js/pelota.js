@@ -511,12 +511,18 @@ export function updatePelotaLogic(deltaTime, nivel) {
 }
 
 // === DIBUJO BASE (UNA VEZ AL INICIO) ===
-function dibujarPelotaBase(nivel) {
+export function dibujarPelotaBase(nivel) {
     switch (nivel) {
         case 1:
         case 2: {
             // Asegurar que existe el canvas base
             ensurePelotaCanvas(1);
+            const gridConfig = getGridConfig(nivel);
+            const nuevoRadio = Math.round(gridConfig.tamCuadrado * 0.35);
+            // Si cambió el radio, marcar para redibujar
+            const radioCambio = pelotaState.radio !== nuevoRadio;
+            pelotaState.radio = nuevoRadio;
+
             const ctx1 = pelotaCanvases[1].getContext('2d');
             
             // Limpiar canvas base

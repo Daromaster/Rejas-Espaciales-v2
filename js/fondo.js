@@ -23,7 +23,7 @@ function ensureFondoCanvas() {
 }
 
 // === GENERACIÓN DE ESTRELLAS ===
-function generarEstrellas() {
+export function generarEstrellas() {
     estrellas = [];
     const numEstrellas = 200;
     const width = GAME_CONFIG.LOGICAL_WIDTH;
@@ -183,6 +183,36 @@ export function getFondoState() {
         generado: fondoGenerado,
         numEstrellas: estrellas.length
     };
+}
+
+
+
+export function resizeFondo(nivel) {
+    console.log(`🌌 Redimensionando fondo para nivel ${nivel}`);
+    
+    // Resetear el fondo para regenerar con nuevas dimensiones
+    fondoGenerado = false;
+    estrellas = [];
+    
+    switch (nivel) {
+        case 1:
+        case 2:
+            // NIVELES 1-2: Fondo estrellado espacial
+            generarEstrellas();
+            break;
+            
+        case 3:
+            // NIVEL 3: Futuro - nebulosa o diferentes colores
+            generarEstrellas();
+            break;
+            
+        default:
+            // Nivel por defecto, generar estrellas básicas
+            generarEstrellas();
+            break;
+    }
+    
+    console.log(`✅ Fondo redimensionado para nivel ${nivel}`);
 }
 
 console.log('🌌 Fondo.js cargado - Sistema de capas de fondo independiente'); 

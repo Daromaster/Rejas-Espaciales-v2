@@ -1,6 +1,6 @@
 import { dibujarRejaBase, initGrid } from "./grid.js";
-import { initFondo } from "./fondo.js";
-import { initPelota } from "./pelota.js";
+import { initFondo, resizeFondo } from "./fondo.js";
+import { initPelota, dibujarPelotaBase } from "./pelota.js";
 import { initDisparos } from "./disparos.js";
 import { GameLevel, CanvasDimensions, GAME_CONFIG } from "./config.js";
 
@@ -37,29 +37,45 @@ export async function resizeGame() {
     // PROCESO 1: Actualizar GAME_CONFIG.LOGICAL_WIDTH/HEIGHT
     GAME_CONFIG.setLogicalDimensions(dimensions.LogicW, dimensions.LogicH);
     
-    // PROCESO 2: Reinicializar sistemas si el juego ya está corriendo
-    const currentLevel = GameLevel.getCurrentLevel();
+    // PROCESO 2: Reinicializar sistemas con el nivel apropiado
     
+    // Asegurar que siempre tengamos un nivel válido
+    let currentLevel = GameLevel.getCurrentLevel();
+    if (!currentLevel || currentLevel < 1) {
+        console.log("🎯 Nivel no válido, estableciendo nivel 1 por defecto");
+        GameLevel.setLevel(1);
+        currentLevel = 1;
+    }
+
     console.log(`🎮 Reinicializando sistemas para nivel ${currentLevel}`);
     console.log(`   LOGICAL_WIDTH: ${GAME_CONFIG.LOGICAL_WIDTH}, LOGICAL_HEIGHT: ${GAME_CONFIG.LOGICAL_HEIGHT}`);
     
     try {
-        // Reinicializar todos los canvas virtuales con las nuevas dimensiones
+        // Sistemas que SIEMPRE se reinicializan (primera carga y resize)
+        console.log("🔄 Reinicializando sistemas básicos...");
         resizeFondo(currentLevel);
         dibujarRejaBase(currentLevel);
-        dibujarPelotaBase(currentLevel);
         
-        // Solo inicializar pelota y disparos si el juego está activo
+        // Sistemas que solo se reinicializan si el juego está activo
         if (window.gameInstance && window.gameInstance.gameStarted) {
+            console.log("🔄 Reinicializando sistemas del juego activo...");
+            dibujarPelotaBase(currentLevel);
             initPelota(currentLevel);
             initDisparos(currentLevel);
+        } else {
+            console.log("🎮 Juego no iniciado, solo reinicializando sistemas básicos");
+            // Para la pantalla de instrucciones, dibujar pelota base sin inicializar sistema completo
+            try {
+                dibujarPelotaBase(currentLevel);
+            } catch (pelotaError) {
+                console.log("ℹ️ No se pudo dibujar pelota base (normal en primera carga)");
+            }
         }
         
         console.log("✅ Sistemas reinicializados correctamente");
     } catch (error) {
         console.warn("⚠️ Error reinicializando algunos sistemas:", error);
-        // Al menos dibujar la reja base como fallback
-        dibujarRejaBase(currentLevel);
+        console.error(error); // Log completo para debug
     }
     
     console.log("✅ resizeGame completado - Canvas y sistemas actualizados");
