@@ -5,7 +5,7 @@ import { initDisparos } from "./disparos.js";
 import { GameLevel, CanvasDimensions, GAME_CONFIG } from "./config.js";
 
 export async function resizeGame() {
-    console.log("🔄 SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSIniciando resizeGame - Aplicando 3 procesos...");
+    console.log("🔄 1111111111111111111111111111111111111111111111111111111111111111111 Iniciando resizeGame - Aplicando 3 procesos...");
     
     // Obtener dimensiones sugeridas
     const dimensions = await CanvasDimensions.getCanvasDimensions();
@@ -22,11 +22,13 @@ export async function resizeGame() {
      return;
  }
 
- canvas.style.width  = dimensions.css.width + 'px';
- canvas.style.height = dimensions.css.height + 'px';
+
+ console.log("2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5    css.width", dimensions.css.width , "css.height", dimensions.css.height);
+ //canvas.style.width  = dimensions.css.width + 'px';
+ //canvas.style.height = dimensions.css.height + 'px';
  canvas.width  = Math.round(dimensions.LogicW * dimensions.dpr);
  canvas.height = Math.round(dimensions.LogicH * dimensions.dpr);
- console.log("canvas.PUM", dimensions.css.width + 'px', dimensions.css.height + 'px', dimensions.LogicW * dimensions.dpr, dimensions.LogicH * dimensions.dpr  );
+ console.log("3333333333333333333333333333333333333333333333333333333333333 canvas.PUM", dimensions.css.width + 'px', dimensions.css.height + 'px', dimensions.LogicW * dimensions.dpr, dimensions.LogicH * dimensions.dpr  );
 
  /* 9 · Escala lógica → píxeles físicos (sin cizalla ni traslación) */
  const ctx = canvas.getContext('2d');

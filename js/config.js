@@ -157,7 +157,8 @@ export const CanvasDimensions = {
                     const rect = canvas.getBoundingClientRect();
                     const cssW = rect.width;
                     const cssH = rect.height;
-                    console.log("canvasPum DESPUÉS del doble rAF","cssW", cssW, "cssH", cssH);
+                    console.log("22222222222222222222222222222222222222222222222222 canvasPum DESPUÉS del doble rAF","cssW", cssW, "cssH", cssH, cssH/cssW  );
+                    
                     
                     // Calcular y almacenar dimensiones lógicas
                     const logicalDims = CanvasDimensions.calculateLogicalDimensions(cssW, cssH);
