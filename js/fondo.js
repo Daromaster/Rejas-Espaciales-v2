@@ -1,19 +1,34 @@
-// fondo.js - Sistema de fondo para Rejas Espaciales V2
-// Capa independiente: fondo estrellado y futuras configuraciones por nivel
+// fondo.js - Sistema de fondo optimizado para Rejas Espaciales V2
+// Capa independiente: fondo estrellado con matriz de canvas como grid.js
 
 import { GAME_CONFIG } from './config.js';
 
 // === VARIABLES PRINCIPALES ===
-let fondoCanvas = null;
+let canvasFondo = {}; // Matriz de canvas por nivel: canvasFondo[1], canvasFondo[2], etc.
+let fondoCanvas = null; // Canvas de composición final
 let fondoGenerado = false;
 let estrellas = [];
+let stepCounter = 0; // Contador para optimización de dibujado
 
-// === GESTIÓN DEL CANVAS DE FONDO ===
+// === GESTIÓN DE CANVAS MATRIZ (como grid.js) ===
+function ensureCanvasFondo(nivel) {
+    if (!canvasFondo[nivel]) {
+        const canvas = document.createElement('canvas');
+        canvasFondo[nivel] = canvas.getContext('2d');
+        console.log(`🌌 Canvas de fondo [${nivel}] creado`);
+    }
+    
+    canvasFondo[nivel].canvas.width = GAME_CONFIG.LOGICAL_WIDTH;
+    canvasFondo[nivel].canvas.height = GAME_CONFIG.LOGICAL_HEIGHT;
+    
+    return canvasFondo[nivel];
+}
+
 function ensureFondoCanvas() {
     if (!fondoCanvas) {
         const canvas = document.createElement('canvas');
         fondoCanvas = canvas.getContext('2d');
-        console.log('🌌 Canvas de fondo creado');
+        console.log('🌌 Canvas de composición de fondo creado');
     }
     
     fondoCanvas.canvas.width = GAME_CONFIG.LOGICAL_WIDTH;
@@ -22,7 +37,7 @@ function ensureFondoCanvas() {
     return fondoCanvas;
 }
 
-// === GENERACIÓN DE ESTRELLAS ===
+// === GENERACIÓN DE ESTRELLAS (solo en resize) ===
 export function generarEstrellas() {
     estrellas = [];
     const numEstrellas = 200;
@@ -43,76 +58,124 @@ export function generarEstrellas() {
     console.log(`✨ Generadas ${numEstrellas} estrellas para el fondo`);
 }
 
-// === DIBUJO DEL FONDO POR NIVEL ===
-function dibujarFondo(level) {
-    ensureFondoCanvas();
-    fondoCanvas.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+// === DIBUJO BASE DE ESTRELLAS (solo en resize) ===
+function dibujarEstrellasBase(ctx) {
+    // Fondo negro base
+    ctx.fillStyle = 'rgb(0, 0, 0)';
+    ctx.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
     
-    switch (level) {
+    // Dibujar todas las estrellas con tamaño estándar
+    estrellas.forEach(estrella => {
+        // Color blanco estándar
+        ctx.fillStyle = `rgba(255, 255, 255, ${estrella.brightness})`;
+        
+        ctx.beginPath();
+        ctx.arc(estrella.x, estrella.y, estrella.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Efecto adicional para estrellas más grandes: cruz de luz sutil
+        if (estrella.size > 1.5) {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${estrella.brightness * 0.4})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(estrella.x - estrella.size * 2, estrella.y);
+            ctx.lineTo(estrella.x + estrella.size * 2, estrella.y);
+            ctx.moveTo(estrella.x, estrella.y - estrella.size * 2);
+            ctx.lineTo(estrella.x, estrella.y + estrella.size * 2);
+            ctx.stroke();
+        }
+    });
+}
+
+// === DIBUJO OPTIMIZADO DE ESTRELLAS (cada 30 steps, solo 5 estrellas) ===
+function dibujarEstrellasAnimadas(ctx) {
+    stepCounter++;
+    
+    // Solo actualizar cada 30 steps
+    if (stepCounter % 30 !== 0) {
+        return;
+    }
+    
+    // Seleccionar 5 estrellas al azar
+    const estrellasAAnimar = [];
+    for (let i = 0; i < 5; i++) {
+        const indiceAleatorio = Math.floor(Math.random() * estrellas.length);
+        estrellasAAnimar.push(estrellas[indiceAleatorio]);
+    }
+    
+    // Dibujar cada estrella seleccionada con variante aleatoria
+    estrellasAAnimar.forEach(estrella => {
+        const variante = Math.floor(Math.random() * 3); // 0, 1, o 2
+        
+        switch (variante) {
+            case 0:
+                // Variante 1: Tamaño estándar (redibujar normal)
+                ctx.fillStyle = `rgba(255, 255, 255, ${estrella.brightness})`;
+                ctx.beginPath();
+                ctx.arc(estrella.x, estrella.y, estrella.size, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+                
+            case 1:
+                // Variante 2: Más grande (parpadeo)
+                ctx.fillStyle = `rgba(255, 255, 255, ${estrella.brightness * 1.2})`;
+                ctx.beginPath();
+                ctx.arc(estrella.x, estrella.y, estrella.size * 2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+                
+            case 2:
+                // Variante 3: Color del fondo (desaparece)
+                ctx.fillStyle = 'rgb(0, 0, 0)'; // Negro como el fondo
+                ctx.beginPath();
+                ctx.arc(estrella.x, estrella.y, estrella.size * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+        }
+    });
+}
+
+// === DIBUJO DEL FONDO POR NIVEL EN CANVAS MATRIZ ===
+function dibujarFondoNivel(nivel) {
+    const ctx = ensureCanvasFondo(nivel);
+    ctx.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+    
+    switch (nivel) {
         case 1:
         case 2:
             // NIVELES 1-2: Fondo estrellado espacial
-            dibujarFondoEstrellado();
+            dibujarFondoEstrellado(ctx);
             break;
             
         case 3:
             // NIVEL 3: Futuro - nebulosa o diferentes colores
-            dibujarFondoNebulosa();
+            dibujarFondoNebulosa(ctx);
             break;
             
         default:
             // Fallback: fondo negro simple
-            fondoCanvas.fillStyle = 'rgb(0, 0, 0)';
-            fondoCanvas.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+            ctx.fillStyle = 'rgb(0, 0, 0)';
+            ctx.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             break;
     }
 }
 
 // === FONDO ESTRELLADO PARA NIVELES 1-2 ===
-function dibujarFondoEstrellado() {
-    // Fondo negro base
-    fondoCanvas.fillStyle = 'rgb(0, 0, 0)';
-    fondoCanvas.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
-    
+function dibujarFondoEstrellado(ctx) {
     // Generar estrellas si es necesario
     if (!fondoGenerado) {
         generarEstrellas();
         fondoGenerado = true;
     }
     
-    // Dibujar estrellas con parpadeo sutil
-    const currentTime = performance.now();
-    
-    estrellas.forEach(estrella => {
-        // Calcular brillo con parpadeo sutil
-        const twinkleFactor = Math.sin(currentTime * estrella.twinkleSpeed + estrella.twinklePhase) * 0.3 + 0.7;
-        const brightness = estrella.brightness * twinkleFactor;
-        
-        // Color blanco con variación de alpha para brillo
-        fondoCanvas.fillStyle = `rgba(255, 255, 255, ${brightness})`;
-        
-        fondoCanvas.beginPath();
-        fondoCanvas.arc(estrella.x, estrella.y, estrella.size, 0, Math.PI * 2);
-        fondoCanvas.fill();
-        
-        // Efecto adicional para estrellas más grandes: cruz de luz sutil
-        if (estrella.size > 1.5) {
-            fondoCanvas.strokeStyle = `rgba(255, 255, 255, ${brightness * 0.4})`;
-            fondoCanvas.lineWidth = 0.5;
-            fondoCanvas.beginPath();
-            fondoCanvas.moveTo(estrella.x - estrella.size * 2, estrella.y);
-            fondoCanvas.lineTo(estrella.x + estrella.size * 2, estrella.y);
-            fondoCanvas.moveTo(estrella.x, estrella.y - estrella.size * 2);
-            fondoCanvas.lineTo(estrella.x, estrella.y + estrella.size * 2);
-            fondoCanvas.stroke();
-        }
-    });
+    // Dibujar fondo base con todas las estrellas (solo en resize)
+    dibujarEstrellasBase(ctx);
 }
 
 // === FONDO NEBULOSA PARA NIVEL 3+ (FUTURO) ===
-function dibujarFondoNebulosa() {
+function dibujarFondoNebulosa(ctx) {
     // Fondo degradado púrpura/azul
-    const gradient = fondoCanvas.createRadialGradient(
+    const gradient = ctx.createRadialGradient(
         GAME_CONFIG.LOGICAL_WIDTH / 2, GAME_CONFIG.LOGICAL_HEIGHT / 2, 0,
         GAME_CONFIG.LOGICAL_WIDTH / 2, GAME_CONFIG.LOGICAL_HEIGHT / 2, Math.max(GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT) / 2
     );
@@ -121,8 +184,8 @@ function dibujarFondoNebulosa() {
     gradient.addColorStop(0.5, 'rgba(0, 20, 80, 1)');  // Azul medio
     gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');      // Negro exterior
     
-    fondoCanvas.fillStyle = gradient;
-    fondoCanvas.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
     
     // Agregar algunas estrellas también
     if (!fondoGenerado) {
@@ -131,30 +194,62 @@ function dibujarFondoNebulosa() {
     }
     
     // Dibujar menos estrellas y más tenues
-    const currentTime = performance.now();
     estrellas.slice(0, 100).forEach(estrella => { // Solo la mitad de las estrellas
-        const twinkleFactor = Math.sin(currentTime * estrella.twinkleSpeed + estrella.twinklePhase) * 0.2 + 0.6;
-        const brightness = estrella.brightness * twinkleFactor * 0.7; // Más tenues
+        const brightness = estrella.brightness * 0.7; // Más tenues
         
-        fondoCanvas.fillStyle = `rgba(255, 255, 255, ${brightness})`;
-        fondoCanvas.beginPath();
-        fondoCanvas.arc(estrella.x, estrella.y, estrella.size * 0.8, 0, Math.PI * 2);
-        fondoCanvas.fill();
+        ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+        ctx.beginPath();
+        ctx.arc(estrella.x, estrella.y, estrella.size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
     });
 }
 
+// === COMPOSICIÓN DE FONDO (como grid.js) ===
+function componerFondo(nivel) {
+    const ctx = ensureFondoCanvas();
+    ctx.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+    
+    // Por ahora solo composición simple con canvasFondo[1]
+    // En el futuro se podrán componer múltiples capas
+    switch (nivel) {
+        case 1:
+        case 2:
+        case 3:
+        default:
+            // Componer solo canvasFondo[1] por ahora
+            if (canvasFondo[1]) {
+                ctx.drawImage(canvasFondo[1].canvas, 0, 0);
+                
+                // Si es nivel 1 o 2, aplicar animación de estrellas
+                if (nivel === 1 || nivel === 2) {
+                    dibujarEstrellasAnimadas(ctx);
+                }
+            }
+            break;
+    }
+}
+
 // === INICIALIZACIÓN Y RESETEO ===
-export function initFondo(level) {
-    console.log(`🌌 Inicializando fondo para nivel ${level}`);
+export function initFondo(nivel) {
+    console.log(`🌌 Inicializando fondo para nivel ${nivel}`);
     
-    // Dibujar fondo según el nivel
-    dibujarFondo(level);
+    // Dibujar fondo base en canvasFondo[1] (equivale a dibujarEstrellasBase)
+    dibujarFondoNivel(1); // Por ahora siempre usamos canvasFondo[1]
     
-    console.log(`✅ Fondo nivel ${level} inicializado`);
+    // Componer resultado final
+    componerFondo(nivel);
+    
+    console.log(`✅ Fondo nivel ${nivel} inicializado`);
 }
 
 export function resetFondo() {
-    // Limpiar canvas de fondo
+    // Limpiar todos los canvas
+    Object.values(canvasFondo).forEach(ctx => {
+        if (ctx) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
+    });
+    
     if (fondoCanvas) {
         fondoCanvas.clearRect(0, 0, fondoCanvas.canvas.width, fondoCanvas.canvas.height);
     }
@@ -162,14 +257,15 @@ export function resetFondo() {
     // Resetear estado para regenerar con nuevas dimensiones
     fondoGenerado = false;
     estrellas = [];
+    stepCounter = 0;
     
     console.log('🔄 Fondo reseteado');
 }
 
-// === RENDERIZADO (60 FPS) ===
-export function renderFondo(ctx, level) {
-    // Redibujar fondo cada frame para efectos dinámicos (parpadeo de estrellas)
-    dibujarFondo(level);
+// === RENDERIZADO OPTIMIZADO (60 FPS) ===
+export function renderFondo(ctx, nivel) {
+    // Componer fondo con animaciones optimizadas
+    componerFondo(nivel);
     
     // Renderizar al canvas principal
     if (fondoCanvas) {
@@ -181,36 +277,22 @@ export function renderFondo(ctx, level) {
 export function getFondoState() {
     return {
         generado: fondoGenerado,
-        numEstrellas: estrellas.length
+        numEstrellas: estrellas.length,
+        stepCounter: stepCounter
     };
 }
 
-
-
+// === FUNCIÓN DE RESIZE ===
 export function resizeFondo(nivel) {
     console.log(`🌌 Redimensionando fondo para nivel ${nivel}`);
     
     // Resetear el fondo para regenerar con nuevas dimensiones
     fondoGenerado = false;
     estrellas = [];
+    stepCounter = 0;
     
-    switch (nivel) {
-        case 1:
-        case 2:
-            // NIVELES 1-2: Fondo estrellado espacial
-            generarEstrellas();
-            break;
-            
-        case 3:
-            // NIVEL 3: Futuro - nebulosa o diferentes colores
-            generarEstrellas();
-            break;
-            
-        default:
-            // Nivel por defecto, generar estrellas básicas
-            generarEstrellas();
-            break;
-    }
+    // Reinicializar con las nuevas dimensiones
+    initFondo(nivel);
     
     console.log(`✅ Fondo redimensionado para nivel ${nivel}`);
 }
