@@ -146,6 +146,7 @@ html, body {
   justify-content: center;
   font-size: 1rem;
   color: #ccc;
+  
 }
 
 /* Controles laterales (botones táctiles) */
@@ -277,6 +278,7 @@ html, body {
     align-items: center;
     padding: 2vh;
     flex-shrink: 0; /* No se encoge */
+    padding-bottom: 80px;
     
   }
   
