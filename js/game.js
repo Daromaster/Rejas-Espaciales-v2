@@ -7,7 +7,7 @@ const MAX_NIVELES_IMPLEMENTADOS = 2; // Actualizar a medida que se programen má
 
 // Game.js - Controlador principal del juego Rejas Espaciales V2
 
-import { GAME_CONFIG } from './config.js';
+import { GAME_CONFIG, GameLevel } from './config.js';
 import { relojJuego } from './relojJuego.js';
 import { renderFondo, initFondo } from './fondo.js';
 import { 
@@ -49,6 +49,9 @@ class RejasEspacialesGame {
         this.ctx = null;
         this.gameState = GAME_CONFIG.GAME_STATES.MENU;
         this.currentLevel = 1;
+        
+        // ⚠️ IMPORTANTE: Sincronizar nivel inicial con GameLevel global
+        GameLevel.setLevel(1);
         
         // Sistema de tiempo para lógica e interpolación
         this.logicTimer = 0;
@@ -599,6 +602,10 @@ class RejasEspacialesGame {
         this.gameStarted = true;
         this.gameState = GAME_CONFIG.GAME_STATES.PLAYING;
         
+        // ⚠️ CRÍTICO: Actualizar también el nivel global para que resizeGame() lo tome correctamente
+        GameLevel.setLevel(level);
+        console.log(`🎯 Nivel actualizado en GameLevel global: ${level}`);
+        
         // === 2. MANEJAR PUNTAJES ===
         this.levelScore = 0; // Siempre resetear puntaje del nivel
         
@@ -682,6 +689,103 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error fatal al inicializar el juego:', error);
     }
 });
+
+// === FUNCIONES DE DEBUG/TESTING ===
+// Función global para testing de niveles
+window.debugChangeLevel = function(level) {
+    if (!window.gameInstance) {
+        console.error('❌ Game instance no encontrada');
+        return;
+    }
+    
+    console.log(`🧪 [DEBUG] Cambiando manualmente a nivel ${level}`);
+    
+    // Verificar que el nivel sea válido
+    if (level < 1 || level > MAX_NIVELES_IMPLEMENTADOS) {
+        console.error(`❌ Nivel ${level} no válido. Rango: 1-${MAX_NIVELES_IMPLEMENTADOS}`);
+        return;
+    }
+    
+    // Cambiar nivel usando la función centralizada
+    window.gameInstance.initializeLevel(level, { resetTotalScore: false });
+    
+    // Verificar sincronización
+    const gameInstanceLevel = window.gameInstance.currentLevel;
+    const gameLevelGlobal = GameLevel.getCurrentLevel();
+    
+    console.log(`🔍 [DEBUG] Verificación de sincronización:`);
+    console.log(`   gameInstance.currentLevel: ${gameInstanceLevel}`);
+    console.log(`   GameLevel.getCurrentLevel(): ${gameLevelGlobal}`);
+    console.log(`   ¿Sincronizado?: ${gameInstanceLevel === gameLevelGlobal ? '✅ SÍ' : '❌ NO'}`);
+    
+    return {
+        gameInstanceLevel,
+        gameLevelGlobal,
+        synchronized: gameInstanceLevel === gameLevelGlobal
+    };
+};
+
+// Función para testing de resize con nivel específico
+window.debugTestResize = function() {
+    console.log(`🧪 [DEBUG] Testing resize con nivel actual...`);
+    
+    const beforeLevel = GameLevel.getCurrentLevel();
+    console.log(`   Nivel antes del resize: ${beforeLevel}`);
+    
+    // Importar y ejecutar resizeGame
+    import('./setupCanvas.js').then(({ resizeGame }) => {
+        return resizeGame();
+    }).then(() => {
+        const afterLevel = GameLevel.getCurrentLevel();
+        console.log(`   Nivel después del resize: ${afterLevel}`);
+        console.log(`   ¿Nivel conservado?: ${beforeLevel === afterLevel ? '✅ SÍ' : '❌ NO'}`);
+    }).catch(error => {
+        console.error('❌ Error en resize testing:', error);
+    });
+};
+
+// Función para mostrar estado actual del sistema
+window.debugStatus = function() {
+    if (!window.gameInstance) {
+        console.error('❌ Game instance no encontrada');
+        return;
+    }
+    
+    const instance = window.gameInstance;
+    const globalLevel = GameLevel.getCurrentLevel();
+    
+    console.log(`🔍 [DEBUG] Estado actual del sistema:`);
+    console.log(`   📊 Game Instance:`);
+    console.log(`      currentLevel: ${instance.currentLevel}`);
+    console.log(`      gameStarted: ${instance.gameStarted}`);
+    console.log(`      gameState: ${instance.gameState}`);
+    console.log(`      levelScore: ${instance.levelScore}`);
+    console.log(`      totalScore: ${instance.totalScore}`);
+    console.log(`   🌐 GameLevel Global:`);
+    console.log(`      getCurrentLevel(): ${globalLevel}`);
+    console.log(`   🔄 Sincronización:`);
+    console.log(`      ¿Niveles sincronizados?: ${instance.currentLevel === globalLevel ? '✅ SÍ' : '❌ NO'}`);
+    
+    return {
+        instance: {
+            currentLevel: instance.currentLevel,
+            gameStarted: instance.gameStarted,
+            gameState: instance.gameState,
+            levelScore: instance.levelScore,
+            totalScore: instance.totalScore
+        },
+        global: {
+            level: globalLevel
+        },
+        synchronized: instance.currentLevel === globalLevel
+    };
+};
+
+// Mensaje de ayuda para el debug
+console.log(`🧪 [DEBUG] Funciones de testing disponibles:`);
+console.log(`   debugChangeLevel(nivel) - Cambiar a nivel específico`);
+console.log(`   debugTestResize() - Probar resize conservando nivel`);
+console.log(`   debugStatus() - Mostrar estado actual del sistema`);
 
 // Exportar para uso en otros módulos si es necesario
 export { game };

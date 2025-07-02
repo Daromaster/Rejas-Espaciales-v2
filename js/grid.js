@@ -243,7 +243,7 @@ export function dibujarRejaBase(level) {
             // Colores para nivel 2 (verde para diferenciarlo)
             const gradientColors = {
                 dark: "rgb(0, 31, 20)",
-                bright: "rgba(0, 255, 100, 1)"
+                bright: "rgb(19, 231, 16)"
             };
             
             // Dibujar líneas horizontales
