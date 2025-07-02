@@ -3,6 +3,8 @@ import { initFondo } from "./fondo.js";
 import { initPelota } from "./pelota.js";
 import { initDisparos } from "./disparos.js";
 import { GameLevel, CanvasDimensions, GAME_CONFIG } from "./config.js";
+import { resizeFondo } from "./fondo.js";
+import { dibujarPelotaBase } from "./pelota.js";
 
 export async function resizeGame() {
     console.log("🔄 1111111111111111111111111111111111111111111111111111111111111111111 Iniciando resizeGame - Aplicando 3 procesos...");
