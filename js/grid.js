@@ -546,18 +546,22 @@ export function initGrid(level = 1) {
     gridState.current = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: performance.now() };
     
     // DIBUJAR REJA BASE (SOLO UNA VEZ)
-    dibujarRejaBase(level);
     
     // Preparar canvas de composición
     switch (level) {
         case 1:
         case 2:
         case 3:
+            ensureGridCanvas(1); // Canvas para composición
             ensureGridCanvas(2); // Canvas para composición
             break;
         default:
             break;
     }
+
+    dibujarRejaBase(level);
+
+
 }
 
 // === EXPORTACIONES ADICIONALES ===
