@@ -206,12 +206,12 @@ function mostrarAnimacionPuntos(puntajeNivel, puntajeTotal, esFinJuego = false, 
     
     // Espacio para banner futuro según orientación
     const bannerWidth = esVertical ? '90%' : '33%';
-    const bannerHeight = esVertical ? '50px' : '60px';
+    const bannerHeight = esVertical ? '150px' : '150px';
     const bannerFontSize = esVertical ? '12px' : '14px';
     
     contenidoHTML += `
         <div style="width: ${bannerWidth}; height: ${bannerHeight}; margin-top: ${esVertical ? '20px' : '30px'}; border: 2px dashed rgba(255, 255, 255, 0.3); display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.5); font-size: ${bannerFontSize};">
-            Espacio para banner futuro
+            ...
         </div>
     `;
     
