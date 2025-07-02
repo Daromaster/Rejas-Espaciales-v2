@@ -563,7 +563,8 @@ export function updatePelotaLogic(deltaTime, nivel) {
 export function dibujarPelotaBase(nivel) {
     switch (nivel) {
         case 1:
-        case 2: {
+        case 2:
+        case 3: {
             // Asegurar que existe el canvas base
             ensurePelotaCanvas(1);
             const gridConfig = getGridConfig(nivel);
@@ -586,12 +587,12 @@ export function dibujarPelotaBase(nivel) {
             ctx1.arc(0, 0, pelotaState.radio, 0, Math.PI * 2);
             
             // Gradiente radial estilo Ensayo (desplazado para efecto 3D)
-            const gradX = pelotaState.radio * 0.25;  // 25% hacia la derecha
-            const gradY = -pelotaState.radio * 0.25; // 25% hacia arriba
+            const gradX = pelotaState.radio * 0.5;  // % hacia la derecha
+            const gradY = -pelotaState.radio * 0.5; // % hacia arriba
             
             const gradiente = ctx1.createRadialGradient(
                 gradX, gradY, 0,
-                gradX, gradY, pelotaState.radio * 2
+                gradX, gradY, pelotaState.radio *2
             );
             
             // Usar colores normales del sistema (por ahora sin impacto)
