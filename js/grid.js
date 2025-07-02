@@ -10,7 +10,14 @@ let transformMatrix = null; // Matriz de transformación para cálculos
 let distanciaMaxima = 200; // Variable global para viaje de pelota
 
 // === BANDERAS DE INICIALIZACIÓN POR NIVEL ===
-let initFlagsLevel2 = false; // Bandera para inicializar variables del nivel 2 solo una vez
+// Sistema unificado de banderas para todos los niveles
+let initFlagsGrid = {
+    level1: false,
+    level2: false,
+    level3: false,
+    level4: false,
+    // Agregar más niveles según sea necesario
+};
 
 // === ESTADO DE INTERPOLACIÓN ===
 let gridState = {
@@ -290,11 +297,31 @@ export function dibujarRejaBase(level) {
 
 // === COMPOSICIÓN CON TRANSFORMACIONES (CADA FRAME) ===
 function composeGrid(level, alpha = 1.0) {
-    // INTERPOLACIÓN ENTRE ESTADOS ANTERIOR Y ACTUAL
+    // ⚠️ INTERPOLACIÓN MEJORADA CON MANEJO DE ÁNGULOS
+    // Función auxiliar para interpolación circular de ángulos
+    const lerpAngle = (from, to, t) => {
+        const TWO_PI = Math.PI * 2;
+        
+        // Normalizar ángulos al rango [0, 2π]
+        from = ((from % TWO_PI) + TWO_PI) % TWO_PI;
+        to = ((to % TWO_PI) + TWO_PI) % TWO_PI;
+        
+        // Calcular la diferencia más corta
+        let diff = to - from;
+        if (diff > Math.PI) {
+            diff -= TWO_PI;
+        } else if (diff < -Math.PI) {
+            diff += TWO_PI;
+        }
+        
+        // Interpolación suave
+        return from + diff * t;
+    };
+    
     const interpolatedState = {
         offsetX: Utils.lerp(gridState.previous.offsetX, gridState.current.offsetX, alpha),
         offsetY: Utils.lerp(gridState.previous.offsetY, gridState.current.offsetY, alpha),
-        rotationAngle: Utils.lerp(gridState.previous.rotationAngle, gridState.current.rotationAngle, alpha)
+        rotationAngle: lerpAngle(gridState.previous.rotationAngle, gridState.current.rotationAngle, alpha)
     };
     
     switch (level) {
@@ -415,14 +442,14 @@ export function updateGridLogic(deltaTime, level) {
             const PENDULUM_SPEED = 20 * DEG_TO_RAD;          // Velocidad del péndulo (45°/seg)
             const ACCELERATION_START_TIME = 35000;           // 35 segundos (quedan 25)
             const HORARIO_ACCEL_RATE = 5 * DEG_TO_RAD;      // Aceleración horaria (60°/seg²)
-            const MAX_ROTATION_SPEED = 30 * DEG_TO_RAD;     // Velocidad máxima (180°/seg)
+            const MAX_ROTATION_SPEED = 80 * DEG_TO_RAD;     // Velocidad máxima (180°/seg)
             
             // ============================================================================
             // 🏗️ INICIALIZACIÓN DE VARIABLES PERSISTENTES (SOLO UNA VEZ)
             // ============================================================================
             
             // Variables estáticas que persisten entre frames (SOLO se inicializan UNA vez)
-            if (!initFlagsLevel2) {
+            if (!initFlagsGrid.level2) {
                 // Variables de estado de rotación
                 window.gridLevel2State = {
                     // Estado de rotación
@@ -453,7 +480,7 @@ export function updateGridLogic(deltaTime, level) {
                     }
                 };
                 
-                initFlagsLevel2 = true; // Marcar como inicializado
+                initFlagsGrid.level2 = true; // Marcar como inicializado
                 console.log("🎯 Nivel 2: Variables de rotación inicializadas");
             }
             
@@ -482,7 +509,29 @@ export function updateGridLogic(deltaTime, level) {
             // 🔄 MOTORES DE ROTACIÓN POR FASE
             // ============================================================================
             
-            const dt = deltaTime / 1000; // Delta time en segundos
+            // ⚠️ VALIDACIÓN Y CALIBRACIÓN TEMPORAL
+            // Asegurar que deltaTime esté en milisegundos y sea razonable
+            let validDeltaTime = deltaTime;
+            if (validDeltaTime > 100) { // Limitar a 100ms máximo para evitar saltos
+                validDeltaTime = 100;
+                console.warn("🚨 DeltaTime muy alto, limitado a 100ms");
+            }
+            if (validDeltaTime < 0) { // No permitir tiempo negativo
+                validDeltaTime = 16.67; // Fallback a ~60 FPS
+            }
+            
+            const dt = validDeltaTime / 1000; // Delta time en segundos (calibrado)
+            
+            // ⚠️ DEBUG TEMPORAL: Verificar calibración cada 3 segundos
+            if (Math.floor(currentTime / 3000) !== Math.floor((currentTime - validDeltaTime) / 3000)) {
+                const expectedDt = 1000 / GAME_CONFIG.LOGIC_FPS; // ~33.33ms para 30 FPS
+                const actualDt = validDeltaTime;
+                const deviation = Math.abs(actualDt - expectedDt);
+                
+                if (deviation > 10) { // Si se desvía más de 10ms
+                    console.warn(`⏱️ Desviación temporal: esperado ${expectedDt.toFixed(1)}ms, actual ${actualDt.toFixed(1)}ms`);
+                }
+            }
             
             switch (state.phase) {
                 // --- FASE 0: ROTACIÓN INICIAL HACIA -30° ---
@@ -563,10 +612,16 @@ export function updateGridLogic(deltaTime, level) {
                     // Aplicar rotación horaria continua
                     state.currentAngle += state.rotationSpeed * dt;
                     
-                    // Normalizar ángulo para evitar overflow
-                    while (state.currentAngle > Math.PI * 2) {
-                        state.currentAngle -= Math.PI * 2;
+                    // ⚠️ NORMALIZACIÓN SUAVE PARA EVITAR SALTOS
+                    // En lugar de while que puede causar saltos, usar módulo matemático
+                    const TWO_PI = Math.PI * 2;
+                    if (state.currentAngle > TWO_PI) {
+                        state.currentAngle = state.currentAngle % TWO_PI;
                     }
+                    if (state.currentAngle < 0) {
+                        state.currentAngle = (state.currentAngle % TWO_PI) + TWO_PI;
+                    }
+                    
                     break;
                 }
             }
@@ -724,14 +779,7 @@ export function initGrid(level = 1) {
     resetGridCanvases();
     
     // === RESETEAR BANDERAS DE INICIALIZACIÓN PARA NUEVO NIVEL ===
-    if (level === 2) {
-        initFlagsLevel2 = false; // Permitir reinicialización de variables del nivel 2
-        // Limpiar estado global si existe
-        if (window.gridLevel2State) {
-            delete window.gridLevel2State;
-        }
-        console.log("🎯 Banderas del nivel 2 reseteadas para reinicialización");
-    }
+    resetInitFlagsForLevel(level);
     
     // Inicializar estados
     gridState.previous = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: 0 };
@@ -845,10 +893,118 @@ window.debugForcePhase = function(phaseNumber) {
     return window.debugRotationStatus();
 };
 
+// Función para verificar sistema de interpolación y rendimiento
+window.debugInterpolationSystem = function() {
+    const currentTime = performance.now();
+    
+    console.log("🧪 [DEBUG] Sistema de Interpolación:");
+    console.log(`   Estado anterior: ${JSON.stringify(gridState.previous)}`);
+    console.log(`   Estado actual: ${JSON.stringify(gridState.current)}`);
+    console.log(`   Timestamp diferencia: ${(currentTime - gridState.current.timestamp).toFixed(1)}ms`);
+    console.log(`   Logic FPS objetivo: ${GAME_CONFIG.LOGIC_FPS}`);
+    console.log(`   Intervalo lógico esperado: ${(1000 / GAME_CONFIG.LOGIC_FPS).toFixed(1)}ms`);
+    
+    // Calcular factor de interpolación actual
+    const timeSinceLastLogic = currentTime - gridState.current.timestamp;
+    const alpha = Math.min(timeSinceLastLogic / (1000 / GAME_CONFIG.LOGIC_FPS), 1.0);
+    
+    console.log(`   Factor interpolación (alpha): ${alpha.toFixed(3)}`);
+    console.log(`   ¿Interpolación activa?: ${alpha < 1.0 ? '✅ SÍ' : '❌ NO (necesita update)'}`);
+    
+    return {
+        previous: gridState.previous,
+        current: gridState.current,
+        timeSinceLastLogic: timeSinceLastLogic,
+        alpha: alpha,
+        isInterpolating: alpha < 1.0
+    };
+};
+
+// Función para testing de sincronización temporal
+window.debugTemporalSync = function(durationSeconds = 10) {
+    console.log(`🧪 [DEBUG] Iniciando test de sincronización temporal por ${durationSeconds} segundos...`);
+    
+    const startTime = performance.now();
+    const startLevel2State = window.gridLevel2State ? { ...window.gridLevel2State } : null;
+    
+    setTimeout(() => {
+        const endTime = performance.now();
+        const actualElapsed = endTime - startTime;
+        const expectedElapsed = durationSeconds * 1000;
+        const deviation = Math.abs(actualElapsed - expectedElapsed);
+        
+        console.log(`🧪 [DEBUG] Resultados de sincronización temporal:`);
+        console.log(`   Tiempo esperado: ${expectedElapsed}ms`);
+        console.log(`   Tiempo real: ${actualElapsed.toFixed(1)}ms`);
+        console.log(`   Desviación: ${deviation.toFixed(1)}ms (${(deviation/expectedElapsed*100).toFixed(2)}%)`);
+        
+        if (window.gridLevel2State && startLevel2State) {
+            const rotationChange = window.gridLevel2State.currentAngle - startLevel2State.currentAngle;
+            const expectedRotation = window.gridLevel2State.rotationSpeed * (actualElapsed / 1000);
+            
+            console.log(`   Rotación observada: ${(rotationChange * 180 / Math.PI).toFixed(1)}°`);
+            console.log(`   Rotación esperada: ${(expectedRotation * 180 / Math.PI).toFixed(1)}°`);
+        }
+        
+        return {
+            expectedElapsed,
+            actualElapsed,
+            deviation,
+            deviationPercent: deviation/expectedElapsed*100
+        };
+    }, durationSeconds * 1000);
+};
+
 // Mensaje de ayuda para debug
 console.log("🧪 [DEBUG] Funciones de testing nivel 2 disponibles:");
 console.log("   debugSimulateGameStart() - Simular inicio de cronómetro");
 console.log("   debugRotationStatus() - Ver estado actual de rotación");
 console.log("   debugForcePhase(0|1|2) - Forzar fase específica");
+console.log("   debugInterpolationSystem() - Verificar sistema de interpolación");
+console.log("   debugTemporalSync(segundos) - Test de sincronización temporal");
 
 console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
+
+// === FUNCIONES DE BANDERAS ===
+// Función para resetear banderas de un nivel específico
+function resetInitFlagsForLevel(level) {
+    const levelKey = `level${level}`;
+    if (initFlagsGrid.hasOwnProperty(levelKey)) {
+        initFlagsGrid[levelKey] = false;
+        
+        // Limpieza específica por nivel
+        switch (level) {
+            case 2:
+                // Limpiar estado global del nivel 2
+                if (window.gridLevel2State) {
+                    delete window.gridLevel2State;
+                    console.log(`🎯 Estado global del nivel ${level} eliminado`);
+                }
+                break;
+            case 3:
+                // Futuro: limpiar estado del nivel 3
+                if (window.gridLevel3State) {
+                    delete window.gridLevel3State;
+                }
+                break;
+            // Agregar más niveles según necesidad
+        }
+        
+        console.log(`🎯 Banderas del nivel ${level} reseteadas`);
+    }
+}
+
+// Función para marcar nivel como inicializado
+function setLevelInitialized(level) {
+    const levelKey = `level${level}`;
+    if (initFlagsGrid.hasOwnProperty(levelKey)) {
+        initFlagsGrid[levelKey] = true;
+        console.log(`🎯 Nivel ${level} marcado como inicializado`);
+    }
+}
+
+// Función para verificar si un nivel necesita inicialización
+function needsInitialization(level) {
+    const levelKey = `level${level}`;
+    return !initFlagsGrid[levelKey];
+}
