@@ -7,6 +7,7 @@ import { resizeFondo } from "./fondo.js";
 import { dibujarPelotaBase } from "./pelota.js";
 
 export async function resizeGame() {
+    
     console.log("🔄 1111111111111111111111111111111111111111111111111111111111111111111 Iniciando resizeGame - Aplicando 3 procesos...");
     
     // Obtener dimensiones sugeridas
@@ -53,15 +54,15 @@ export async function resizeGame() {
         
         // Solo inicializar pelota y disparos si el juego está activo
         if (window.gameInstance && window.gameInstance.gameStarted) {
-            initPelota(currentLevel);
-            initDisparos(currentLevel);
+            //initPelota(currentLevel);
+           
         }
         
         console.log("✅ Sistemas reinicializados correctamente");
     } catch (error) {
         console.warn("⚠️ Error reinicializando algunos sistemas:", error);
         // Al menos dibujar la reja base como fallback
-        dibujarRejaBase(currentLevel);
+       // dibujarRejaBase(currentLevel);
     }
     
     console.log("✅ resizeGame completado - Canvas y sistemas actualizados");
