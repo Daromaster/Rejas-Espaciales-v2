@@ -3,7 +3,7 @@ const GAME_VERSION = "2.1.001";
 window.GAME_VERSION = GAME_VERSION;
 
 // Control de niveles máximos implementados
-const MAX_NIVELES_IMPLEMENTADOS = 2; // Actualizar a medida que se programen más niveles
+const MAX_NIVELES_IMPLEMENTADOS = 3; // Actualizar a medida que se programen más niveles
 
 // Game.js - Controlador principal del juego Rejas Espaciales V2
 
@@ -61,6 +61,7 @@ class RejasEspacialesGame {
         // Variables de puntuación
         this.levelScore = 0;
         this.totalScore = 0;
+        this.scoreAlreadyAdded = false; // 🔄 Bandera para evitar suma duplicada
         
         // Referencias a elementos del DOM
         this.elements = {};
@@ -384,8 +385,10 @@ class RejasEspacialesGame {
                 const disparosState = getDisparosState();
                 this.levelScore = disparosState.puntaje || 0;
                 
-                // Solo sumar al total si no se ha sumado ya
-                this.totalScore += this.levelScore;
+                // 🧪 TESTING: Temporalmente DESACTIVANDO la suma para verificar si aquí está la duplicación
+                // La suma debería hacerse SOLO cuando se avanza al próximo nivel, no aquí
+                console.log(`🧪 [TESTING] Fin de nivel - NO sumando aquí (testing duplicación)`);
+                console.log(`📊 Puntaje nivel: ${this.levelScore}, Total actual: ${this.totalScore}`);
                 
                 // SIEMPRE mostrar transición entre niveles primero
                 // El sistema determinará si es fin de juego en el modal
@@ -507,7 +510,10 @@ class RejasEspacialesGame {
         // Simular fin de nivel con puntaje actual
         const disparosState = getDisparosState();
         this.levelScore = disparosState.puntaje || 0;
-        this.totalScore += this.levelScore;
+        
+        // 🧪 NO sumar aquí - la suma se hará en avanzarNivel() cuando se presione el botón
+        console.log(`🐛 [DEBUG] Fin manual - NO sumando aquí, se sumará al avanzar nivel`);
+        console.log(`📊 Puntaje nivel: ${this.levelScore}, Total actual: ${this.totalScore}`);
         
         // Mostrar transición de nivel
         this.mostrarTransicionEntreNiveles();
@@ -516,6 +522,13 @@ class RejasEspacialesGame {
     // Función para avanzar al siguiente nivel
     avanzarNivel() {
         console.log(`➡️ Avanzando del nivel ${this.currentLevel} al ${this.currentLevel + 1}`);
+        
+        // 🔄 IMPORTANTE: Sumar el puntaje del nivel completado ANTES de avanzar
+        if (!this.scoreAlreadyAdded && this.levelScore > 0) {
+            this.totalScore += this.levelScore;
+            this.scoreAlreadyAdded = true;
+            console.log(`📊 Puntaje sumado al avanzar - Nivel: ${this.levelScore}, Total: ${this.totalScore}`);
+        }
         
         const nextLevel = this.currentLevel + 1;
         
@@ -543,10 +556,11 @@ class RejasEspacialesGame {
         this.gameState = GAME_CONFIG.GAME_STATES.PAUSED;
         
         // Preparar datos para el modal
+        // El modal espera el puntaje total INCLUYENDO el nivel actual
         const resultadoNivel = {
             nivel: this.currentLevel,
             puntajeNivel: this.levelScore,
-            puntajeTotal: this.totalScore,
+            puntajeTotal: this.totalScore + this.levelScore, // Total con nivel actual incluido
             esUltimoNivel: this.currentLevel >= MAX_NIVELES_IMPLEMENTADOS
         };
         
@@ -564,7 +578,7 @@ class RejasEspacialesGame {
         // Mostrar animación de puntos final
         mostrarAnimacionPuntos(
             this.levelScore,
-            this.totalScore,
+            this.totalScore + this.levelScore, // Total con nivel actual incluido
             true, // Es fin de juego
             () => {
                 // Callback: mostrar modal de fin de juego después de la animación
@@ -580,7 +594,7 @@ class RejasEspacialesGame {
         const resultadoNivel = {
             nivel: this.currentLevel,
             puntajeNivel: this.levelScore,
-            puntajeTotal: this.totalScore,
+            puntajeTotal: this.totalScore + this.levelScore, // Total con nivel actual incluido
             esUltimoNivel: true
         };
         
@@ -608,6 +622,7 @@ class RejasEspacialesGame {
         
         // === 2. MANEJAR PUNTAJES ===
         this.levelScore = 0; // Siempre resetear puntaje del nivel
+        this.scoreAlreadyAdded = false; // 🔄 Resetear bandera para permitir nueva suma
         
         if (resetTotalScore || isGameRestart) {
             this.totalScore = 0; // Resetear total solo si se especifica
@@ -691,6 +706,109 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // === FUNCIONES DE DEBUG/TESTING ===
+
+// Función para verificar estado de puntajes (para debuggear duplicación)
+window.debugPuntajes = function() {
+    if (window.gameInstance) {
+        const game = window.gameInstance;
+        const disparosState = getDisparosState();
+        
+        console.log('🔍 === ESTADO DE PUNTAJES ===');
+        console.log(`🎯 Nivel actual: ${game.currentLevel}`);
+        console.log(`📊 Puntaje nivel (game): ${game.levelScore}`);
+        console.log(`📊 Puntaje disparos: ${disparosState.puntaje || 0}`);
+        console.log(`🏆 Puntaje total: ${game.totalScore}`);
+        console.log(`🔄 Score ya sumado: ${game.scoreAlreadyAdded}`);
+        console.log(`🎮 Estado juego: ${game.gameState}`);
+        console.log('========================');
+        
+        return {
+            nivel: game.currentLevel,
+            puntajeNivel: game.levelScore,
+            puntajeDisparos: disparosState.puntaje || 0,
+            puntajeTotal: game.totalScore,
+            scoreYaSumado: game.scoreAlreadyAdded,
+            estadoJuego: game.gameState
+        };
+    }
+    console.warn('❌ gameInstance no disponible');
+};
+
+// Función para simular el escenario del bug reportado
+window.debugSimularEscenarioBug = function() {
+    if (!window.gameInstance) {
+        console.warn('❌ gameInstance no disponible');
+        return;
+    }
+    
+    console.log('🐛 === SIMULANDO ESCENARIO NUEVA LÓGICA ===');
+    console.log('Nivel 1: 300 puntos, Nivel 2: 150 puntos');
+    console.log('Total esperado en UI: 450 (300 + 150)');
+    console.log('Total esperado en totalScore: 300 (solo completados)');
+    console.log('===============================================');
+    
+    const game = window.gameInstance;
+    
+    // Simular nivel 1 completado
+    console.log('🎯 Simulando nivel 1 completado con 300 puntos...');
+    game.initializeLevel(1, { resetTotalScore: true });
+    game.levelScore = 300;
+    
+    // Simular avance a nivel 2 (suma los 300)
+    setTimeout(() => {
+        console.log('🎯 Avanzando a nivel 2 (simulando suma)...');
+        game.avanzarNivel(); // Esto debería sumar 300 a totalScore
+        
+        // Simular puntaje en nivel 2
+        setTimeout(() => {
+            console.log('🎯 Simulando nivel 2 con 150 puntos actuales...');
+            game.levelScore = 150;
+            
+            console.log('🔍 === RESULTADO FINAL ===');
+            console.log(`📊 Puntaje nivel actual: ${game.levelScore}`);
+            console.log(`📊 Puntaje base (completados): ${game.totalScore}`);
+            console.log(`📊 Total mostrado en UI: ${game.totalScore + game.levelScore}`);
+            console.log(`✅ UI esperado: 450 - ${(game.totalScore + game.levelScore) === 450 ? 'CORRECTO' : 'ERROR'}`);
+            
+            // Mostrar en pantalla
+            game.updateUI();
+            debugPuntajes();
+            
+        }, 1000);
+    }, 1000);
+};
+
+// Función para testing rápido del puntaje
+window.debugTestPuntaje = function(puntajeNivel1, puntajeNivel2) {
+    if (!window.gameInstance) {
+        console.warn('❌ gameInstance no disponible');
+        return;
+    }
+    
+    const game = window.gameInstance;
+    
+    console.log(`🧪 === TEST PUNTAJE DIRECTO ===`);
+    console.log(`Simulando: Nivel 1 = ${puntajeNivel1}, Nivel 2 = ${puntajeNivel2}`);
+    
+    // Reset completo
+    game.initializeLevel(1, { resetTotalScore: true });
+    
+    // Simular nivel 1 completado y avance
+    game.levelScore = puntajeNivel1;
+    game.avanzarNivel();
+    
+    // Simular nivel 2 en progreso
+    game.levelScore = puntajeNivel2;
+    
+    console.log(`📊 Resultado:`);
+    console.log(`   Puntaje base (completados): ${game.totalScore}`);
+    console.log(`   Puntaje nivel actual: ${game.levelScore}`);
+    console.log(`   Total mostrado: ${game.totalScore + game.levelScore}`);
+    
+    game.updateUI();
+    return { base: game.totalScore, actual: game.levelScore, total: game.totalScore + game.levelScore };
+};
+
 // Función global para testing de niveles
 window.debugChangeLevel = function(level) {
     if (!window.gameInstance) {
@@ -783,6 +901,9 @@ window.debugStatus = function() {
 
 // Mensaje de ayuda para el debug
 console.log(`🧪 [DEBUG] Funciones de testing disponibles:`);
+console.log(`   debugPuntajes() - Mostrar estado de puntajes`);
+console.log(`   debugTestPuntaje(p1, p2) - Test rápido: debugTestPuntaje(300, 150)`);
+console.log(`   debugSimularEscenarioBug() - Simular escenario del bug reportado`);
 console.log(`   debugChangeLevel(nivel) - Cambiar a nivel específico`);
 console.log(`   debugTestResize() - Probar resize conservando nivel`);
 console.log(`   debugStatus() - Mostrar estado actual del sistema`);

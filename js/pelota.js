@@ -502,6 +502,24 @@ export function updatePelotaLogic(deltaTime, nivel) {
             }
             break;
         }
+
+        case 3: {
+            // Motor de pelota nivel 2: Probabilístico con tiempo variable
+            if (pelotaState.viajePelota) {
+                avanzarPelota();
+            } else if (pelotaState.orbitaPelota) {
+                orbitarPelota();
+                
+                const tiempoActual = performance.now();
+                const tiempoEnDestino = tiempoActual - pelotaState.tiempoInicioDestino;
+                
+                if (tiempoEnDestino >= pelotaState.tiempoPermanenciaDestino) {
+                    pelotaState.orbitaPelota = null;
+                    seleccionarProximoDestino(nivel);
+                }
+            }
+            break;
+        }
         
         default: {
             console.warn(`⚠️ Lógica de pelota no implementada para nivel ${nivel}`);
