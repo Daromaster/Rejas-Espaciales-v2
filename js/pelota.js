@@ -278,6 +278,37 @@ function seleccionarProximoDestino(nivel) {
             break;
         }
         
+        case 3: {
+            // Motor de destinos nivel 2: Probabilístico (35% cubierto, 65% descubierto)
+            const esCubierto = Math.random() < 0.35;
+            const coordenadas = esCubierto 
+                ? getCoordenadasCubiertas(nivel)
+                : getCoordenadasDescubiertas(nivel);
+            
+            if (coordenadas && coordenadas.length > 0) {
+                const indiceAleatorio = Math.floor(Math.random() * coordenadas.length);
+                const coordenadaSeleccionada = coordenadas[indiceAleatorio];
+                
+                pelotaState.destinoActual = {
+                    x: coordenadaSeleccionada.x,
+                    y: coordenadaSeleccionada.y,
+                    coordenadasBase: {
+                        x: coordenadaSeleccionada.baseX,
+                        y: coordenadaSeleccionada.baseY
+                    },
+                    tipo: esCubierto ? 'cubierto' : 'descubierto'
+                };
+                
+                // Tiempo variable de permanencia (300-1500ms)
+                pelotaState.tiempoPermanenciaDestino = 300 + Math.random() * 1200;
+                
+                console.log(`🎯 Nuevo destino nivel 2: ${pelotaState.destinoActual.tipo} - ${pelotaState.tiempoPermanenciaDestino}ms`);
+                
+                iniciarViajePelota(pelotaState.destinoActual);
+            }
+            break;
+        }
+
         default: {
             console.warn(`⚠️ Algoritmo de destinos no implementado para nivel ${nivel}`);
             break;

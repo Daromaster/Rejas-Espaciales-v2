@@ -179,6 +179,11 @@ function calcularConfiguracionGrid(width, height, level) {
             // NIVEL 2: Misma configuración base (la rotación va en composición)
             return calcularConfiguracionGrid(width, height, 1);
         }
+
+        case 3: {
+            // NIVEL 2: Misma configuración base (la rotación va en composición)
+            return calcularConfiguracionGrid(width, height, 1);
+        }
         
         default:
             console.warn(`⚠️ Nivel ${level} no implementado, usando nivel 1`);
@@ -289,6 +294,53 @@ export function dibujarRejaBase(level) {
             break;
         }
         
+        case 3: {
+            // Configuración del nivel 1
+            configGrid = calcularConfiguracionGrid(width, height, level);
+            
+            // CANVAS BASE (1): Reja sin transformaciones
+            ensureGridCanvas(1);
+            gridCanvases[1].clearRect(0, 0, width, height);
+            gridCanvases[1].lineWidth = configGrid.grosorLinea;
+            
+            // Colores cyan
+            const gradientColors = {
+                dark: "rgb(0, 19, 24)",
+                bright: "rgb(36, 36, 214)"
+            };
+            
+            // Dibujar líneas horizontales
+            for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
+                const y = configGrid.baseY + i * configGrid.tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(configGrid.baseX, y);
+                gridCanvases[1].lineTo(configGrid.baseX + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado, y);
+                gridCanvases[1].stroke();
+            }
+            
+            // Dibujar líneas verticales
+            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.dark);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, configGrid.baseY);
+                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                gridCanvases[1].stroke();
+            }
+            
+            console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
+            break;
+        }
+
         default:
             console.warn(`⚠️ Nivel ${level} no implementado`);
             break;
@@ -371,6 +423,27 @@ function composeGrid(level, alpha = 1.0) {
             return 2;
         }
         
+
+        case 3: {
+            // CANVAS COMPUESTO (2): Canvas base + transformaciones
+            ensureGridCanvas(2);
+            gridCanvases[2].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+            
+            // APLICAR TRANSFORMACIONES CORRECTAMENTE
+            gridCanvases[2].save();
+            gridCanvases[2].translate(interpolatedState.offsetX, interpolatedState.offsetY);
+            
+            // CAPTURAR MATRIZ DE TRANSFORMACIÓN EN EL LUGAR CORRECTO
+            transformMatrix = gridCanvases[2].getTransform();
+            
+            // Componer imagen final
+            gridCanvases[2].drawImage(gridCanvases[1].canvas, 0, 0);
+            
+            gridCanvases[2].restore();
+            
+            return 2; // Retornar índice del canvas final para este nivel
+        }
+
         default:
             return 1; // Fallback al canvas base
     }
