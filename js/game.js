@@ -1,5 +1,5 @@
 // Constante de versión del juego
-const GAME_VERSION = "2.1.001";
+const GAME_VERSION = "2.1.002";
 window.GAME_VERSION = GAME_VERSION;
 
 // Control de niveles máximos implementados
