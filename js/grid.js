@@ -1,12 +1,16 @@
 // Grid.js - Sistema de rejas espaciales V2 - P2b
 
 import { GAME_CONFIG, LEVELS_CONFIG, Utils } from './config.js';
+import { relojJuego } from './relojJuego.js';
 
 // === VARIABLES PRINCIPALES ===
 let configGrid = null; // Configuración única para todos los niveles
 let gridCanvases = []; // Array de canvas virtuales para composición
 let transformMatrix = null; // Matriz de transformación para cálculos
 let distanciaMaxima = 200; // Variable global para viaje de pelota
+
+// === BANDERAS DE INICIALIZACIÓN POR NIVEL ===
+let initFlagsLevel2 = false; // Bandera para inicializar variables del nivel 2 solo una vez
 
 // === ESTADO DE INTERPOLACIÓN ===
 let gridState = {
@@ -388,23 +392,191 @@ export function updateGridLogic(deltaTime, level) {
         }
         
         case 2: {
-            // === MOTOR DE MOVIMIENTO NIVEL 2: FLOTACIÓN + ROTACIÓN ===
-            // Parámetros específicos del nivel 2 (personalidad diferente)
-            const amplitudeY = 40;      // Más amplitud que nivel 1
-            const amplitudeX = 45;      // Más amplitud que nivel 1
-            const frequencyY = 0.00015;  // Frecuencia diferente
-            const frequencyX = 0.0001;   // Frecuencia diferente
-
-            //const periodSideToSide = 10_000;                   // ms
-            //const frequencyY = Math.PI / periodSideToSide;     // rad/ms
-            //const frequencyX = Math.PI / periodSideToSide;     // idem
-
-            const speed = 1;          //velocidad 
-            const phaseY = 0;           // Sin fase inicial
-            const phaseX = Math.PI / 2; // Fase diferente al nivel 1
+            // === MOTOR DE MOVIMIENTO NIVEL 2: FLOTACIÓN + ROTACIÓN COMPLEJA ===
+            
+            // ============================================================================
+            // 🎯 VARIABLES DE CONFIGURACIÓN NIVEL 2 (TODAS VISIBLES Y AJUSTABLES)
+            // ============================================================================
+            
+            // --- PARÁMETROS DE FLOTACIÓN ---
+            const amplitudeY = 40;        // Amplitud vertical de flotación
+            const amplitudeX = 45;        // Amplitud horizontal de flotación
+            const frequencyY = 0.00015;   // Frecuencia vertical
+            const frequencyX = 0.0001;    // Frecuencia horizontal
+            const speed = 1;              // Velocidad general de flotación
+            const phaseY = 0;             // Fase inicial Y
+            const phaseX = Math.PI / 2;   // Fase inicial X
+            
+            // --- PARÁMETROS DE ROTACIÓN ---
+            const DEG_TO_RAD = Math.PI / 180;
+            const TARGET_ANGLE_INITIAL = -30 * DEG_TO_RAD;   // -30 grados inicial
+            const PENDULUM_ANGLE = 30 * DEG_TO_RAD;          // ±30 grados péndulo
+            const INITIAL_ROTATION_SPEED = 20 * DEG_TO_RAD;  // Velocidad inicial (20°/seg)
+            const PENDULUM_SPEED = 20 * DEG_TO_RAD;          // Velocidad del péndulo (45°/seg)
+            const ACCELERATION_START_TIME = 35000;           // 35 segundos (quedan 25)
+            const HORARIO_ACCEL_RATE = 5 * DEG_TO_RAD;      // Aceleración horaria (60°/seg²)
+            const MAX_ROTATION_SPEED = 30 * DEG_TO_RAD;     // Velocidad máxima (180°/seg)
+            
+            // ============================================================================
+            // 🏗️ INICIALIZACIÓN DE VARIABLES PERSISTENTES (SOLO UNA VEZ)
+            // ============================================================================
+            
+            // Variables estáticas que persisten entre frames (SOLO se inicializan UNA vez)
+            if (!initFlagsLevel2) {
+                // Variables de estado de rotación
+                window.gridLevel2State = {
+                    // Estado de rotación
+                    currentAngle: 0,                    // Ángulo actual en radianes
+                    rotationSpeed: 0,                   // Velocidad actual de rotación (rad/seg)
+                    
+                    // Fases: 0=inicial a -30°, 1=péndulo ±30°, 2=aceleración horaria
+                    phase: 0,                           
+                    
+                    // Control de tiempo
+                    levelStartTime: currentTime,        // Momento de inicio del nivel
+                    gameStartTime: null,                // Momento del primer disparo (se establece cuando empiece el cronómetro)
+                    
+                    // Control de péndulo
+                    pendulumDirection: 1,               // 1=hacia positivo, -1=hacia negativo
+                    pendulumLastTime: currentTime,      // Para control de tiempo del péndulo
+                    
+                    // Control de dirección para péndulo
+                    targetAngle: TARGET_ANGLE_INITIAL,  // Ángulo objetivo actual
+                    isReachingTarget: true,             // ¿Está yendo hacia el objetivo?
+                    
+                    // Debug/info
+                    debugInfo: {
+                        elapsedSinceLevel: 0,
+                        elapsedSinceGame: 0,
+                        currentPhase: "inicial",
+                        timeToAcceleration: ACCELERATION_START_TIME
+                    }
+                };
+                
+                initFlagsLevel2 = true; // Marcar como inicializado
+                console.log("🎯 Nivel 2: Variables de rotación inicializadas");
+            }
+            
+            // ============================================================================
+            // ⏰ CÁLCULO DE TIEMPOS Y CONTROL DE FASES
+            // ============================================================================
+            
+            const state = window.gridLevel2State;
+            
+            // Actualizar tiempo transcurrido desde inicio del nivel
+            state.debugInfo.elapsedSinceLevel = currentTime - state.levelStartTime;
+            
+            // Detectar si el cronómetro del juego ha empezado (primer disparo)
+            if (relojJuego.getEstado() === 'jugando' && state.gameStartTime === null) {
+                state.gameStartTime = currentTime;
+                console.log("🎯 Nivel 2: Cronómetro iniciado, comenzando seguimiento");
+            }
+            
+            // Calcular tiempo transcurrido desde el primer disparo
+            if (state.gameStartTime !== null) {
+                state.debugInfo.elapsedSinceGame = currentTime - state.gameStartTime;
+                state.debugInfo.timeToAcceleration = ACCELERATION_START_TIME - state.debugInfo.elapsedSinceGame;
+            }
+            
+            // ============================================================================
+            // 🔄 MOTORES DE ROTACIÓN POR FASE
+            // ============================================================================
+            
+            const dt = deltaTime / 1000; // Delta time en segundos
+            
+            switch (state.phase) {
+                // --- FASE 0: ROTACIÓN INICIAL HACIA -30° ---
+                case 0: {
+                    state.debugInfo.currentPhase = "inicial → -30°";
+                    
+                    // Rotar suavemente hacia -30 grados
+                    const angleDiff = state.targetAngle - state.currentAngle;
+                    
+                    if (Math.abs(angleDiff) > 0.01) { // Tolerancia de 0.01 radianes
+                        // Continuar rotando hacia el objetivo
+                        const rotationDirection = Math.sign(angleDiff);
+                        state.currentAngle += rotationDirection * INITIAL_ROTATION_SPEED * dt;
+                        
+                        // Evitar sobrepasar el objetivo
+                        if (Math.abs(state.currentAngle - state.targetAngle) < Math.abs(angleDiff)) {
+                            // Ok, seguir
+                        } else {
+                            state.currentAngle = state.targetAngle; // Ajustar exacto
+                        }
+                    } else {
+                        // Llegó a -30°, cambiar a fase péndulo
+                        state.phase = 1;
+                        state.targetAngle = PENDULUM_ANGLE; // Próximo objetivo: +30°
+                        state.pendulumDirection = 1; // Empezar hacia positivo
+                        console.log("🎯 Nivel 2: Fase péndulo iniciada");
+                    }
+                    break;
+                }
+                
+                // --- FASE 1: PÉNDULO ENTRE +30° Y -30° ---
+                case 1: {
+                    state.debugInfo.currentPhase = "péndulo ±30°";
+                    
+                    // Verificar si debe cambiar a fase de aceleración
+                    if (state.debugInfo.elapsedSinceGame >= ACCELERATION_START_TIME) {
+                        state.phase = 2;
+                        state.rotationSpeed = PENDULUM_SPEED; // Velocidad base para acelerar
+                        console.log("🎯 Nivel 2: Fase aceleración iniciada");
+                        break;
+                    }
+                    
+                    // Motor de péndulo
+                    const angleDiff = state.targetAngle - state.currentAngle;
+                    
+                    if (Math.abs(angleDiff) > 0.05) { // Tolerancia para cambio de dirección
+                        // Moverse hacia el objetivo actual
+                        const rotationDirection = Math.sign(angleDiff);
+                        state.currentAngle += rotationDirection * PENDULUM_SPEED * dt;
+                    } else {
+                        // Llegó al extremo, cambiar dirección
+                        if (state.targetAngle === PENDULUM_ANGLE) {
+                            // Estaba yendo a +30°, ahora ir a -30°
+                            state.targetAngle = -PENDULUM_ANGLE;
+                            state.pendulumDirection = -1;
+                        } else {
+                            // Estaba yendo a -30°, ahora ir a +30°
+                            state.targetAngle = PENDULUM_ANGLE;
+                            state.pendulumDirection = 1;
+                        }
+                    }
+                    break;
+                }
+                
+                // --- FASE 2: ACELERACIÓN HORARIA CONTINUA ---
+                case 2: {
+                    state.debugInfo.currentPhase = "aceleración horaria";
+                    
+                    // Acelerar velocidad (solo en sentido horario = positivo)
+                    state.rotationSpeed += HORARIO_ACCEL_RATE * dt;
+                    
+                    // Limitar velocidad máxima
+                    if (state.rotationSpeed > MAX_ROTATION_SPEED) {
+                        state.rotationSpeed = MAX_ROTATION_SPEED;
+                        state.debugInfo.currentPhase = "velocidad máxima";
+                    }
+                    
+                    // Aplicar rotación horaria continua
+                    state.currentAngle += state.rotationSpeed * dt;
+                    
+                    // Normalizar ángulo para evitar overflow
+                    while (state.currentAngle > Math.PI * 2) {
+                        state.currentAngle -= Math.PI * 2;
+                    }
+                    break;
+                }
+            }
+            
+            // ============================================================================
+            // 📊 APLICAR RESULTADOS A GRIDSTATE
+            // ============================================================================
             
             // Motor de flotación Y (diferente al nivel 1)
-            gridState.current.offsetY = MathUtils.cosineWave(  // ¡COSENO en lugar de SENO!
+            gridState.current.offsetY = MathUtils.cosineWave(
                 currentTime * speed, 
                 frequencyY, 
                 amplitudeY, 
@@ -419,9 +591,19 @@ export function updateGridLogic(deltaTime, level) {
                 phaseX
             );
             
-            // === MOTOR DE ROTACIÓN NIVEL 2 ===
-            const rotationSpeed = Math.PI / 6; // 30 grados por segundo
-            gridState.current.rotationAngle += rotationSpeed * (deltaTime / 1000);
+            // Aplicar ángulo de rotación calculado
+            gridState.current.rotationAngle = state.currentAngle;
+            
+            // ============================================================================
+            // 🐛 DEBUG INFO (mostrar cada 60 frames ≈ 1 segundo)
+            // ============================================================================
+            
+            if (Math.floor(currentTime / 1000) % 2 === 0 && (currentTime % 1000) < 50) {
+                const angleInDegrees = (state.currentAngle * 180 / Math.PI).toFixed(1);
+                const speedInDegrees = (state.rotationSpeed * 180 / Math.PI).toFixed(1);
+                
+                console.log(`🎯 Nivel 2 Rotación: ${angleInDegrees}° | Fase: ${state.debugInfo.currentPhase} | Vel: ${speedInDegrees}°/s | Tiempo juego: ${(state.debugInfo.elapsedSinceGame/1000).toFixed(1)}s`);
+            }
             
             break;
         }
@@ -541,6 +723,16 @@ export function initGrid(level = 1) {
     
     resetGridCanvases();
     
+    // === RESETEAR BANDERAS DE INICIALIZACIÓN PARA NUEVO NIVEL ===
+    if (level === 2) {
+        initFlagsLevel2 = false; // Permitir reinicialización de variables del nivel 2
+        // Limpiar estado global si existe
+        if (window.gridLevel2State) {
+            delete window.gridLevel2State;
+        }
+        console.log("🎯 Banderas del nivel 2 reseteadas para reinicialización");
+    }
+    
     // Inicializar estados
     gridState.previous = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: 0 };
     gridState.current = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: performance.now() };
@@ -561,7 +753,6 @@ export function initGrid(level = 1) {
 
     dibujarRejaBase(level);
 
-
 }
 
 // === EXPORTACIONES ADICIONALES ===
@@ -575,5 +766,89 @@ export function getGridConfig() {
 
 // === EXPORTAR VARIABLE GLOBAL ===
 export { distanciaMaxima };
+
+// === FUNCIONES DE DEBUG PARA NIVEL 2 ===
+// Función para simular disparo y activar cronómetro (testing)
+window.debugSimulateGameStart = function() {
+    if (!relojJuego.iniciado) {
+        relojJuego.iniciar();
+        console.log("🧪 [DEBUG] Cronómetro simulado - Juego iniciado");
+    } else {
+        console.log("🧪 [DEBUG] Cronómetro ya está iniciado");
+    }
+    return relojJuego.getEstado();
+};
+
+// Función para mostrar estado actual del sistema de rotación nivel 2
+window.debugRotationStatus = function() {
+    if (!window.gridLevel2State) {
+        console.log("🧪 [DEBUG] Sistema de rotación nivel 2 no inicializado");
+        return null;
+    }
+    
+    const state = window.gridLevel2State;
+    const angleInDegrees = (state.currentAngle * 180 / Math.PI).toFixed(1);
+    const speedInDegrees = (state.rotationSpeed * 180 / Math.PI).toFixed(1);
+    const elapsedGame = state.debugInfo.elapsedSinceGame / 1000;
+    const elapsedLevel = state.debugInfo.elapsedSinceLevel / 1000;
+    
+    console.log("🧪 [DEBUG] Estado de rotación nivel 2:");
+    console.log(`   Ángulo actual: ${angleInDegrees}°`);
+    console.log(`   Velocidad: ${speedInDegrees}°/s`);
+    console.log(`   Fase: ${state.debugInfo.currentPhase} (${state.phase})`);
+    console.log(`   Tiempo desde nivel: ${elapsedLevel.toFixed(1)}s`);
+    console.log(`   Tiempo desde juego: ${elapsedGame.toFixed(1)}s`);
+    console.log(`   Cronómetro: ${relojJuego.getEstado()}`);
+    
+    return {
+        angle: angleInDegrees,
+        speed: speedInDegrees,
+        phase: state.debugInfo.currentPhase,
+        elapsedGame: elapsedGame,
+        elapsedLevel: elapsedLevel,
+        timerState: relojJuego.getEstado()
+    };
+};
+
+// Función para forzar cambio de fase (testing)
+window.debugForcePhase = function(phaseNumber) {
+    if (!window.gridLevel2State) {
+        console.log("🧪 [DEBUG] Sistema de rotación nivel 2 no inicializado");
+        return;
+    }
+    
+    const state = window.gridLevel2State;
+    const oldPhase = state.phase;
+    
+    switch (phaseNumber) {
+        case 0:
+            state.phase = 0;
+            state.targetAngle = -30 * Math.PI / 180;
+            state.debugInfo.currentPhase = "inicial → -30° (FORZADO)";
+            break;
+        case 1:
+            state.phase = 1;
+            state.targetAngle = 30 * Math.PI / 180;
+            state.debugInfo.currentPhase = "péndulo ±30° (FORZADO)";
+            break;
+        case 2:
+            state.phase = 2;
+            state.rotationSpeed = 45 * Math.PI / 180; // 45°/s base
+            state.debugInfo.currentPhase = "aceleración horaria (FORZADO)";
+            break;
+        default:
+            console.log("🧪 [DEBUG] Fase inválida. Use: 0=inicial, 1=péndulo, 2=aceleración");
+            return;
+    }
+    
+    console.log(`🧪 [DEBUG] Fase cambiada de ${oldPhase} a ${phaseNumber}`);
+    return window.debugRotationStatus();
+};
+
+// Mensaje de ayuda para debug
+console.log("🧪 [DEBUG] Funciones de testing nivel 2 disponibles:");
+console.log("   debugSimulateGameStart() - Simular inicio de cronómetro");
+console.log("   debugRotationStatus() - Ver estado actual de rotación");
+console.log("   debugForcePhase(0|1|2) - Forzar fase específica");
 
 console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
