@@ -248,21 +248,21 @@ export function dibujarRejaBase(level) {
         }
         
         case 2: {
-            // Configuración del nivel 1
-            configGrid = calcularConfiguracionGrid(width, height, level);
+            // NIVEL 2: Reja con efecto de entrelazado (barrotes entre-cruzados)
+            configGrid = calcularConfiguracionGrid(width, height, 2);
             
-            // CANVAS BASE (1): Reja sin transformaciones
+            // CANVAS BASE (1): Reja con efecto entrelazado
             ensureGridCanvas(1);
             gridCanvases[1].clearRect(0, 0, width, height);
             gridCanvases[1].lineWidth = configGrid.grosorLinea;
             
-             // Colores para nivel 2 (verde para diferenciarlo)
-             const gradientColors = {
+            // Colores para nivel 2 (verde para diferenciarlo)
+            const gradientColors = {
                 dark: "rgb(0, 31, 20)",
                 bright: "rgb(19, 231, 16)"
             };
             
-            // Dibujar líneas horizontales
+            // === PASO 1: Dibujar líneas horizontales COMPLETAS (base del tejido) ===
             for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
                 const y = configGrid.baseY + i * configGrid.tamCuadrado;
                 const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
@@ -276,43 +276,48 @@ export function dibujarRejaBase(level) {
                 gridCanvases[1].stroke();
             }
             
-            // Dibujar líneas verticales entrelazadas
-           let y1 = 1
-           let par = false
+            // === PASO 2: Dibujar líneas verticales SEGMENTADAS (efecto entrelazado) ===
             for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
                 const x = configGrid.baseX + j * configGrid.tamCuadrado;
-                if (par == false) {
-                    y1 = configGrid.baseY +  (configGrid.tamCuadrado*1.5)-(configGrid.grosorLinea/2)
-                } else {
-                    y1 = configGrid.baseY +  (configGrid.tamCuadrado*0.5)-(configGrid.grosorLinea/2)
-                }
                 const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
                 grad.addColorStop(0, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
                 grad.addColorStop(1, gradientColors.dark);
                 gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, configGrid.baseY);
-                gridCanvases[1].lineTo(x, y1);
-                y1= y1 + configGrid.grosorLinea;
-                gridCanvases[1].moveTo(x, y1);
-                gridCanvases[1].lineTo(x, y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea);
-                if (par == false) {
-                    y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea + configGrid.grosorLinea;
-                } else {
-                    y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea+(configGrid.grosorLinea);
+                
+                // Determinar patrón de alternancia para esta línea vertical
+                // Las líneas impares empiezan "por encima", las pares "por debajo"
+                const lineaIndex = Math.floor(j - 0.5);
+                const empiezaPorEncima = (lineaIndex % 2 === 0);
+                
+                // Dibujar segmentos entre intersecciones
+                for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
+                    // Calcular coordenadas del segmento
+                    const yInicio = (i === 0.5) ? configGrid.baseY : 
+                                    configGrid.baseY + i * configGrid.tamCuadrado - configGrid.grosorLinea/2;
+                    const yFin = (i === configGrid.cantidadVert + 0.5) ? 
+                                 configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado :
+                                 configGrid.baseY + i * configGrid.tamCuadrado + configGrid.grosorLinea/2;
+                    
+                    // Determinar si este segmento va por encima o por debajo
+                    const segmentoIndex = Math.floor(i - 0.5);
+                    const esPorEncima = empiezaPorEncima ? (segmentoIndex % 2 === 0) : (segmentoIndex % 2 === 1);
+                    
+                    // Aplicar composite operation según corresponda
+                    gridCanvases[1].globalCompositeOperation = esPorEncima ? 'source-over' : 'destination-over';
+                    
+                    // Dibujar el segmento
+                    gridCanvases[1].beginPath();
+                    gridCanvases[1].moveTo(x, yInicio);
+                    gridCanvases[1].lineTo(x, yFin);
+                    gridCanvases[1].stroke();
                 }
-                gridCanvases[1].moveTo(x, y1);
-                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
-                gridCanvases[1].stroke();
-                if (par == false) {
-                    par = true
-                } else {
-                    par = false
-                }
+                
+                // Restaurar composite operation a normal
+                gridCanvases[1].globalCompositeOperation = 'source-over';
             }
             
-            console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
+            console.log("✨ Reja base nivel 2 con efecto ENTRELAZADO dibujada CORRECTAMENTE en gridCanvases[1]");
             break;
         }
         
@@ -521,13 +526,13 @@ export function updateGridLogic(deltaTime, level) {
             // ============================================================================
             
             // --- PARÁMETROS DE FLOTACIÓN ---
-            const amplitudeY = 22;      // Amplitud vertical personalizada
-            const amplitudeX = 18;      // Amplitud horizontal personalizada
-            const frequencyY = 0.001;   // Frecuencia vertical
-            const frequencyX = 0.0007;  // Frecuencia horizontal
-            const speed = 1.2;          // Velocidad general
-            const phaseY = Math.PI / 3; // Fase inicial Y (personalizada)
-            const phaseX = Math.PI / 6; // Fase inicial X (personalizada)
+            const amplitudeY = 40;        // Amplitud vertical de flotación
+            const amplitudeX = 45;        // Amplitud horizontal de flotación
+            const frequencyY = 0.00015;   // Frecuencia vertical
+            const frequencyX = 0.0001;    // Frecuencia horizontal
+            const speed = 1;              // Velocidad general de flotación
+            const phaseY = 0;             // Fase inicial Y
+            const phaseX = Math.PI / 2;   // Fase inicial X
             
             // --- PARÁMETROS DE ROTACIÓN ---
             const DEG_TO_RAD = Math.PI / 180;
