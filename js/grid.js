@@ -231,7 +231,7 @@ export function dibujarRejaBase(level) {
             
             if (1==0) {
 
-                    // Dibujar líneas verticales
+                    // Dibujar líneas verticales - anulado reemplazado
                     for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
                         const x = configGrid.baseX + j * configGrid.tamCuadrado;
                         const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
@@ -264,7 +264,7 @@ export function dibujarRejaBase(level) {
                         gridCanvases[1].strokeStyle = grad;
                         gridCanvases[1].beginPath();
                         gridCanvases[1].moveTo(x, configGrid.baseY);
-                        gridCanvases[1].lineTo(x, y1);
+                        gridCanvases[1].lineTo(x, y1 );
                         y1= y1 + configGrid.grosorLinea;
                         gridCanvases[1].moveTo(x, y1);
                         gridCanvases[1].lineTo(x, y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea);
@@ -368,17 +368,20 @@ export function dibujarRejaBase(level) {
             
             // Colores cyan
             const gradientColors = {
-                dark: "rgb(0, 19, 24)",
-                bright: "rgb(36, 36, 214)"
+                dark: "rgb(32, 81, 40)",
+                bright: "rgb(196, 25, 202)",
+                border: "rgb(0, 0, 0)"
             };
             
             // Dibujar líneas horizontales
             for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
                 const y = configGrid.baseY + i * configGrid.tamCuadrado;
                 const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
-                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0, gradientColors.border);
+                //grad.addColorStop(0.3, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
+                //grad.addColorStop(0.70, gradientColors.dark);
+                grad.addColorStop(1, gradientColors.border);
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
                 gridCanvases[1].moveTo(configGrid.baseX, y);
@@ -390,9 +393,11 @@ export function dibujarRejaBase(level) {
             for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
                 const x = configGrid.baseX + j * configGrid.tamCuadrado;
                 const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.dark);
+                grad.addColorStop(0, gradientColors.border);
+                //grad.addColorStop(0.3, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
+                //grad.addColorStop(0.70, gradientColors.dark);
+                grad.addColorStop(1, gradientColors.border);
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
                 gridCanvases[1].moveTo(x, configGrid.baseY);
