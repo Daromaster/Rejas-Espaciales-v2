@@ -229,20 +229,61 @@ export function dibujarRejaBase(level) {
                 gridCanvases[1].stroke();
             }
             
-            // Dibujar líneas verticales
-            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
-                const x = configGrid.baseX + j * configGrid.tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, configGrid.baseY);
-                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
-                gridCanvases[1].stroke();
-            }
+            if (1==0) {
+
+                    // Dibujar líneas verticales
+                    for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                        const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                        const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                        grad.addColorStop(0, gradientColors.dark);
+                        grad.addColorStop(0.5, gradientColors.bright);
+                        grad.addColorStop(1, gradientColors.dark);
+                        gridCanvases[1].strokeStyle = grad;
+                        gridCanvases[1].beginPath();
+                        gridCanvases[1].moveTo(x, configGrid.baseY);
+                        gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                        gridCanvases[1].stroke();
+                    }
             
+            } else {
+
+                    // Dibujar líneas verticales entrelazadas
+                    let y1 = 1
+                    let par = false
+                    for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                        const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                        if (par == false) {
+                            y1 = configGrid.baseY +  (configGrid.tamCuadrado*1.5)-(configGrid.grosorLinea/2)
+                        } else {
+                            y1 = configGrid.baseY +  (configGrid.tamCuadrado*0.5)-(configGrid.grosorLinea/2)
+                        }
+                        const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                        grad.addColorStop(0, gradientColors.dark);
+                        grad.addColorStop(0.5, gradientColors.bright);
+                        grad.addColorStop(1, gradientColors.dark);
+                        gridCanvases[1].strokeStyle = grad;
+                        gridCanvases[1].beginPath();
+                        gridCanvases[1].moveTo(x, configGrid.baseY);
+                        gridCanvases[1].lineTo(x, y1);
+                        y1= y1 + configGrid.grosorLinea;
+                        gridCanvases[1].moveTo(x, y1);
+                        gridCanvases[1].lineTo(x, y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea);
+                        if (par == false) {
+                            y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea + configGrid.grosorLinea;
+                        } else {
+                            y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea+(configGrid.grosorLinea);
+                        }
+                        gridCanvases[1].moveTo(x, y1);
+                        gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                        gridCanvases[1].stroke();
+                        if (par == false) {
+                            par = true
+                        } else {
+                            par = false
+                        }
+                    }
+            }
+
             console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
             break;
         }
