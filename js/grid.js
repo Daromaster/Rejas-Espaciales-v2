@@ -917,8 +917,8 @@ export function updateGridLogic(deltaTime, level) {
                 obj.inicioY = configGrid.baseY + configGrid.tamCuadrado/2;
                 
                 // Posición final del recorrido
-                obj.finX = configGrid.baseX + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadVert);
-                obj.finY = configGrid.baseY + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadHoriz);
+                obj.finX = configGrid.baseX + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadHoriz);
+                obj.finY = configGrid.baseY + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadVert);
                 
                 // Posición actual = posición inicial
                 obj.x = obj.inicioX;
