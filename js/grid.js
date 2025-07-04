@@ -44,7 +44,13 @@ let objetosGrid = {
         rotacion: 0,
         velocidadRotacion: 0.002, // rad/ms
         tamaño: 80,
-        color: '#ff6b6b',
+        // Colores del perímetro tubular (estilo barrotes)
+        colorPerimetroClaro: "rgb(255, 215, 0)",     // Dorado claro
+        colorPerimetroOscuro: "rgb(139, 69, 19)",    // Marrón oscuro
+        // Colores del relleno piramidal
+        colorRellenoClaro: "rgb(255, 228, 181)",     // Beige claro
+        colorRellenoOscuro: "rgb(205, 133, 63)",     // Marrón medio
+        grosorPerimetro: 8,                          // Grosor del borde tubular
         activo: false,
         // Posición actual
         x: 0,
@@ -530,23 +536,136 @@ function composeGrid(level, alpha = 1.0) {
                 const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
                 const mitadTamaño = obj.tamaño / 2;
                 
-                // Dibujar cuadrado centrado
-                gridCanvases[2].fillStyle = obj.color;
-                gridCanvases[2].strokeStyle = '#ff0000';
-                gridCanvases[2].lineWidth = 3;
+                // === RELLENO PIRAMIDAL: 4 TRIÁNGULOS CON GRADIENTES ===
                 
-                gridCanvases[2].fillRect(
-                    centroX - mitadTamaño, 
-                    centroY - mitadTamaño, 
-                    obj.tamaño, 
-                    obj.tamaño
+                // Triángulo superior (más claro - cara superior de la pirámide)
+                const gradTop = gridCanvases[2].createLinearGradient(
+                    centroX, centroY - mitadTamaño, 
+                    centroX, centroY
                 );
-                gridCanvases[2].strokeRect(
-                    centroX - mitadTamaño, 
-                    centroY - mitadTamaño, 
-                    obj.tamaño, 
-                    obj.tamaño
+                gradTop.addColorStop(0, obj.colorRellenoClaro);
+                gradTop.addColorStop(1, obj.colorRellenoOscuro);
+                
+                gridCanvases[2].fillStyle = gradTop;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX - mitadTamaño, centroY - mitadTamaño); // Esquina superior izq
+                gridCanvases[2].lineTo(centroX + mitadTamaño, centroY - mitadTamaño); // Esquina superior der
+                gridCanvases[2].lineTo(centroX, centroY); // Centro
+                gridCanvases[2].closePath();
+                gridCanvases[2].fill();
+                
+                // Triángulo derecho (intermedio)
+                const gradRight = gridCanvases[2].createLinearGradient(
+                    centroX + mitadTamaño, centroY, 
+                    centroX, centroY
                 );
+                gradRight.addColorStop(0, obj.colorRellenoOscuro);
+                gradRight.addColorStop(1, obj.colorRellenoClaro);
+                
+                gridCanvases[2].fillStyle = gradRight;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX + mitadTamaño, centroY - mitadTamaño); // Esquina superior der
+                gridCanvases[2].lineTo(centroX + mitadTamaño, centroY + mitadTamaño); // Esquina inferior der
+                gridCanvases[2].lineTo(centroX, centroY); // Centro
+                gridCanvases[2].closePath();
+                gridCanvases[2].fill();
+                
+                // Triángulo inferior (más oscuro - sombra)
+                const gradBottom = gridCanvases[2].createLinearGradient(
+                    centroX, centroY + mitadTamaño, 
+                    centroX, centroY
+                );
+                gradBottom.addColorStop(0, obj.colorRellenoOscuro);
+                gradBottom.addColorStop(0.3, obj.colorRellenoOscuro);
+                gradBottom.addColorStop(1, obj.colorRellenoClaro);
+                
+                gridCanvases[2].fillStyle = gradBottom;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX + mitadTamaño, centroY + mitadTamaño); // Esquina inferior der
+                gridCanvases[2].lineTo(centroX - mitadTamaño, centroY + mitadTamaño); // Esquina inferior izq
+                gridCanvases[2].lineTo(centroX, centroY); // Centro
+                gridCanvases[2].closePath();
+                gridCanvases[2].fill();
+                
+                // Triángulo izquierdo (intermedio-oscuro)
+                const gradLeft = gridCanvases[2].createLinearGradient(
+                    centroX - mitadTamaño, centroY, 
+                    centroX, centroY
+                );
+                gradLeft.addColorStop(0, obj.colorRellenoOscuro);
+                gradLeft.addColorStop(0.7, obj.colorRellenoClaro);
+                gradLeft.addColorStop(1, obj.colorRellenoClaro);
+                
+                gridCanvases[2].fillStyle = gradLeft;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX - mitadTamaño, centroY + mitadTamaño); // Esquina inferior izq
+                gridCanvases[2].lineTo(centroX - mitadTamaño, centroY - mitadTamaño); // Esquina superior izq
+                gridCanvases[2].lineTo(centroX, centroY); // Centro
+                gridCanvases[2].closePath();
+                gridCanvases[2].fill();
+                
+                // === PERÍMETRO TUBULAR ESTILO BARROTES ===
+                gridCanvases[2].lineWidth = obj.grosorPerimetro;
+                
+                // Lado superior
+                const gradTopBorder = gridCanvases[2].createLinearGradient(
+                    centroX, centroY - mitadTamaño - obj.grosorPerimetro/2, 
+                    centroX, centroY - mitadTamaño + obj.grosorPerimetro/2
+                );
+                gradTopBorder.addColorStop(0, obj.colorPerimetroOscuro);
+                gradTopBorder.addColorStop(0.5, obj.colorPerimetroClaro);
+                gradTopBorder.addColorStop(1, obj.colorPerimetroOscuro);
+                
+                gridCanvases[2].strokeStyle = gradTopBorder;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX - mitadTamaño, centroY - mitadTamaño);
+                gridCanvases[2].lineTo(centroX + mitadTamaño, centroY - mitadTamaño);
+                gridCanvases[2].stroke();
+                
+                // Lado derecho
+                const gradRightBorder = gridCanvases[2].createLinearGradient(
+                    centroX + mitadTamaño - obj.grosorPerimetro/2, centroY, 
+                    centroX + mitadTamaño + obj.grosorPerimetro/2, centroY
+                );
+                gradRightBorder.addColorStop(0, obj.colorPerimetroOscuro);
+                gradRightBorder.addColorStop(0.5, obj.colorPerimetroClaro);
+                gradRightBorder.addColorStop(1, obj.colorPerimetroOscuro);
+                
+                gridCanvases[2].strokeStyle = gradRightBorder;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX + mitadTamaño, centroY - mitadTamaño);
+                gridCanvases[2].lineTo(centroX + mitadTamaño, centroY + mitadTamaño);
+                gridCanvases[2].stroke();
+                
+                // Lado inferior
+                const gradBottomBorder = gridCanvases[2].createLinearGradient(
+                    centroX, centroY + mitadTamaño - obj.grosorPerimetro/2, 
+                    centroX, centroY + mitadTamaño + obj.grosorPerimetro/2
+                );
+                gradBottomBorder.addColorStop(0, obj.colorPerimetroOscuro);
+                gradBottomBorder.addColorStop(0.5, obj.colorPerimetroClaro);
+                gradBottomBorder.addColorStop(1, obj.colorPerimetroOscuro);
+                
+                gridCanvases[2].strokeStyle = gradBottomBorder;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX + mitadTamaño, centroY + mitadTamaño);
+                gridCanvases[2].lineTo(centroX - mitadTamaño, centroY + mitadTamaño);
+                gridCanvases[2].stroke();
+                
+                // Lado izquierdo
+                const gradLeftBorder = gridCanvases[2].createLinearGradient(
+                    centroX - mitadTamaño - obj.grosorPerimetro/2, centroY, 
+                    centroX - mitadTamaño + obj.grosorPerimetro/2, centroY
+                );
+                gradLeftBorder.addColorStop(0, obj.colorPerimetroOscuro);
+                gradLeftBorder.addColorStop(0.5, obj.colorPerimetroClaro);
+                gradLeftBorder.addColorStop(1, obj.colorPerimetroOscuro);
+                
+                gridCanvases[2].strokeStyle = gradLeftBorder;
+                gridCanvases[2].beginPath();
+                gridCanvases[2].moveTo(centroX - mitadTamaño, centroY + mitadTamaño);
+                gridCanvases[2].lineTo(centroX - mitadTamaño, centroY - mitadTamaño);
+                gridCanvases[2].stroke();
             }
             
             // PASO 2: Aplicar rotación al cuadrado en gridCanvases[3]
