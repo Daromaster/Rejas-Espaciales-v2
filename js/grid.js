@@ -575,9 +575,19 @@ function composeGrid(level, alpha = 1.0) {
             // Dibujar reja base primero
             gridCanvases[4].drawImage(gridCanvases[1].canvas, 0, 0);
             
-            // Dibujar cuadrado giratorio encima
+            // Dibujar cuadrado giratorio encima aplicando la nueva posición
+            
+            console.log("pppppppppppppppppppppppppppppppppppppppppppppppppp ");
+              
             if (objetosGrid.cuadradoGiratorio.activo) {
+                const obj = objetosGrid.cuadradoGiratorio;
+                const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
+                const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+                console.log("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO 🎯 Nivel 3: Cuadrado giratorio en posición:", obj.x, obj.y);
+                gridCanvases[4].save();
+                gridCanvases[4].translate(obj.x - centroX, obj.y - centroY);
                 gridCanvases[4].drawImage(gridCanvases[3].canvas, 0, 0);
+                gridCanvases[4].restore();
             }
             
             // PASO 4: Aplicar flotación al conjunto en gridCanvases[5]
