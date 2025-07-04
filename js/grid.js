@@ -576,14 +576,11 @@ function composeGrid(level, alpha = 1.0) {
             gridCanvases[4].drawImage(gridCanvases[1].canvas, 0, 0);
             
             // Dibujar cuadrado giratorio encima aplicando la nueva posición
-            
-            console.log("pppppppppppppppppppppppppppppppppppppppppppppppppp ");
-              
             if (objetosGrid.cuadradoGiratorio.activo) {
                 const obj = objetosGrid.cuadradoGiratorio;
                 const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
                 const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
-                console.log("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO 🎯 Nivel 3: Cuadrado giratorio en posición:", obj.x, obj.y);
+                
                 gridCanvases[4].save();
                 gridCanvases[4].translate(obj.x - centroX, obj.y - centroY);
                 gridCanvases[4].drawImage(gridCanvases[3].canvas, 0, 0);
@@ -981,12 +978,28 @@ export function updateGridLogic(deltaTime, level) {
                 }
                 
                 // --- MOTOR DE DESPLAZAMIENTO RECTANGULAR ---
-                // Actualizar progreso en la fase actual
-                obj.progreso += obj.velocidadDesplazamiento * deltaTime;
+                // Calcular cuántos píxeles se mueve en este frame
+                const pixelesRecorridos = obj.velocidadDesplazamiento * deltaTime;
+                
+                // Calcular distancia de la fase actual y actualizar progreso correctamente
+                let distanciaFase = 0;
+                switch (obj.fase) {
+                    case 0: // Horizontal: inicioX → finX
+                    case 2: // Horizontal: finX → inicioX
+                        distanciaFase = Math.abs(obj.finX - obj.inicioX);
+                        break;
+                    case 1: // Vertical: inicioY → finY
+                    case 3: // Vertical: finY → inicioY
+                        distanciaFase = Math.abs(obj.finY - obj.inicioY);
+                        break;
+                }
+                
+                // Incrementar progreso basado en la distancia real de la fase
+                obj.progreso += pixelesRecorridos / distanciaFase;
                 
                 // Debug temporal: verificar que se está ejecutando
                 if (Math.random() < 0.01) { // 1% de probabilidad para no saturar la consola
-                    console.log(`🎯 [DEBUG] Cuadrado - Fase: ${obj.fase}, Progreso: ${(obj.progreso * 100).toFixed(1)}%, Pos: (${obj.x.toFixed(1)}, ${obj.y.toFixed(1)})`);
+                    console.log(`🎯 [DEBUG] Cuadrado - Fase: ${obj.fase}, Progreso: ${(obj.progreso * 100).toFixed(1)}%, Distancia: ${distanciaFase.toFixed(1)}px, Píxeles/frame: ${pixelesRecorridos.toFixed(2)}`);
                 }
                 
                 // Calcular posición según la fase actual
