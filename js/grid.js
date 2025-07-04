@@ -37,6 +37,30 @@ let gridState = {
     }
 };
 
+// === ESTADO DE OBJETOS INTEGRADOS (NIVEL 3+) ===
+let objetosGrid = {
+    // Objeto nivel 3: cuadrado giratorio con desplazamiento
+    cuadradoGiratorio: {
+        rotacion: 0,
+        velocidadRotacion: 0.002, // rad/ms
+        tamaño: 80,
+        color: '#ff6b6b',
+        activo: false,
+        // Posición actual
+        x: 0,
+        y: 0,
+        // Posiciones de referencia para el recorrido
+        inicioX: 0,
+        inicioY: 0,
+        finX: 0,
+        finY: 0,
+        // Control de recorrido rectangular
+        fase: 0, // 0=derecha, 1=abajo, 2=izquierda, 3=arriba
+        velocidadDesplazamiento: 0.3, // velocidad de desplazamiento (píxeles/ms) - aumentada para testing
+        progreso: 0 // progreso actual en la fase (0 a 1)
+    }
+};
+
 // === FUNCIONES AUXILIARES MATEMÁTICAS ESTÁNDAR (NO POR NIVEL) ===
 const MathUtils = {
     // Función sinusoidal estándar
@@ -358,7 +382,7 @@ export function dibujarRejaBase(level) {
         }
         
         case 3: {
-            // Configuración del nivel 1
+            // NIVEL 3: Reja con cuadrado giratorio integrado
             configGrid = calcularConfiguracionGrid(width, height, level);
             
             // CANVAS BASE (1): Reja sin transformaciones
@@ -366,7 +390,7 @@ export function dibujarRejaBase(level) {
             gridCanvases[1].clearRect(0, 0, width, height);
             gridCanvases[1].lineWidth = configGrid.grosorLinea;
             
-            // Colores cyan
+            // Colores para nivel 3 (magenta/morado)
             const gradientColors = {
                 dark: "rgb(32, 81, 40)",
                 bright: "rgb(196, 25, 202)",
@@ -378,9 +402,7 @@ export function dibujarRejaBase(level) {
                 const y = configGrid.baseY + i * configGrid.tamCuadrado;
                 const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
                 grad.addColorStop(0, gradientColors.border);
-                //grad.addColorStop(0.3, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
-                //grad.addColorStop(0.70, gradientColors.dark);
                 grad.addColorStop(1, gradientColors.border);
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
@@ -394,9 +416,7 @@ export function dibujarRejaBase(level) {
                 const x = configGrid.baseX + j * configGrid.tamCuadrado;
                 const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
                 grad.addColorStop(0, gradientColors.border);
-                //grad.addColorStop(0.3, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
-                //grad.addColorStop(0.70, gradientColors.dark);
                 grad.addColorStop(1, gradientColors.border);
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
@@ -405,7 +425,7 @@ export function dibujarRejaBase(level) {
                 gridCanvases[1].stroke();
             }
             
-            console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
+            console.log("✨ Reja base nivel 3 dibujada CORRECTAMENTE en gridCanvases[1]");
             break;
         }
 
@@ -493,23 +513,89 @@ function composeGrid(level, alpha = 1.0) {
         
 
         case 3: {
-            // CANVAS COMPUESTO (2): Canvas base + transformaciones
+            // NIVEL 3: Reja con cuadrado giratorio integrado
+            // Según las especificaciones de "Objetos Ideas.md":
+            // - gridCanvases[2] para dibujar el cuadrado
+            // - gridCanvases[3] para pegar el cuadrado girando
+            // - gridCanvases[4] para pegar reja base + cuadrado desplazado
+            // - gridCanvases[5] para el conjunto con flotación
+            
+            // PASO 1: Dibujar cuadrado base en gridCanvases[2]
             ensureGridCanvas(2);
             gridCanvases[2].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            // APLICAR TRANSFORMACIONES CORRECTAMENTE
-            gridCanvases[2].save();
-            gridCanvases[2].translate(interpolatedState.offsetX, interpolatedState.offsetY);
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                const obj = objetosGrid.cuadradoGiratorio;
+                const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
+                const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+                const mitadTamaño = obj.tamaño / 2;
+                
+                // Dibujar cuadrado centrado
+                gridCanvases[2].fillStyle = obj.color;
+                gridCanvases[2].strokeStyle = '#ff0000';
+                gridCanvases[2].lineWidth = 3;
+                
+                gridCanvases[2].fillRect(
+                    centroX - mitadTamaño, 
+                    centroY - mitadTamaño, 
+                    obj.tamaño, 
+                    obj.tamaño
+                );
+                gridCanvases[2].strokeRect(
+                    centroX - mitadTamaño, 
+                    centroY - mitadTamaño, 
+                    obj.tamaño, 
+                    obj.tamaño
+                );
+            }
             
-            // CAPTURAR MATRIZ DE TRANSFORMACIÓN EN EL LUGAR CORRECTO
-            transformMatrix = gridCanvases[2].getTransform();
+            // PASO 2: Aplicar rotación al cuadrado en gridCanvases[3]
+            ensureGridCanvas(3);
+            gridCanvases[3].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            // Componer imagen final
-            gridCanvases[2].drawImage(gridCanvases[1].canvas, 0, 0);
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
+                const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+                
+                gridCanvases[3].save();
+                gridCanvases[3].translate(centroX, centroY);
+                gridCanvases[3].rotate(objetosGrid.cuadradoGiratorio.rotacion);
+                gridCanvases[3].translate(-centroX, -centroY);
+                
+                // Dibujar el cuadrado base rotado
+                gridCanvases[3].drawImage(gridCanvases[2].canvas, 0, 0);
+                
+                gridCanvases[3].restore();
+            }
             
-            gridCanvases[2].restore();
+            // PASO 3: Componer reja base + cuadrado en gridCanvases[4]
+            ensureGridCanvas(4);
+            gridCanvases[4].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            return 2; // Retornar índice del canvas final para este nivel
+            // Dibujar reja base primero
+            gridCanvases[4].drawImage(gridCanvases[1].canvas, 0, 0);
+            
+            // Dibujar cuadrado giratorio encima
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                gridCanvases[4].drawImage(gridCanvases[3].canvas, 0, 0);
+            }
+            
+            // PASO 4: Aplicar flotación al conjunto en gridCanvases[5]
+            ensureGridCanvas(5);
+            gridCanvases[5].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+            
+            gridCanvases[5].save();
+            gridCanvases[5].translate(interpolatedState.offsetX, interpolatedState.offsetY);
+            
+            // CAPTURAR MATRIZ DE TRANSFORMACIÓN
+            transformMatrix = gridCanvases[5].getTransform();
+            
+            // Componer imagen final con flotación
+            gridCanvases[5].drawImage(gridCanvases[4].canvas, 0, 0);
+            
+            gridCanvases[5].restore();
+            
+            return 5; // Retornar índice del canvas final para este nivel
         }
 
         default:
@@ -805,29 +891,141 @@ export function updateGridLogic(deltaTime, level) {
         }
         
         case 3: {
-            // === MOTOR DE MOVIMIENTO NIVEL 3: MOVIMIENTO ELÍPTICO (EJEMPLO FUTURO) ===
-            // Parámetros completamente diferentes
-            const ellipseData = MathUtils.ellipticalMotion(
-                currentTime * 0.8,  // Velocidad diferente
-                0.0012,             // Frecuencia X elipse
-                0.0008,             // Frecuencia Y elipse  
-                35,                 // Amplitud X elipse
-                20,                 // Amplitud Y elipse
-                0,                  // Fase X
-                Math.PI / 4         // Fase Y diferente
+            // === MOTOR DE MOVIMIENTO NIVEL 3: FLOTACIÓN + CUADRADO GIRATORIO ===
+            
+            // Inicialización una sola vez al empezar el nivel
+            if (needsInitialization(level)) {
+                console.log("🔧 Inicializando objetos nivel 3...");
+                
+                // Asegurar que tenemos configGrid
+                if (!configGrid) {
+                    configGrid = calcularConfiguracionGrid(GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT, level);
+                }
+                
+                // Calcular posiciones del recorrido rectangular
+                const obj = objetosGrid.cuadradoGiratorio;
+                
+                // Posición inicial (esquina superior izquierda)
+                obj.inicioX = configGrid.baseX + configGrid.tamCuadrado/2;
+                obj.inicioY = configGrid.baseY + configGrid.tamCuadrado/2;
+                
+                // Posición final del recorrido
+                obj.finX = configGrid.baseX + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadVert);
+                obj.finY = configGrid.baseY + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadHoriz);
+                
+                // Posición actual = posición inicial
+                obj.x = obj.inicioX;
+                obj.y = obj.inicioY;
+                
+                // Resetear estado del recorrido
+                obj.fase = 0;
+                obj.progreso = 0;
+                obj.rotacion = 0;
+                obj.activo = true;
+                
+                setLevelInitialized(level);
+                console.log("✅ Objetos nivel 3 inicializados");
+                console.log(`   Inicio: (${obj.inicioX.toFixed(1)}, ${obj.inicioY.toFixed(1)})`);
+                console.log(`   Fin: (${obj.finX.toFixed(1)}, ${obj.finY.toFixed(1)})`);
+                console.log(`   Recorrido: ${(obj.finX - obj.inicioX).toFixed(1)} x ${(obj.finY - obj.inicioY).toFixed(1)}`);
+            }
+            
+            // --- PARÁMETROS DE FLOTACIÓN NIVEL 3 ---
+            const amplitudeY = 25;        // Amplitud vertical diferente
+            const amplitudeX = 20;        // Amplitud horizontal diferente
+            const frequencyY = 0.0012;    // Frecuencia vertical
+            const frequencyX = 0.0008;    // Frecuencia horizontal
+            const speed = 1.0;            // Velocidad general
+            const phaseY = Math.PI / 4;   // Fase inicial Y
+            const phaseX = Math.PI / 6;   // Fase inicial X
+            
+            // Motor de flotación Y
+            gridState.current.offsetY = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyY, 
+                amplitudeY, 
+                phaseY
             );
             
-            gridState.current.offsetX = ellipseData.x;
-            gridState.current.offsetY = ellipseData.y;
-            
-            // === MOTOR DE ROTACIÓN PENDULAR NIVEL 3 ===
-            const pendulumAmplitude = Math.PI / 4; // 45 grados máximo
-            const pendulumFreq = 0.0005;
-            gridState.current.rotationAngle = MathUtils.sineWave(
-                currentTime, 
-                pendulumFreq, 
-                pendulumAmplitude
+            // Motor de flotación X  
+            gridState.current.offsetX = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyX, 
+                amplitudeX, 
+                phaseX
             );
+            
+            // Sin rotación de la reja en nivel 3
+            gridState.current.rotationAngle = 0;
+            
+            // --- MOTOR DEL CUADRADO GIRATORIO ---
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                const obj = objetosGrid.cuadradoGiratorio;
+                
+                // Actualizar rotación del cuadrado
+                obj.rotacion += obj.velocidadRotacion * deltaTime;
+                
+                // Normalizar ángulo (0 a 2π)
+                if (obj.rotacion >= 2 * Math.PI) {
+                    obj.rotacion -= 2 * Math.PI;
+                }
+                
+                // --- MOTOR DE DESPLAZAMIENTO RECTANGULAR ---
+                // Actualizar progreso en la fase actual
+                obj.progreso += obj.velocidadDesplazamiento * deltaTime;
+                
+                // Debug temporal: verificar que se está ejecutando
+                if (Math.random() < 0.01) { // 1% de probabilidad para no saturar la consola
+                    console.log(`🎯 [DEBUG] Cuadrado - Fase: ${obj.fase}, Progreso: ${(obj.progreso * 100).toFixed(1)}%, Pos: (${obj.x.toFixed(1)}, ${obj.y.toFixed(1)})`);
+                }
+                
+                // Calcular posición según la fase actual
+                switch (obj.fase) {
+                    case 0: // FASE 0: Moverse hacia la derecha (X aumenta, Y constante)
+                        obj.x = obj.inicioX + (obj.finX - obj.inicioX) * Math.min(obj.progreso, 1);
+                        obj.y = obj.inicioY;
+                        
+                        if (obj.progreso >= 1) {
+                            obj.fase = 1;
+                            obj.progreso = 0;
+                            console.log("🎯 Cuadrado: Fase 0→1 (derecha→abajo)");
+                        }
+                        break;
+                        
+                    case 1: // FASE 1: Moverse hacia abajo (X constante, Y aumenta)
+                        obj.x = obj.finX;
+                        obj.y = obj.inicioY + (obj.finY - obj.inicioY) * Math.min(obj.progreso, 1);
+                        
+                        if (obj.progreso >= 1) {
+                            obj.fase = 2;
+                            obj.progreso = 0;
+                            console.log("🎯 Cuadrado: Fase 1→2 (abajo→izquierda)");
+                        }
+                        break;
+                        
+                    case 2: // FASE 2: Moverse hacia la izquierda (X disminuye, Y constante)
+                        obj.x = obj.finX - (obj.finX - obj.inicioX) * Math.min(obj.progreso, 1);
+                        obj.y = obj.finY;
+                        
+                        if (obj.progreso >= 1) {
+                            obj.fase = 3;
+                            obj.progreso = 0;
+                            console.log("🎯 Cuadrado: Fase 2→3 (izquierda→arriba)");
+                        }
+                        break;
+                        
+                    case 3: // FASE 3: Moverse hacia arriba (X constante, Y disminuye)
+                        obj.x = obj.inicioX;
+                        obj.y = obj.finY - (obj.finY - obj.inicioY) * Math.min(obj.progreso, 1);
+                        
+                        if (obj.progreso >= 1) {
+                            obj.fase = 0;
+                            obj.progreso = 0;
+                            console.log("🎯 Cuadrado: Fase 3→0 (arriba→derecha) - Ciclo completado");
+                        }
+                        break;
+                }
+            }
             
             break;
         }
@@ -1097,12 +1295,137 @@ window.debugTemporalSync = function(durationSeconds = 10) {
 };
 
 // Mensaje de ayuda para debug
-console.log("🧪 [DEBUG] Funciones de testing nivel 2 disponibles:");
+// === FUNCIONES DE DEBUG PARA NIVEL 3 ===
+// Función para mostrar estado del cuadrado giratorio
+window.debugObjetoNivel3 = function() {
+    if (!objetosGrid.cuadradoGiratorio.activo) {
+        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo");
+        return null;
+    }
+    
+    const obj = objetosGrid.cuadradoGiratorio;
+    const rotacionGrados = (obj.rotacion * 180 / Math.PI).toFixed(1);
+    const velocidadGrados = (obj.velocidadRotacion * 180 / Math.PI * 1000).toFixed(1); // por segundo
+    const faseNombres = ['→ Derecha', '↓ Abajo', '← Izquierda', '↑ Arriba'];
+    
+    console.log("🧪 [DEBUG] Estado del cuadrado giratorio nivel 3:");
+    console.log(`   Posición: (${obj.x.toFixed(1)}, ${obj.y.toFixed(1)})`);
+    console.log(`   Rotación actual: ${rotacionGrados}°`);
+    console.log(`   Velocidad rotación: ${velocidadGrados}°/s`);
+    console.log(`   Fase recorrido: ${obj.fase} - ${faseNombres[obj.fase]}`);
+    console.log(`   Progreso fase: ${(obj.progreso * 100).toFixed(1)}%`);
+    console.log(`   Velocidad desplazamiento: ${obj.velocidadDesplazamiento} px/ms`);
+    console.log(`   Tamaño: ${obj.tamaño}px`);
+    console.log(`   Color: ${obj.color}`);
+    console.log(`   Activo: ${obj.activo ? '✅ SÍ' : '❌ NO'}`);
+    console.log(`   Recorrido: (${obj.inicioX.toFixed(1)}, ${obj.inicioY.toFixed(1)}) → (${obj.finX.toFixed(1)}, ${obj.finY.toFixed(1)})`);
+    
+    return {
+        posicion: { x: obj.x, y: obj.y },
+        rotacion: rotacionGrados,
+        velocidadRotacion: velocidadGrados,
+        fase: obj.fase,
+        faseNombre: faseNombres[obj.fase],
+        progreso: obj.progreso,
+        velocidadDesplazamiento: obj.velocidadDesplazamiento,
+        tamaño: obj.tamaño,
+        color: obj.color,
+        activo: obj.activo,
+        recorrido: { inicioX: obj.inicioX, inicioY: obj.inicioY, finX: obj.finX, finY: obj.finY }
+    };
+};
+
+// Función para modificar velocidad de rotación del cuadrado giratorio
+window.debugSetVelocidadRotacion = function(gradosPorSegundo) {
+    if (!objetosGrid.cuadradoGiratorio.activo) {
+        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo");
+        return;
+    }
+    
+    const radianesPorMs = (gradosPorSegundo * Math.PI / 180) / 1000;
+    const velocidadAnterior = objetosGrid.cuadradoGiratorio.velocidadRotacion;
+    
+    objetosGrid.cuadradoGiratorio.velocidadRotacion = radianesPorMs;
+    
+    console.log(`🧪 [DEBUG] Velocidad de rotación cambiada:`);
+    console.log(`   Anterior: ${(velocidadAnterior * 180 / Math.PI * 1000).toFixed(1)}°/s`);
+    console.log(`   Nueva: ${gradosPorSegundo}°/s`);
+    
+    return window.debugObjetoNivel3();
+};
+
+// Función para modificar velocidad de desplazamiento del cuadrado
+window.debugSetVelocidadDesplazamiento = function(pixelesPorMs) {
+    if (!objetosGrid.cuadradoGiratorio.activo) {
+        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo");
+        return;
+    }
+    
+    const velocidadAnterior = objetosGrid.cuadradoGiratorio.velocidadDesplazamiento;
+    objetosGrid.cuadradoGiratorio.velocidadDesplazamiento = pixelesPorMs;
+    
+    console.log(`🧪 [DEBUG] Velocidad de desplazamiento cambiada:`);
+    console.log(`   Anterior: ${velocidadAnterior} px/ms`);
+    console.log(`   Nueva: ${pixelesPorMs} px/ms`);
+    
+    return window.debugObjetoNivel3();
+};
+
+// Función para forzar fase del recorrido
+window.debugForzarFase = function(numeroFase) {
+    if (!objetosGrid.cuadradoGiratorio.activo) {
+        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo");
+        return;
+    }
+    
+    if (numeroFase < 0 || numeroFase > 3) {
+        console.log("🧪 [DEBUG] Fase inválida. Use: 0=derecha, 1=abajo, 2=izquierda, 3=arriba");
+        return;
+    }
+    
+    const faseAnterior = objetosGrid.cuadradoGiratorio.fase;
+    objetosGrid.cuadradoGiratorio.fase = numeroFase;
+    objetosGrid.cuadradoGiratorio.progreso = 0;
+    
+    console.log(`🧪 [DEBUG] Fase del recorrido cambiada de ${faseAnterior} a ${numeroFase}`);
+    
+    return window.debugObjetoNivel3();
+};
+
+// Función para mostrar estado completo del nivel 3
+window.debugStatusNivel3 = function() {
+    console.log("🧪 [DEBUG] Estado completo nivel 3:");
+    console.log("=== GRID STATE ===");
+    console.log(`   Offset X: ${gridState.current.offsetX.toFixed(1)}`);
+    console.log(`   Offset Y: ${gridState.current.offsetY.toFixed(1)}`);
+    console.log(`   Rotación grid: ${(gridState.current.rotationAngle * 180 / Math.PI).toFixed(1)}°`);
+    
+    console.log("=== OBJETOS GRID ===");
+    window.debugObjetoNivel3();
+    
+    console.log("=== BANDERAS ===");
+    console.log(`   Nivel 3 inicializado: ${initFlagsGrid.level3 ? '✅ SÍ' : '❌ NO'}`);
+    
+    return {
+        gridState: gridState.current,
+        objetosGrid: objetosGrid,
+        inicializado: initFlagsGrid.level3
+    };
+};
+
+console.log("🧪 [DEBUG] Funciones de testing disponibles:");
+console.log("=== NIVEL 2 ===");
 console.log("   debugSimulateGameStart() - Simular inicio de cronómetro");
 console.log("   debugRotationStatus() - Ver estado actual de rotación");
 console.log("   debugForcePhase(0|1|2) - Forzar fase específica");
 console.log("   debugInterpolationSystem() - Verificar sistema de interpolación");
 console.log("   debugTemporalSync(segundos) - Test de sincronización temporal");
+console.log("=== NIVEL 3 ===");
+console.log("   debugObjetoNivel3() - Ver estado del cuadrado giratorio");
+console.log("   debugSetVelocidadRotacion(grados/s) - Cambiar velocidad de rotación");
+console.log("   debugSetVelocidadDesplazamiento(px/ms) - Cambiar velocidad de desplazamiento");
+console.log("   debugForzarFase(0-3) - Forzar fase del recorrido (0=derecha, 1=abajo, 2=izq, 3=arriba)");
+console.log("   debugStatusNivel3() - Estado completo del nivel 3");
 
 console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
 
@@ -1123,10 +1446,14 @@ function resetInitFlagsForLevel(level) {
                 }
                 break;
             case 3:
-                // Futuro: limpiar estado del nivel 3
-                if (window.gridLevel3State) {
-                    delete window.gridLevel3State;
-                }
+                // Limpiar objetos del nivel 3
+                objetosGrid.cuadradoGiratorio.activo = false;
+                objetosGrid.cuadradoGiratorio.rotacion = 0;
+                objetosGrid.cuadradoGiratorio.x = 0;
+                objetosGrid.cuadradoGiratorio.y = 0;
+                objetosGrid.cuadradoGiratorio.fase = 0;
+                objetosGrid.cuadradoGiratorio.progreso = 0;
+                console.log(`🎯 Objetos del nivel ${level} reseteados`);
                 break;
             // Agregar más niveles según necesidad
         }

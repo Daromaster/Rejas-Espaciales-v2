@@ -37,6 +37,18 @@ let gridState = {
     }
 };
 
+// === ESTADO DE OBJETOS INTEGRADOS (NIVEL 3+) ===
+let objetosGrid = {
+    // Objeto nivel 3: cuadrado giratorio
+    cuadradoGiratorio: {
+        rotacion: 0,
+        velocidadRotacion: 0.002, // rad/ms
+        tamaño: 80,
+        color: '#ff6b6b',
+        activo: false
+    }
+};
+
 // === FUNCIONES AUXILIARES MATEMÁTICAS ESTÁNDAR (NO POR NIVEL) ===
 const MathUtils = {
     // Función sinusoidal estándar
@@ -229,99 +241,66 @@ export function dibujarRejaBase(level) {
                 gridCanvases[1].stroke();
             }
             
-            // Dibujar líneas verticales
-            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
-                const x = configGrid.baseX + j * configGrid.tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, configGrid.baseY);
-                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
-                gridCanvases[1].stroke();
-            }
+            if (1==0) {
+
+                    // Dibujar líneas verticales - anulado reemplazado
+                    for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                        const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                        const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                        grad.addColorStop(0, gradientColors.dark);
+                        grad.addColorStop(0.5, gradientColors.bright);
+                        grad.addColorStop(1, gradientColors.dark);
+                        gridCanvases[1].strokeStyle = grad;
+                        gridCanvases[1].beginPath();
+                        gridCanvases[1].moveTo(x, configGrid.baseY);
+                        gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                        gridCanvases[1].stroke();
+                    }
             
+            } else {
+
+                    // Dibujar líneas verticales entrelazadas
+                    let y1 = 1
+                    let par = false
+                    for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                        const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                        if (par == false) {
+                            y1 = configGrid.baseY +  (configGrid.tamCuadrado*1.5)-(configGrid.grosorLinea/2)
+                        } else {
+                            y1 = configGrid.baseY +  (configGrid.tamCuadrado*0.5)-(configGrid.grosorLinea/2)
+                        }
+                        const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                        grad.addColorStop(0, gradientColors.dark);
+                        grad.addColorStop(0.5, gradientColors.bright);
+                        grad.addColorStop(1, gradientColors.dark);
+                        gridCanvases[1].strokeStyle = grad;
+                        gridCanvases[1].beginPath();
+                        gridCanvases[1].moveTo(x, configGrid.baseY);
+                        gridCanvases[1].lineTo(x, y1 );
+                        y1= y1 + configGrid.grosorLinea;
+                        gridCanvases[1].moveTo(x, y1);
+                        gridCanvases[1].lineTo(x, y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea);
+                        if (par == false) {
+                            y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea + configGrid.grosorLinea;
+                        } else {
+                            y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea+(configGrid.grosorLinea);
+                        }
+                        gridCanvases[1].moveTo(x, y1);
+                        gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                        gridCanvases[1].stroke();
+                        if (par == false) {
+                            par = true
+                        } else {
+                            par = false
+                        }
+                    }
+            }
+
             console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
             break;
         }
         
         case 2: {
-            // NIVEL 2: Reja con efecto de entrelazado (barrotes entre-cruzados)
-            configGrid = calcularConfiguracionGrid(width, height, 2);
-            
-            // CANVAS BASE (1): Reja con efecto entrelazado
-            ensureGridCanvas(1);
-            gridCanvases[1].clearRect(0, 0, width, height);
-            gridCanvases[1].lineWidth = configGrid.grosorLinea;
-            
-            // Colores para nivel 2 (verde para diferenciarlo)
-            const gradientColors = {
-                dark: "rgb(0, 31, 20)",
-                bright: "rgb(19, 231, 16)"
-            };
-            
-            // === PASO 1: Dibujar líneas horizontales COMPLETAS (base del tejido) ===
-            for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
-                const y = configGrid.baseY + i * configGrid.tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(configGrid.baseX, y);
-                gridCanvases[1].lineTo(configGrid.baseX + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado, y);
-                gridCanvases[1].stroke();
-            }
-            
-            // === PASO 2: Dibujar líneas verticales SEGMENTADAS (efecto entrelazado) ===
-            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
-                const x = configGrid.baseX + j * configGrid.tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.dark);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.dark);
-                gridCanvases[1].strokeStyle = grad;
-                
-                // Determinar patrón de alternancia para esta línea vertical
-                // Las líneas impares empiezan "por encima", las pares "por debajo"
-                const lineaIndex = Math.floor(j - 0.5);
-                const empiezaPorEncima = (lineaIndex % 2 === 0);
-                
-                // Dibujar segmentos entre intersecciones
-                for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
-                    // Calcular coordenadas del segmento
-                    const yInicio = (i === 0.5) ? configGrid.baseY : 
-                                    configGrid.baseY + i * configGrid.tamCuadrado - configGrid.grosorLinea/2;
-                    const yFin = (i === configGrid.cantidadVert + 0.5) ? 
-                                 configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado :
-                                 configGrid.baseY + i * configGrid.tamCuadrado + configGrid.grosorLinea/2;
-                    
-                    // Determinar si este segmento va por encima o por debajo
-                    const segmentoIndex = Math.floor(i - 0.5);
-                    const esPorEncima = empiezaPorEncima ? (segmentoIndex % 2 === 0) : (segmentoIndex % 2 === 1);
-                    
-                    // Aplicar composite operation según corresponda
-                    gridCanvases[1].globalCompositeOperation = esPorEncima ? 'source-over' : 'destination-over';
-                    
-                    // Dibujar el segmento
-                    gridCanvases[1].beginPath();
-                    gridCanvases[1].moveTo(x, yInicio);
-                    gridCanvases[1].lineTo(x, yFin);
-                    gridCanvases[1].stroke();
-                }
-                
-                // Restaurar composite operation a normal
-                gridCanvases[1].globalCompositeOperation = 'source-over';
-            }
-            
-            console.log("✨ Reja base nivel 2 con efecto ENTRELAZADO dibujada CORRECTAMENTE en gridCanvases[1]");
-            break;
-        }
-        
-        case 3: {
             // Configuración del nivel 1
             configGrid = calcularConfiguracionGrid(width, height, level);
             
@@ -330,10 +309,10 @@ export function dibujarRejaBase(level) {
             gridCanvases[1].clearRect(0, 0, width, height);
             gridCanvases[1].lineWidth = configGrid.grosorLinea;
             
-            // Colores cyan
-            const gradientColors = {
-                dark: "rgb(0, 19, 24)",
-                bright: "rgb(36, 36, 214)"
+             // Colores para nivel 2 (verde para diferenciarlo)
+             const gradientColors = {
+                dark: "rgb(0, 31, 20)",
+                bright: "rgb(19, 231, 16)"
             };
             
             // Dibujar líneas horizontales
@@ -350,9 +329,16 @@ export function dibujarRejaBase(level) {
                 gridCanvases[1].stroke();
             }
             
-            // Dibujar líneas verticales
+            // Dibujar líneas verticales entrelazadas
+           let y1 = 1
+           let par = false
             for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
                 const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                if (par == false) {
+                    y1 = configGrid.baseY +  (configGrid.tamCuadrado*1.5)-(configGrid.grosorLinea/2)
+                } else {
+                    y1 = configGrid.baseY +  (configGrid.tamCuadrado*0.5)-(configGrid.grosorLinea/2)
+                }
                 const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
                 grad.addColorStop(0, gradientColors.dark);
                 grad.addColorStop(0.5, gradientColors.bright);
@@ -360,11 +346,74 @@ export function dibujarRejaBase(level) {
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
                 gridCanvases[1].moveTo(x, configGrid.baseY);
+                gridCanvases[1].lineTo(x, y1);
+                y1= y1 + configGrid.grosorLinea;
+                gridCanvases[1].moveTo(x, y1);
+                gridCanvases[1].lineTo(x, y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea);
+                if (par == false) {
+                    y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea + configGrid.grosorLinea;
+                } else {
+                    y1 = y1+(configGrid.tamCuadrado*2) - configGrid.grosorLinea+(configGrid.grosorLinea);
+                }
+                gridCanvases[1].moveTo(x, y1);
+                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                gridCanvases[1].stroke();
+                if (par == false) {
+                    par = true
+                } else {
+                    par = false
+                }
+            }
+            
+            console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
+            break;
+        }
+        
+        case 3: {
+            // NIVEL 3: Reja con cuadrado giratorio integrado
+            configGrid = calcularConfiguracionGrid(width, height, level);
+            
+            // CANVAS BASE (1): Reja sin transformaciones
+            ensureGridCanvas(1);
+            gridCanvases[1].clearRect(0, 0, width, height);
+            gridCanvases[1].lineWidth = configGrid.grosorLinea;
+            
+            // Colores para nivel 3 (magenta/morado)
+            const gradientColors = {
+                dark: "rgb(32, 81, 40)",
+                bright: "rgb(196, 25, 202)",
+                border: "rgb(0, 0, 0)"
+            };
+            
+            // Dibujar líneas horizontales
+            for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
+                const y = configGrid.baseY + i * configGrid.tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
+                grad.addColorStop(0, gradientColors.border);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.border);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(configGrid.baseX, y);
+                gridCanvases[1].lineTo(configGrid.baseX + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado, y);
+                gridCanvases[1].stroke();
+            }
+            
+            // Dibujar líneas verticales
+            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
+                const x = configGrid.baseX + j * configGrid.tamCuadrado;
+                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
+                grad.addColorStop(0, gradientColors.border);
+                grad.addColorStop(0.5, gradientColors.bright);
+                grad.addColorStop(1, gradientColors.border);
+                gridCanvases[1].strokeStyle = grad;
+                gridCanvases[1].beginPath();
+                gridCanvases[1].moveTo(x, configGrid.baseY);
                 gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
                 gridCanvases[1].stroke();
             }
             
-            console.log("✨ Reja base nivel 1 dibujada CORRECTAMENTE en gridCanvases[1]");
+            console.log("✨ Reja base nivel 3 dibujada CORRECTAMENTE en gridCanvases[1]");
             break;
         }
 
@@ -452,23 +501,89 @@ function composeGrid(level, alpha = 1.0) {
         
 
         case 3: {
-            // CANVAS COMPUESTO (2): Canvas base + transformaciones
+            // NIVEL 3: Reja con cuadrado giratorio integrado
+            // Según las especificaciones de "Objetos Ideas.md":
+            // - gridCanvases[2] para dibujar el cuadrado
+            // - gridCanvases[3] para pegar el cuadrado girando
+            // - gridCanvases[4] para pegar reja base + cuadrado desplazado
+            // - gridCanvases[5] para el conjunto con flotación
+            
+            // PASO 1: Dibujar cuadrado base en gridCanvases[2]
             ensureGridCanvas(2);
             gridCanvases[2].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            // APLICAR TRANSFORMACIONES CORRECTAMENTE
-            gridCanvases[2].save();
-            gridCanvases[2].translate(interpolatedState.offsetX, interpolatedState.offsetY);
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                const obj = objetosGrid.cuadradoGiratorio;
+                const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
+                const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+                const mitadTamaño = obj.tamaño / 2;
+                
+                // Dibujar cuadrado centrado
+                gridCanvases[2].fillStyle = obj.color;
+                gridCanvases[2].strokeStyle = '#ff0000';
+                gridCanvases[2].lineWidth = 3;
+                
+                gridCanvases[2].fillRect(
+                    centroX - mitadTamaño, 
+                    centroY - mitadTamaño, 
+                    obj.tamaño, 
+                    obj.tamaño
+                );
+                gridCanvases[2].strokeRect(
+                    centroX - mitadTamaño, 
+                    centroY - mitadTamaño, 
+                    obj.tamaño, 
+                    obj.tamaño
+                );
+            }
             
-            // CAPTURAR MATRIZ DE TRANSFORMACIÓN EN EL LUGAR CORRECTO
-            transformMatrix = gridCanvases[2].getTransform();
+            // PASO 2: Aplicar rotación al cuadrado en gridCanvases[3]
+            ensureGridCanvas(3);
+            gridCanvases[3].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            // Componer imagen final
-            gridCanvases[2].drawImage(gridCanvases[1].canvas, 0, 0);
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
+                const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+                
+                gridCanvases[3].save();
+                gridCanvases[3].translate(centroX, centroY);
+                gridCanvases[3].rotate(objetosGrid.cuadradoGiratorio.rotacion);
+                gridCanvases[3].translate(-centroX, -centroY);
+                
+                // Dibujar el cuadrado base rotado
+                gridCanvases[3].drawImage(gridCanvases[2].canvas, 0, 0);
+                
+                gridCanvases[3].restore();
+            }
             
-            gridCanvases[2].restore();
+            // PASO 3: Componer reja base + cuadrado en gridCanvases[4]
+            ensureGridCanvas(4);
+            gridCanvases[4].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
             
-            return 2; // Retornar índice del canvas final para este nivel
+            // Dibujar reja base primero
+            gridCanvases[4].drawImage(gridCanvases[1].canvas, 0, 0);
+            
+            // Dibujar cuadrado giratorio encima
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                gridCanvases[4].drawImage(gridCanvases[3].canvas, 0, 0);
+            }
+            
+            // PASO 4: Aplicar flotación al conjunto en gridCanvases[5]
+            ensureGridCanvas(5);
+            gridCanvases[5].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+            
+            gridCanvases[5].save();
+            gridCanvases[5].translate(interpolatedState.offsetX, interpolatedState.offsetY);
+            
+            // CAPTURAR MATRIZ DE TRANSFORMACIÓN
+            transformMatrix = gridCanvases[5].getTransform();
+            
+            // Componer imagen final con flotación
+            gridCanvases[5].drawImage(gridCanvases[4].canvas, 0, 0);
+            
+            gridCanvases[5].restore();
+            
+            return 5; // Retornar índice del canvas final para este nivel
         }
 
         default:
@@ -526,13 +641,13 @@ export function updateGridLogic(deltaTime, level) {
             // ============================================================================
             
             // --- PARÁMETROS DE FLOTACIÓN ---
-            const amplitudeY = 40;        // Amplitud vertical de flotación
-            const amplitudeX = 45;        // Amplitud horizontal de flotación
-            const frequencyY = 0.00015;   // Frecuencia vertical
-            const frequencyX = 0.0001;    // Frecuencia horizontal
-            const speed = 1;              // Velocidad general de flotación
-            const phaseY = 0;             // Fase inicial Y
-            const phaseX = Math.PI / 2;   // Fase inicial X
+            const amplitudeY = 22;      // Amplitud vertical personalizada
+            const amplitudeX = 18;      // Amplitud horizontal personalizada
+            const frequencyY = 0.001;   // Frecuencia vertical
+            const frequencyX = 0.0007;  // Frecuencia horizontal
+            const speed = 1.2;          // Velocidad general
+            const phaseY = Math.PI / 3; // Fase inicial Y (personalizada)
+            const phaseX = Math.PI / 6; // Fase inicial X (personalizada)
             
             // --- PARÁMETROS DE ROTACIÓN ---
             const DEG_TO_RAD = Math.PI / 180;
@@ -764,29 +879,58 @@ export function updateGridLogic(deltaTime, level) {
         }
         
         case 3: {
-            // === MOTOR DE MOVIMIENTO NIVEL 3: MOVIMIENTO ELÍPTICO (EJEMPLO FUTURO) ===
-            // Parámetros completamente diferentes
-            const ellipseData = MathUtils.ellipticalMotion(
-                currentTime * 0.8,  // Velocidad diferente
-                0.0012,             // Frecuencia X elipse
-                0.0008,             // Frecuencia Y elipse  
-                35,                 // Amplitud X elipse
-                20,                 // Amplitud Y elipse
-                0,                  // Fase X
-                Math.PI / 4         // Fase Y diferente
+            // === MOTOR DE MOVIMIENTO NIVEL 3: FLOTACIÓN + CUADRADO GIRATORIO ===
+            
+            // Inicialización una sola vez al empezar el nivel
+            if (needsInitialization(level)) {
+                console.log("🔧 Inicializando objetos nivel 3...");
+                
+                // Activar cuadrado giratorio
+                objetosGrid.cuadradoGiratorio.activo = true;
+                objetosGrid.cuadradoGiratorio.rotacion = 0;
+                
+                setLevelInitialized(level);
+                console.log("✅ Objetos nivel 3 inicializados");
+            }
+            
+            // --- PARÁMETROS DE FLOTACIÓN NIVEL 3 ---
+            const amplitudeY = 25;        // Amplitud vertical diferente
+            const amplitudeX = 20;        // Amplitud horizontal diferente
+            const frequencyY = 0.0012;    // Frecuencia vertical
+            const frequencyX = 0.0008;    // Frecuencia horizontal
+            const speed = 1.0;            // Velocidad general
+            const phaseY = Math.PI / 4;   // Fase inicial Y
+            const phaseX = Math.PI / 6;   // Fase inicial X
+            
+            // Motor de flotación Y
+            gridState.current.offsetY = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyY, 
+                amplitudeY, 
+                phaseY
             );
             
-            gridState.current.offsetX = ellipseData.x;
-            gridState.current.offsetY = ellipseData.y;
-            
-            // === MOTOR DE ROTACIÓN PENDULAR NIVEL 3 ===
-            const pendulumAmplitude = Math.PI / 4; // 45 grados máximo
-            const pendulumFreq = 0.0005;
-            gridState.current.rotationAngle = MathUtils.sineWave(
-                currentTime, 
-                pendulumFreq, 
-                pendulumAmplitude
+            // Motor de flotación X  
+            gridState.current.offsetX = MathUtils.sineWave(
+                currentTime * speed, 
+                frequencyX, 
+                amplitudeX, 
+                phaseX
             );
+            
+            // Sin rotación de la reja en nivel 3
+            gridState.current.rotationAngle = 0;
+            
+            // --- MOTOR DEL CUADRADO GIRATORIO ---
+            if (objetosGrid.cuadradoGiratorio.activo) {
+                // Actualizar rotación del cuadrado
+                objetosGrid.cuadradoGiratorio.rotacion += objetosGrid.cuadradoGiratorio.velocidadRotacion * deltaTime;
+                
+                // Normalizar ángulo (0 a 2π)
+                if (objetosGrid.cuadradoGiratorio.rotacion >= 2 * Math.PI) {
+                    objetosGrid.cuadradoGiratorio.rotacion -= 2 * Math.PI;
+                }
+            }
             
             break;
         }
@@ -1056,12 +1200,85 @@ window.debugTemporalSync = function(durationSeconds = 10) {
 };
 
 // Mensaje de ayuda para debug
-console.log("🧪 [DEBUG] Funciones de testing nivel 2 disponibles:");
+// === FUNCIONES DE DEBUG PARA NIVEL 3 ===
+// Función para mostrar estado del cuadrado giratorio
+window.debugObjetoNivel3 = function() {
+    if (!objetosGrid.cuadradoGiratorio.activo) {
+        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo");
+        return null;
+    }
+    
+    const obj = objetosGrid.cuadradoGiratorio;
+    const rotacionGrados = (obj.rotacion * 180 / Math.PI).toFixed(1);
+    const velocidadGrados = (obj.velocidadRotacion * 180 / Math.PI * 1000).toFixed(1); // por segundo
+    
+    console.log("🧪 [DEBUG] Estado del cuadrado giratorio nivel 3:");
+    console.log(`   Rotación actual: ${rotacionGrados}°`);
+    console.log(`   Velocidad: ${velocidadGrados}°/s`);
+    console.log(`   Tamaño: ${obj.tamaño}px`);
+    console.log(`   Color: ${obj.color}`);
+    console.log(`   Activo: ${obj.activo ? '✅ SÍ' : '❌ NO'}`);
+    
+    return {
+        rotacion: rotacionGrados,
+        velocidad: velocidadGrados,
+        tamaño: obj.tamaño,
+        color: obj.color,
+        activo: obj.activo
+    };
+};
+
+// Función para modificar velocidad del cuadrado giratorio
+window.debugSetVelocidadCuadrado = function(gradosPorSegundo) {
+    if (!objetosGrid.cuadradoGiratorio.activo) {
+        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo");
+        return;
+    }
+    
+    const radianesPorMs = (gradosPorSegundo * Math.PI / 180) / 1000;
+    const velocidadAnterior = objetosGrid.cuadradoGiratorio.velocidadRotacion;
+    
+    objetosGrid.cuadradoGiratorio.velocidadRotacion = radianesPorMs;
+    
+    console.log(`🧪 [DEBUG] Velocidad del cuadrado cambiada:`);
+    console.log(`   Anterior: ${(velocidadAnterior * 180 / Math.PI * 1000).toFixed(1)}°/s`);
+    console.log(`   Nueva: ${gradosPorSegundo}°/s`);
+    
+    return window.debugObjetoNivel3();
+};
+
+// Función para mostrar estado completo del nivel 3
+window.debugStatusNivel3 = function() {
+    console.log("🧪 [DEBUG] Estado completo nivel 3:");
+    console.log("=== GRID STATE ===");
+    console.log(`   Offset X: ${gridState.current.offsetX.toFixed(1)}`);
+    console.log(`   Offset Y: ${gridState.current.offsetY.toFixed(1)}`);
+    console.log(`   Rotación grid: ${(gridState.current.rotationAngle * 180 / Math.PI).toFixed(1)}°`);
+    
+    console.log("=== OBJETOS GRID ===");
+    window.debugObjetoNivel3();
+    
+    console.log("=== BANDERAS ===");
+    console.log(`   Nivel 3 inicializado: ${initFlagsGrid.level3 ? '✅ SÍ' : '❌ NO'}`);
+    
+    return {
+        gridState: gridState.current,
+        objetosGrid: objetosGrid,
+        inicializado: initFlagsGrid.level3
+    };
+};
+
+console.log("🧪 [DEBUG] Funciones de testing disponibles:");
+console.log("=== NIVEL 2 ===");
 console.log("   debugSimulateGameStart() - Simular inicio de cronómetro");
 console.log("   debugRotationStatus() - Ver estado actual de rotación");
 console.log("   debugForcePhase(0|1|2) - Forzar fase específica");
 console.log("   debugInterpolationSystem() - Verificar sistema de interpolación");
 console.log("   debugTemporalSync(segundos) - Test de sincronización temporal");
+console.log("=== NIVEL 3 ===");
+console.log("   debugObjetoNivel3() - Ver estado del cuadrado giratorio");
+console.log("   debugSetVelocidadCuadrado(grados/s) - Cambiar velocidad del cuadrado");
+console.log("   debugStatusNivel3() - Estado completo del nivel 3");
 
 console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
 
@@ -1082,10 +1299,10 @@ function resetInitFlagsForLevel(level) {
                 }
                 break;
             case 3:
-                // Futuro: limpiar estado del nivel 3
-                if (window.gridLevel3State) {
-                    delete window.gridLevel3State;
-                }
+                // Limpiar objetos del nivel 3
+                objetosGrid.cuadradoGiratorio.activo = false;
+                objetosGrid.cuadradoGiratorio.rotacion = 0;
+                console.log(`🎯 Objetos del nivel ${level} reseteados`);
                 break;
             // Agregar más niveles según necesidad
         }
