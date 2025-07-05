@@ -554,40 +554,54 @@ function composeGrid(level, alpha = 1.0) {
                     const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
                     const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
                     const mitadTamaño = obj.tamaño / 2;
-                    
-
                     //––– Gradiente del anillo (gradRad1) ––––––––––––––––––––––––––
-                    const gradRad1 = gridCanvases[2].createRadialGradient(0,0,  obj.radioInterior, 0,0, obj.radioExterior );
+                    const gradRad1 = gridCanvases[2].createRadialGradient(centroX, centroY, obj.radioInterior, centroX,centroY, obj.radioExterior );
+                    gradRad1.addColorStop(0, obj.colorPerimetroOscuro);
+                    gradRad1.addColorStop(0.45, obj.colorPerimetroClaro);
+                    gradRad1.addColorStop(0.55, obj.colorPerimetroClaro);
+                    gradRad1.addColorStop(1, obj.colorPerimetroOscuro);
 
-                    gradRad1.addColorStop(0, obj.colorRellenoClaro);
-                    gradRad1.addColorStop(1, obj.colorRellenoOscuro);
-                    
-                    
+                    const  distCircInt = obj.radioInterior *.85;
+                    const  RadCenCirculos = ((obj.radioInterior - distCircInt) + obj.radioExterior) *.5;
+                    const gradRad1b = gridCanvases[2].createRadialGradient(centroX, centroY, obj.radioInterior - distCircInt, centroX,centroY, obj.radioExterior - distCircInt );
+                    gradRad1b.addColorStop(0, obj.colorPerimetroOscuro);
+                    gradRad1b.addColorStop(0.45, obj.colorPerimetroClaro);
+                    gradRad1b.addColorStop(0.55, obj.colorPerimetroClaro);
+                    gradRad1b.addColorStop(1, obj.colorPerimetroOscuro);
+                                        
                     gridCanvases[2].save();
                     gridCanvases[2].lineWidth   =   obj.grosorPerimetro;
                     gridCanvases[2].strokeStyle = gradRad1;
-
                     gridCanvases[2].beginPath();
                     gridCanvases[2].arc(centroX, centroY, obj.radioMedio, 0, Math.PI * 2);
                     gridCanvases[2].stroke();
+                    gridCanvases[2].strokeStyle = gradRad1b;
+                    gridCanvases[2].beginPath();
+                    gridCanvases[2].arc(centroX, centroY, obj.radioMedio - distCircInt, 0, Math.PI * 2);
+                    gridCanvases[2].stroke();
                     gridCanvases[2].restore();
+
+
+
+
 
                     //––– Tres círculos interiores ––––––––––––––––––––––––––––––––––
                     for (let i = 0; i < 3; i++) {
                         const angulo = (i * 2 * Math.PI) / 3; // 0°, 120°, 240°
-                        const cx = centroX + (obj.radioInterior *.55) * Math.cos(angulo);
-                        const cy = centroY + (obj.radioInterior *.55) * Math.sin(angulo);
+                        const cx = centroX + RadCenCirculos * Math.cos(angulo);
+                        const cy = centroY + RadCenCirculos * Math.sin(angulo);
                         
                        
-                        const gradRad2 = gridCanvases[2].createRadialGradient(cx, cy, 0, cx, cy, obj.radioCirculo);
-                        gradRad2.addColorStop(0, obj.colorPerimetroOscuro);
-                        gradRad2.addColorStop(1, obj.colorPerimetroOscuro);
+                        const gradRad2 = gridCanvases[2].createRadialGradient(cx, cy, 0, cx, cy, (obj.radioMedio - distCircInt)*1.2);
+                        gradRad2.addColorStop(1, obj.colorRellenoOscuro);
+                        //gradRad2.addColorStop(0.6, obj.colorRellenoClaro);
+                        gradRad2.addColorStop(0.2, obj.colorRellenoClaro);
 
 
                         gridCanvases[2].save();
                         gridCanvases[2].fillStyle = gradRad2;
                         gridCanvases[2].beginPath();
-                        gridCanvases[2].arc(cx, cy, obj.radioCirculo, 0, Math.PI * 2);
+                        gridCanvases[2].arc(cx, cy, (obj.radioMedio - distCircInt)*1.2, 0, Math.PI * 2);
                         gridCanvases[2].fill();
                         gridCanvases[2].restore();
                     }
@@ -989,12 +1003,12 @@ export function updateGridLogic(deltaTime, level) {
 
                         
                         // --- COLORES DEL PERÍMETRO TUBULAR (ESTILO BARROTES) ---
-                        colorPerimetroClaro: "rgb(243, 217, 68)",          // Dorado claro
-                        colorPerimetroOscuro: "rgb(81, 46, 23)",            // Marrón muy oscuro
+                        colorPerimetroClaro: "rgb(161, 137, 1)",          // Dorado claro
+                        colorPerimetroOscuro: "rgb(12, 10, 9)",            // Marrón muy oscuro
                         
                         // --- COLORES DEL RELLENO PIRAMIDAL ---
-                        colorRellenoClaro: "rgb(173, 36, 42)",             // Rojo claro
-                        colorRellenoOscuro: "rgb(78, 25, 26)",               // Rojo muy oscuro
+                        colorRellenoClaro: "rgb(246, 9, 21)",             // Rojo claro
+                        colorRellenoOscuro: "rgb(38, 29, 29)",               // Rojo muy oscuro
                         
                         // --- PARÁMETROS DE MOVIMIENTO ---
                         velocidadRotacion: 0.002,                          // rad/ms - velocidad de giro
