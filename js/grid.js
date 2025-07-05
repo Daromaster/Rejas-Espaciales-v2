@@ -37,6 +37,26 @@ let gridState = {
     }
 };
 
+// === ESTADO DE INTERPOLACIÓN PARA OBJETOS NIVEL 3 ===
+let objectsLevel3State = {
+    // Estado anterior (para interpolación)
+    previous: {
+        cuadradoGiratorio: {
+            x: 0,
+            y: 0,
+            rotacion: 0
+        }
+    },
+    // Estado actual (30 FPS lógica)
+    current: {
+        cuadradoGiratorio: {
+            x: 0,
+            y: 0,
+            rotacion: 0
+        }
+    }
+};
+
 // === ESTADO DE OBJETOS INTEGRADOS (NIVEL 3+) ===
 // Los objetos por nivel se definen en sus respectivas banderas de inicialización
 
@@ -447,13 +467,18 @@ function composeGrid(level, alpha = 1.0) {
     };
     
     const interpolatedState = {
-
-
-
-
         offsetX: Utils.lerp(gridState.previous.offsetX, gridState.current.offsetX, alpha),
         offsetY: Utils.lerp(gridState.previous.offsetY, gridState.current.offsetY, alpha),
         rotationAngle: lerpAngle(gridState.previous.rotationAngle, gridState.current.rotationAngle, alpha)
+    };
+    
+    // ⚠️ INTERPOLACIÓN PARA OBJETOS NIVEL 3
+    const interpolatedObjectsLevel3 = {
+        cuadradoGiratorio: {
+            x: Utils.lerp(objectsLevel3State.previous.cuadradoGiratorio.x, objectsLevel3State.current.cuadradoGiratorio.x, alpha),
+            y: Utils.lerp(objectsLevel3State.previous.cuadradoGiratorio.y, objectsLevel3State.current.cuadradoGiratorio.y, alpha),
+            rotacion: lerpAngle(objectsLevel3State.previous.cuadradoGiratorio.rotacion, objectsLevel3State.current.cuadradoGiratorio.rotacion, alpha)
+        }
     };
     
 
@@ -567,138 +592,7 @@ function composeGrid(level, alpha = 1.0) {
                         gridCanvases[2].restore();
                     }
 
-                    if (1==0) {
-                            // === RELLENO PIRAMIDAL: 4 TRIÁNGULOS CON GRADIENTES ===
-                            
-                            // Triángulo superior (más claro - cara superior de la pirámide)
-                            const gradTop = gridCanvases[2].createLinearGradient(
-                                centroX, centroY - mitadTamaño, 
-                                centroX, centroY
-                            );
-                            gradTop.addColorStop(0, obj.colorRellenoClaro);
-                            gradTop.addColorStop(1, obj.colorRellenoOscuro);
-                            
-                            gridCanvases[2].fillStyle = gradTop;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX - mitadTamaño, centroY - mitadTamaño); // Esquina superior izq
-                            gridCanvases[2].lineTo(centroX + mitadTamaño, centroY - mitadTamaño); // Esquina superior der
-                            gridCanvases[2].lineTo(centroX, centroY); // Centro
-                            gridCanvases[2].closePath();
-                            gridCanvases[2].fill();
-                            
-                            // Triángulo derecho (intermedio)
-                            const gradRight = gridCanvases[2].createLinearGradient(
-                                centroX + mitadTamaño, centroY, 
-                                centroX, centroY
-                            );
-                            gradRight.addColorStop(0, obj.colorRellenoOscuro);
-                            gradRight.addColorStop(1, obj.colorRellenoClaro);
-                            
-                            gridCanvases[2].fillStyle = gradRight;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX + mitadTamaño, centroY - mitadTamaño); // Esquina superior der
-                            gridCanvases[2].lineTo(centroX + mitadTamaño, centroY + mitadTamaño); // Esquina inferior der
-                            gridCanvases[2].lineTo(centroX, centroY); // Centro
-                            gridCanvases[2].closePath();
-                            gridCanvases[2].fill();
-                            
-                            // Triángulo inferior (más oscuro - sombra)
-                            const gradBottom = gridCanvases[2].createLinearGradient(
-                                centroX, centroY + mitadTamaño, 
-                                centroX, centroY
-                            );
-                            gradBottom.addColorStop(0, obj.colorRellenoOscuro);
-                            gradBottom.addColorStop(0.3, obj.colorRellenoOscuro);
-                            gradBottom.addColorStop(1, obj.colorRellenoClaro);
-                            
-                            gridCanvases[2].fillStyle = gradBottom;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX + mitadTamaño, centroY + mitadTamaño); // Esquina inferior der
-                            gridCanvases[2].lineTo(centroX - mitadTamaño, centroY + mitadTamaño); // Esquina inferior izq
-                            gridCanvases[2].lineTo(centroX, centroY); // Centro
-                            gridCanvases[2].closePath();
-                            gridCanvases[2].fill();
-                            
-                            // Triángulo izquierdo (intermedio-oscuro)
-                            const gradLeft = gridCanvases[2].createLinearGradient(
-                                centroX - mitadTamaño, centroY, 
-                                centroX, centroY
-                            );
-                            gradLeft.addColorStop(0, obj.colorRellenoOscuro);
-                            gradLeft.addColorStop(0.7, obj.colorRellenoClaro);
-                            gradLeft.addColorStop(1, obj.colorRellenoClaro);
-                            
-                            gridCanvases[2].fillStyle = gradLeft;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX - mitadTamaño, centroY + mitadTamaño); // Esquina inferior izq
-                            gridCanvases[2].lineTo(centroX - mitadTamaño, centroY - mitadTamaño); // Esquina superior izq
-                            gridCanvases[2].lineTo(centroX, centroY); // Centro
-                            gridCanvases[2].closePath();
-                            gridCanvases[2].fill();
-                            
-                            // === PERÍMETRO TUBULAR ESTILO BARROTES ===
-                            gridCanvases[2].lineWidth = obj.grosorPerimetro;
-                            
-                            // Lado superior
-                            const gradTopBorder = gridCanvases[2].createLinearGradient(
-                                centroX, centroY - mitadTamaño - obj.grosorPerimetro/2, 
-                                centroX, centroY - mitadTamaño + obj.grosorPerimetro/2
-                            );
-                            gradTopBorder.addColorStop(0, obj.colorPerimetroOscuro);
-                            gradTopBorder.addColorStop(0.5, obj.colorPerimetroClaro);
-                            gradTopBorder.addColorStop(1, obj.colorPerimetroOscuro);
-                            
-                            gridCanvases[2].strokeStyle = gradTopBorder;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX - mitadTamaño, centroY - mitadTamaño);
-                            gridCanvases[2].lineTo(centroX + mitadTamaño, centroY - mitadTamaño);
-                            gridCanvases[2].stroke();
-                            
-                            // Lado derecho
-                            const gradRightBorder = gridCanvases[2].createLinearGradient(
-                                centroX + mitadTamaño - obj.grosorPerimetro/2, centroY, 
-                                centroX + mitadTamaño + obj.grosorPerimetro/2, centroY
-                            );
-                            gradRightBorder.addColorStop(0, obj.colorPerimetroOscuro);
-                            gradRightBorder.addColorStop(0.5, obj.colorPerimetroClaro);
-                            gradRightBorder.addColorStop(1, obj.colorPerimetroOscuro);
-                            
-                            gridCanvases[2].strokeStyle = gradRightBorder;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX + mitadTamaño, centroY - mitadTamaño);
-                            gridCanvases[2].lineTo(centroX + mitadTamaño, centroY + mitadTamaño);
-                            gridCanvases[2].stroke();
-                            
-                            // Lado inferior
-                            const gradBottomBorder = gridCanvases[2].createLinearGradient(
-                                centroX, centroY + mitadTamaño - obj.grosorPerimetro/2, 
-                                centroX, centroY + mitadTamaño + obj.grosorPerimetro/2
-                            );
-                            gradBottomBorder.addColorStop(0, obj.colorPerimetroOscuro);
-                            gradBottomBorder.addColorStop(0.5, obj.colorPerimetroClaro);
-                            gradBottomBorder.addColorStop(1, obj.colorPerimetroOscuro);
-                            
-                            gridCanvases[2].strokeStyle = gradBottomBorder;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX + mitadTamaño, centroY + mitadTamaño);
-                            gridCanvases[2].lineTo(centroX - mitadTamaño, centroY + mitadTamaño);
-                            gridCanvases[2].stroke();
-                            
-                            // Lado izquierdo
-                            const gradLeftBorder = gridCanvases[2].createLinearGradient(
-                                centroX - mitadTamaño - obj.grosorPerimetro/2, centroY, 
-                                centroX - mitadTamaño + obj.grosorPerimetro/2, centroY
-                            );
-                            gradLeftBorder.addColorStop(0, obj.colorPerimetroOscuro);
-                            gradLeftBorder.addColorStop(0.5, obj.colorPerimetroClaro);
-                            gradLeftBorder.addColorStop(1, obj.colorPerimetroOscuro);
-                            
-                            gridCanvases[2].strokeStyle = gradLeftBorder;
-                            gridCanvases[2].beginPath();
-                            gridCanvases[2].moveTo(centroX - mitadTamaño, centroY + mitadTamaño);
-                            gridCanvases[2].lineTo(centroX - mitadTamaño, centroY - mitadTamaño);
-                            gridCanvases[2].stroke();
-                    }
+                    
                 }
                 
                 // PASO 2: Aplicar rotación al cuadrado en gridCanvases[3]
@@ -711,7 +605,8 @@ function composeGrid(level, alpha = 1.0) {
                     
                     gridCanvases[3].save();
                     gridCanvases[3].translate(centroX, centroY);
-                    gridCanvases[3].rotate(window.gridLevel3State.cuadradoGiratorio.rotacion);
+                    // ⚠️ USAR ROTACIÓN INTERPOLADA EN LUGAR DE VALOR DIRECTO
+                    gridCanvases[3].rotate(interpolatedObjectsLevel3.cuadradoGiratorio.rotacion);
                     gridCanvases[3].translate(-centroX, -centroY);
                     
                     // Dibujar el cuadrado base rotado
@@ -729,12 +624,15 @@ function composeGrid(level, alpha = 1.0) {
                 
                 // Dibujar cuadrado giratorio encima aplicando la nueva posición
                 if (window.gridLevel3State && window.gridLevel3State.cuadradoGiratorio.activo) {
-                    const obj = window.gridLevel3State.cuadradoGiratorio;
                     const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
                     const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
                     
                     gridCanvases[4].save();
-                    gridCanvases[4].translate(obj.x - centroX, obj.y - centroY);
+                    // ⚠️ USAR POSICIÓN INTERPOLADA EN LUGAR DE VALORES DIRECTOS
+                    gridCanvases[4].translate(
+                        interpolatedObjectsLevel3.cuadradoGiratorio.x - centroX, 
+                        interpolatedObjectsLevel3.cuadradoGiratorio.y - centroY
+                    );
                     gridCanvases[4].drawImage(gridCanvases[3].canvas, 0, 0);
                     gridCanvases[4].restore();
                 }
@@ -1127,6 +1025,18 @@ export function updateGridLogic(deltaTime, level) {
                 obj.x = obj.inicioX;
                 obj.y = obj.inicioY;
                 
+                // ⚠️ INICIALIZAR ESTADO DE INTERPOLACIÓN CON VALORES INICIALES
+                objectsLevel3State.previous.cuadradoGiratorio = {
+                    x: obj.x,
+                    y: obj.y,
+                    rotacion: obj.rotacion
+                };
+                objectsLevel3State.current.cuadradoGiratorio = {
+                    x: obj.x,
+                    y: obj.y,
+                    rotacion: obj.rotacion
+                };
+                
                 initFlagsGrid.level3 = true; // Marcar como inicializado
                 console.log("🎯 Nivel 3: Variables de cuadrado giratorio inicializadas");
                 console.log(`   Tamaño: ${obj.tamaño.toFixed(1)}px (${(obj.tamaño/configGrid.tamCuadrado*100).toFixed(1)}% de celda)`);
@@ -1167,6 +1077,13 @@ export function updateGridLogic(deltaTime, level) {
             // --- MOTOR DEL CUADRADO GIRATORIO ---
             if (window.gridLevel3State && window.gridLevel3State.cuadradoGiratorio.activo) {
                 const obj = window.gridLevel3State.cuadradoGiratorio;
+                
+                // ⚠️ GUARDAR ESTADO ANTERIOR PARA INTERPOLACIÓN
+                objectsLevel3State.previous.cuadradoGiratorio = {
+                    x: objectsLevel3State.current.cuadradoGiratorio.x,
+                    y: objectsLevel3State.current.cuadradoGiratorio.y,
+                    rotacion: objectsLevel3State.current.cuadradoGiratorio.rotacion
+                };
                 
                 // Actualizar rotación del cuadrado
                 obj.rotacion += obj.velocidadRotacion * deltaTime;
@@ -1247,6 +1164,13 @@ export function updateGridLogic(deltaTime, level) {
                         }
                         break;
                 }
+                
+                // ⚠️ ACTUALIZAR ESTADO ACTUAL PARA INTERPOLACIÓN
+                objectsLevel3State.current.cuadradoGiratorio = {
+                    x: obj.x,
+                    y: obj.y,
+                    rotacion: obj.rotacion
+                };
             }
             
             break;
@@ -1345,6 +1269,14 @@ export function initGrid(level = 1) {
     // Inicializar estados
     gridState.previous = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: 0 };
     gridState.current = { offsetX: 0, offsetY: 0, rotationAngle: 0, timestamp: performance.now() };
+    
+    // Inicializar estados de objetos para nivel 3
+    objectsLevel3State.previous = {
+        cuadradoGiratorio: { x: 0, y: 0, rotacion: 0 }
+    };
+    objectsLevel3State.current = {
+        cuadradoGiratorio: { x: 0, y: 0, rotacion: 0 }
+    };
     
     // DIBUJAR REJA BASE (SOLO UNA VEZ)
     
@@ -1531,16 +1463,20 @@ window.debugObjetoNivel3 = function() {
     const faseNombres = ['→ Derecha', '↓ Abajo', '← Izquierda', '↑ Arriba'];
     
     console.log("🧪 [DEBUG] Estado del cuadrado giratorio nivel 3:");
-    console.log(`   Posición: (${obj.x.toFixed(1)}, ${obj.y.toFixed(1)})`);
-    console.log(`   Rotación actual: ${rotacionGrados}°`);
+    console.log(`   Posición lógica: (${obj.x.toFixed(1)}, ${obj.y.toFixed(1)})`);
+    console.log(`   Posición anterior: (${objectsLevel3State.previous.cuadradoGiratorio.x.toFixed(1)}, ${objectsLevel3State.previous.cuadradoGiratorio.y.toFixed(1)})`);
+    console.log(`   Posición actual: (${objectsLevel3State.current.cuadradoGiratorio.x.toFixed(1)}, ${objectsLevel3State.current.cuadradoGiratorio.y.toFixed(1)})`);
+    console.log(`   Rotación lógica: ${rotacionGrados}°`);
+    console.log(`   Rotación anterior: ${(objectsLevel3State.previous.cuadradoGiratorio.rotacion * 180 / Math.PI).toFixed(1)}°`);
+    console.log(`   Rotación actual: ${(objectsLevel3State.current.cuadradoGiratorio.rotacion * 180 / Math.PI).toFixed(1)}°`);
     console.log(`   Velocidad rotación: ${velocidadGrados}°/s`);
     console.log(`   Fase recorrido: ${obj.fase} - ${faseNombres[obj.fase]}`);
     console.log(`   Progreso fase: ${(obj.progreso * 100).toFixed(1)}%`);
     console.log(`   Velocidad desplazamiento: ${obj.velocidadDesplazamiento} px/ms`);
     console.log(`   Tamaño: ${obj.tamaño}px`);
-    console.log(`   Color: ${obj.color}`);
     console.log(`   Activo: ${obj.activo ? '✅ SÍ' : '❌ NO'}`);
     console.log(`   Recorrido: (${obj.inicioX.toFixed(1)}, ${obj.inicioY.toFixed(1)}) → (${obj.finX.toFixed(1)}, ${obj.finY.toFixed(1)})`);
+    console.log(`   🎯 Interpolación: ${objectsLevel3State.previous.cuadradoGiratorio.x !== objectsLevel3State.current.cuadradoGiratorio.x ? '✅ ACTIVA' : '❌ INACTIVA'}`);
     
     return {
         posicion: { x: obj.x, y: obj.y },
