@@ -405,8 +405,8 @@ export function dibujarRejaBase(level) {
                 grad.addColorStop(1, gradientColors.border);
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(configGrid.baseX, y);
-                gridCanvases[1].lineTo(configGrid.baseX + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado, y);
+                gridCanvases[1].moveTo(configGrid.baseX + (configGrid.tamCuadrado*.5), y);
+                gridCanvases[1].lineTo(configGrid.baseX  + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado - (configGrid.tamCuadrado*.5), y);
                 gridCanvases[1].stroke();
             }
             
@@ -419,8 +419,8 @@ export function dibujarRejaBase(level) {
                 grad.addColorStop(1, gradientColors.border);
                 gridCanvases[1].strokeStyle = grad;
                 gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, configGrid.baseY);
-                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado);
+                gridCanvases[1].moveTo(x, configGrid.baseY + (configGrid.tamCuadrado*.5));
+                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado - (configGrid.tamCuadrado*.5));
                 gridCanvases[1].stroke();
             }
             
@@ -592,7 +592,7 @@ function composeGrid(level, alpha = 1.0) {
                         const cy = centroY + RadCenCirculos * Math.sin(angulo);
                         
                        
-                        const gradRad2 = gridCanvases[2].createRadialGradient(cx, cy, 0, cx, cy, (obj.radioMedio - distCircInt)*1.2);
+                        const gradRad2 = gridCanvases[2].createRadialGradient(cx, cy, 0, cx, cy, (obj.radioMedio - distCircInt)*2);
                         gradRad2.addColorStop(1, obj.colorRellenoOscuro);
                         //gradRad2.addColorStop(0.6, obj.colorRellenoClaro);
                         gradRad2.addColorStop(0.2, obj.colorRellenoClaro);
@@ -601,7 +601,7 @@ function composeGrid(level, alpha = 1.0) {
                         gridCanvases[2].save();
                         gridCanvases[2].fillStyle = gradRad2;
                         gridCanvases[2].beginPath();
-                        gridCanvases[2].arc(cx, cy, (obj.radioMedio - distCircInt)*1.2, 0, Math.PI * 2);
+                        gridCanvases[2].arc(cx, cy, (obj.radioMedio - distCircInt)*2, 0, Math.PI * 2);
                         gridCanvases[2].fill();
                         gridCanvases[2].restore();
                     }
@@ -980,8 +980,8 @@ export function updateGridLogic(deltaTime, level) {
                 // ============================================================================
                 
                 // Calcular variables geométricas ANTES de crear el objeto
-                const tamObjeto = configGrid.tamCuadrado * 1.5;
-                const lineEsp = configGrid.grosorLinea;
+                const tamObjeto = configGrid.tamCuadrado * 1.35;
+                const lineEsp = configGrid.grosorLinea * .7;
                 const radioExterior = tamObjeto / 2;
                 const radioInterior = radioExterior - lineEsp;
                 const radioMedio = (radioExterior + radioInterior) / 2;
@@ -1003,7 +1003,7 @@ export function updateGridLogic(deltaTime, level) {
 
                         
                         // --- COLORES DEL PERÍMETRO TUBULAR (ESTILO BARROTES) ---
-                        colorPerimetroClaro: "rgb(161, 137, 1)",          // Dorado claro
+                        colorPerimetroClaro: "rgb(198, 197, 193)",          // Dorado claro
                         colorPerimetroOscuro: "rgb(12, 10, 9)",            // Marrón muy oscuro
                         
                         // --- COLORES DEL RELLENO PIRAMIDAL ---
