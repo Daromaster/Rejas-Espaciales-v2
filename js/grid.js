@@ -550,8 +550,8 @@ function composeGrid(level, alpha = 1.0) {
                     //––– Tres círculos interiores ––––––––––––––––––––––––––––––––––
                     for (let i = 0; i < 3; i++) {
                         const angulo = (i * 2 * Math.PI) / 3; // 0°, 120°, 240°
-                        const cx = centroX + obj.radioMedio * Math.cos(angulo);
-                        const cy = centroY + obj.radioMedio * Math.sin(angulo);
+                        const cx = centroX + (obj.radioInterior *.55) * Math.cos(angulo);
+                        const cy = centroY + (obj.radioInterior *.55) * Math.sin(angulo);
                         
                        
                         const gradRad2 = gridCanvases[2].createRadialGradient(cx, cy, 0, cx, cy, obj.radioCirculo);
@@ -1073,7 +1073,7 @@ export function updateGridLogic(deltaTime, level) {
                 const radioExterior = tamObjeto / 2;
                 const radioInterior = radioExterior - lineEsp;
                 const radioMedio = (radioExterior + radioInterior) / 2;
-                const radioCirculo = lineEsp / 2;
+                const radioCirculo = radioInterior / 2;
                 
                 // Crear objeto cuadrado giratorio con valores referenciados a la reja
                 window.gridLevel3State = {
@@ -1092,11 +1092,11 @@ export function updateGridLogic(deltaTime, level) {
                         
                         // --- COLORES DEL PERÍMETRO TUBULAR (ESTILO BARROTES) ---
                         colorPerimetroClaro: "rgb(243, 217, 68)",          // Dorado claro
-                        colorPerimetroOscuro: "rgb(20, 11, 5)",            // Marrón muy oscuro
+                        colorPerimetroOscuro: "rgb(81, 46, 23)",            // Marrón muy oscuro
                         
                         // --- COLORES DEL RELLENO PIRAMIDAL ---
                         colorRellenoClaro: "rgb(173, 36, 42)",             // Rojo claro
-                        colorRellenoOscuro: "rgb(32, 7, 8)",               // Rojo muy oscuro
+                        colorRellenoOscuro: "rgb(78, 25, 26)",               // Rojo muy oscuro
                         
                         // --- PARÁMETROS DE MOVIMIENTO ---
                         velocidadRotacion: 0.002,                          // rad/ms - velocidad de giro
