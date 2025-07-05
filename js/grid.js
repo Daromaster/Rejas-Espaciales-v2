@@ -1067,21 +1067,27 @@ export function updateGridLogic(deltaTime, level) {
                 // 🎯 VARIABLES DE CONFIGURACIÓN NIVEL 3 (TODAS VISIBLES Y AJUSTABLES)
                 // ============================================================================
                 
+                // Calcular variables geométricas ANTES de crear el objeto
+                const tamObjeto = configGrid.tamCuadrado * 1.5;
+                const lineEsp = configGrid.grosorLinea;
+                const radioExterior = tamObjeto / 2;
+                const radioInterior = radioExterior - lineEsp;
+                const radioMedio = (radioExterior + radioInterior) / 2;
+                const radioCirculo = lineEsp / 2;
+                
                 // Crear objeto cuadrado giratorio con valores referenciados a la reja
                 window.gridLevel3State = {
                     
                     cuadradoGiratorio: {
                         // --- PARÁMETROS GEOMÉTRICOS REFERENCIADOS A LA REJA ---
-                        tamaño: configGrid.tamCuadrado * 1.5,              // 80% del tamaño de celda
-                        grosorPerimetro: configGrid.grosorLinea,  
-                        lineEsp: configGrid.grosorLinea,  
-                         //––– Geometría base ––––––––––––––––––––––––––––––––––––––––––––
-                        tamObjeto: configGrid.tamCuadrado * 1.5,                                                
-                        //––– Geometría base ––––––––––––––––––––––––––––––––––––––––––––
-                        radioExterior : tamObjeto / 2;               // Radio del borde exterior del anillo
-                        radioInterior : radioExterior - lineEsp;     // Radio interior (borde interno del anillo)
-                        radioMedio    : (radioExterior + radioInterior) / 2; // Línea central del trazo
-                        radioCirculo  : lineEsp / 2;                 // Cada círculo ocupa exactamente el grosor del anillo
+                        tamaño: tamObjeto,
+                        grosorPerimetro: configGrid.grosorLinea,
+                        lineEsp: lineEsp,
+                        tamObjeto: tamObjeto,
+                        radioExterior: radioExterior,
+                        radioInterior: radioInterior,
+                        radioMedio: radioMedio,
+                        radioCirculo: radioCirculo,
 
                         
                         // --- COLORES DEL PERÍMETRO TUBULAR (ESTILO BARROTES) ---
