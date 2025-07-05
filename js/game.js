@@ -1,5 +1,5 @@
 // Constante de versión del juego
-const GAME_VERSION = "2.1.002";
+const GAME_VERSION = "2.1.004";
 window.GAME_VERSION = GAME_VERSION;
 
 // Control de niveles máximos implementados
@@ -48,10 +48,10 @@ class RejasEspacialesGame {
         // this.canvasManager = new CanvasManager(); // DESACTIVADO - Nuevo sistema de canvas
         this.ctx = null;
         this.gameState = GAME_CONFIG.GAME_STATES.MENU;
-        this.currentLevel = 3;
+        this.currentLevel = 1;
         
         // ⚠️ IMPORTANTE: Sincronizar nivel inicial con GameLevel global
-        GameLevel.setLevel(3);
+        GameLevel.setLevel(1);
         
         // Sistema de tiempo para lógica e interpolación
         this.logicTimer = 0;

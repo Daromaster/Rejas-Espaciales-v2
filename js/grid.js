@@ -555,11 +555,11 @@ function composeGrid(level, alpha = 1.0) {
                     const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
                     const mitadTamaño = obj.tamaño / 2;
                     //––– Gradiente del anillo (gradRad1) ––––––––––––––––––––––––––
-                    const gradRad1 = gridCanvases[2].createRadialGradient(centroX, centroY, obj.radioInterior, centroX,centroY, obj.radioExterior );
-                    gradRad1.addColorStop(0, obj.colorPerimetroOscuro);
-                    gradRad1.addColorStop(0.45, obj.colorPerimetroClaro);
-                    gradRad1.addColorStop(0.55, obj.colorPerimetroClaro);
-                    gradRad1.addColorStop(1, obj.colorPerimetroOscuro);
+                    //const gradRad1 = gridCanvases[2].createRadialGradient(centroX, centroY, obj.radioInterior, centroX,centroY, obj.radioExterior );
+                    //gradRad1.addColorStop(0, obj.colorPerimetroOscuro);
+                    //gradRad1.addColorStop(0.45, obj.colorPerimetroClaro);
+                    //gradRad1.addColorStop(0.55, obj.colorPerimetroClaro);
+                    //gradRad1.addColorStop(1, obj.colorPerimetroOscuro);
 
                     const  distCircInt = obj.radioInterior *.85;
                     const  RadCenCirculos = ((obj.radioInterior - distCircInt) + obj.radioExterior) *.5;
@@ -571,10 +571,10 @@ function composeGrid(level, alpha = 1.0) {
                                         
                     gridCanvases[2].save();
                     gridCanvases[2].lineWidth   =   obj.grosorPerimetro;
-                    gridCanvases[2].strokeStyle = gradRad1;
-                    gridCanvases[2].beginPath();
-                    gridCanvases[2].arc(centroX, centroY, obj.radioMedio, 0, Math.PI * 2);
-                    gridCanvases[2].stroke();
+                    //gridCanvases[2].strokeStyle = gradRad1;
+                    //gridCanvases[2].beginPath();
+                    //gridCanvases[2].arc(centroX, centroY, obj.radioMedio, 0, Math.PI * 2);
+                    //gridCanvases[2].stroke();
                     gridCanvases[2].strokeStyle = gradRad1b;
                     gridCanvases[2].beginPath();
                     gridCanvases[2].arc(centroX, centroY, obj.radioMedio - distCircInt, 0, Math.PI * 2);
@@ -586,8 +586,8 @@ function composeGrid(level, alpha = 1.0) {
 
 
                     //––– Tres círculos interiores ––––––––––––––––––––––––––––––––––
-                    for (let i = 0; i < 3; i++) {
-                        const angulo = (i * 2 * Math.PI) / 3; // 0°, 120°, 240°
+                    for (let i = 0; i < 4; i++) {
+                        const angulo = (i * 2 * Math.PI) / 4; // 0°, 120°, 240°
                         const cx = centroX + RadCenCirculos * Math.cos(angulo);
                         const cy = centroY + RadCenCirculos * Math.sin(angulo);
                         
