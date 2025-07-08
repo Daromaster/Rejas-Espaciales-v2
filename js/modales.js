@@ -425,6 +425,10 @@ function mostrarModalEntreNiveles(resultadoNivel) {
     `;
     
     modalPanel.innerHTML = contenidoModal;
+    
+    // 📝 GUARDAR DATOS DEL MODAL PARA PODER VOLVER DESPUÉS
+    modalPanel.dataset.resultadoNivel = JSON.stringify(resultadoNivel);
+    
     document.body.appendChild(modalPanel);
     
     // Agregar efectos hover CSS dinámicos
@@ -490,7 +494,7 @@ function configurarEventosModalEntreNiveles(modalPanel, resultadoNivel, esUltimo
             e.preventDefault();
             e.stopPropagation();
             console.log('💾 Guardando en ranking');
-            mostrarFormularioRanking(modalPanel, resultadoNivel.puntajeTotal, resultadoNivel.nivel);
+            mostrarFormularioRanking(modalPanel, resultadoNivel.puntajeTotal, resultadoNivel.nivel, resultadoNivel);
         };
         
         guardarButton.addEventListener('click', handleGuardar);
@@ -699,7 +703,7 @@ function crearBotonesDebug() {
 }
 
 // Formulario completo de ranking con backend (P5-B2)
-function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
+function mostrarFormularioRanking(panel, puntajeTotal, nivel, anteriorModalData = null) {
     console.log('📝 Mostrando formulario de ranking');
     
     const isMobile = modalSystem.isMobile;
@@ -708,6 +712,15 @@ function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
     const buttonSize = isMobile ? '20px' : '18px';
     const inputPadding = isMobile ? '15px' : '10px';
     const inputFontSize = isMobile ? '18px' : '16px';
+
+    // Guardar información del modal anterior para poder volver
+    if (!anteriorModalData && panel.dataset.resultadoNivel) {
+        try {
+            anteriorModalData = JSON.parse(panel.dataset.resultadoNivel);
+        } catch (error) {
+            console.warn('No se pudo recuperar datos del modal anterior:', error);
+        }
+    }
 
     // Intentar recuperar el nombre guardado anteriormente
     let savedPlayerName = '';
@@ -753,6 +766,8 @@ function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
         const handleSave = async function(e) {
             e.preventDefault(); // Prevenir comportamiento predeterminado
             
+            console.log('📝 [INICIO] Proceso de guardado de ranking iniciado');
+            
             // Deshabilitar botón temporalmente
             saveButton.disabled = true;
             saveButton.textContent = "GUARDANDO...";
@@ -762,6 +777,7 @@ function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
             
             // Validar que el nombre no esté vacío
             if (!playerName) {
+                console.log('❌ [ERROR] Nombre vacío');
                 messageDiv.textContent = "Por favor ingresa tu nombre";
                 messageDiv.style.color = "rgba(255, 50, 50, 0.9)";
                 // Reactivar botón
@@ -771,247 +787,253 @@ function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
                 return;
             }
             
+            console.log(`📝 [VALIDACIÓN] Nombre válido: "${playerName}"`);
+            
             const deviceType = isMobile ? 'mobile' : 'desktop';
             let ubicacion = "desconocida";
             
-            // Agregar variable para controlar el modo de respaldo
-            let isRetryWithoutGeo = saveButton.dataset.retryWithoutGeo === 'true';
+            console.log('🌍 [GEOLOC] Iniciando sistema de geolocalización...');
             
             try {
-                // Solo intentar geolocalización si no es un reintento sin geo
-                if (!isRetryWithoutGeo) {
-                    messageDiv.textContent = "Obteniendo ubicación...";
-                    
-                    // Verificar si estamos en entorno de desarrollo
-                    const isLocalEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    
-                    if (isLocalEnv) {
-                        // En desarrollo local, usar IP
-                        try {
-                            ubicacion = await window.apiClient.ranking.getLocationFromIP();
-                            console.log("📍 Ubicación obtenida por IP (desarrollo):", ubicacion);
-                        } catch (geoError) {
-                            console.warn("⚠️ Error en geolocalización IP:", geoError);
-                            ubicacion = "desconocida";
-                        }
+                // 🌍 USAR NUEVO SISTEMA DE GEOLOCALIZACIÓN SIMPLIFICADO CON TIMEOUT PROPIO
+                messageDiv.textContent = "Obteniendo ubicación...";
+                
+                // Agregar un timeout de seguridad para la geolocalización completa
+                const geoTimeout = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error("Timeout de geolocalización general")), 35000); // 35 segundos total
+                });
+                
+                const geoPromise = (async () => {
+                    if (window.geoLocationSystem) {
+                        console.log('🌍 [GEOLOC] Sistema disponible, iniciando...');
+                        return await window.geoLocationSystem.getLocationSimplified();
                     } else {
-                        // En producción, usar la API de geolocalización del navegador
-                        console.log("🌍 Entorno de producción, usando geolocalización del navegador");
-                        
-                        if (navigator.geolocation) {
-                            try {
-                                // Envolver la geolocalización en una promesa para manejarla mejor
-                                const getPosition = () => {
-                                    return new Promise((resolve, reject) => {
-                                        // Timeouts diferenciados por dispositivo
-                                        const timeoutMs = isMobile ? 3000 : 8000; // Móvil: 3s, Desktop: 8s
-                                        
-                                        console.log(`🎯 Dispositivo: ${isMobile ? 'móvil' : 'desktop'}, timeout: ${timeoutMs}ms`);
-                                        
-                                        const geoTimeout = setTimeout(() => {
-                                            reject(new Error('Geolocation timeout'));
-                                        }, timeoutMs);
-                                        
-                                        const geoOptions = { 
-                                            timeout: isMobile ? 2500 : 6000,        // Móvil: 2.5s, Desktop: 6s
-                                            enableHighAccuracy: isMobile            // Solo alta precisión en móvil
-                                        };
-                                        
-                                        navigator.geolocation.getCurrentPosition(
-                                            position => {
-                                                clearTimeout(geoTimeout);
-                                                resolve(position);
-                                            },
-                                            error => {
-                                                clearTimeout(geoTimeout);
-                                                reject(error);
-                                            },
-                                            geoOptions
-                                        );
-                                    });
-                                };
-                                
-                                try {
-                                    messageDiv.textContent = "Solicitando ubicación GPS...";
-                                    const position = await getPosition();
-                                    
-                                    messageDiv.textContent = "Obteniendo nombre de localidad...";
-                                    
-                                    try {
-                                        // Usar las coordenadas para obtener el nombre de la localidad con un timeout
-                                        if (window.apiClient && window.apiClient.ranking) {
-                                            const locationPromise = window.apiClient.ranking.getLocationFromCoords(
-                                                position.coords.latitude, 
-                                                position.coords.longitude
-                                            );
-                                            
-                                            const timeoutPromise = new Promise((_, reject) => {
-                                                setTimeout(() => reject(new Error('Reverse geocoding timeout')), 3000);
-                                            });
-                                            
-                                            // Race entre la obtención de ubicación y el timeout
-                                            ubicacion = await Promise.race([locationPromise, timeoutPromise])
-                                                .catch(error => {
-                                                    console.warn("⚠️ Error o timeout en geocodificación inversa:", error);
-                                                    return "desconocida";
-                                                });
-                                        }
-                                    } catch (reverseGeoError) {
-                                        console.warn("⚠️ Error en geocodificación inversa:", reverseGeoError);
-                                        ubicacion = "desconocida";
-                                    }
-                                } catch (positionError) {
-                                    console.error("⚠️ Error de geolocalización:", positionError.message);
-                                    messageDiv.textContent = "GPS no disponible, probando método alternativo...";
-                                    
-                                    // Intentar geolocalización por IP como respaldo
-                                    try {
-                                        console.log("🔄 Intentando geolocalización por IP como respaldo...");
-                                        if (window.apiClient && window.apiClient.ranking) {
-                                            ubicacion = await window.apiClient.ranking.getLocationFromIP();
-                                            console.log("✅ Ubicación obtenida por IP como respaldo:", ubicacion);
-                                        }
-                                    } catch (ipGeoError) {
-                                        console.warn("⚠️ Error en geolocalización por IP:", ipGeoError);
-                                        ubicacion = "desconocida";
-                                    }
-                                }
-                            } catch (geoWrapperError) {
-                                console.warn("⚠️ Error en wrapper de geolocalización:", geoWrapperError);
-                                ubicacion = "desconocida";
-                            }
-                        } else {
-                            // Si no hay navigator.geolocation, intentar por IP directamente
-                            console.log("📍 Geolocalización no disponible, usando método por IP...");
-                            try {
-                                if (window.apiClient && window.apiClient.ranking) {
-                                    ubicacion = await window.apiClient.ranking.getLocationFromIP();
-                                    console.log("✅ Ubicación obtenida por IP (navegador sin GPS):", ubicacion);
-                                }
-                            } catch (ipGeoError) {
-                                console.warn("⚠️ Error en geolocalización por IP:", ipGeoError);
-                                ubicacion = "desconocida";
-                            }
-                        }
+                        console.warn('⚠️ [GEOLOC] Sistema no disponible, usando respaldo');
+                        return "desconocida";
                     }
-                } else {
-                    // En modo reintento, saltamos la geolocalización
-                    console.log("🔄 Modo reintento: Saltando geolocalización");
-                    ubicacion = "desconocida";
-                }
-            } catch (outerGeoError) {
-                console.warn("⚠️ Error general al obtener ubicación:", outerGeoError);
+                })();
+                
+                // Race entre geolocalización y timeout
+                ubicacion = await Promise.race([geoPromise, geoTimeout]);
+                console.log(`✅ [GEOLOC] Ubicación obtenida: "${ubicacion}"`);
+                
+            } catch (geoError) {
+                console.warn("⚠️ [GEOLOC] Error:", geoError.message);
                 ubicacion = "desconocida";
             }
             
+            console.log('💾 [GUARDANDO] Iniciando proceso de guardado...');
             messageDiv.textContent = "Guardando puntuación...";
             
             try {
-                // Usar el cliente API para guardar la puntuación
-                if (window.apiClient && window.apiClient.ranking) {
-                    // Usar el nivel proporcionado
-                    const currentLevel = nivel ? `${nivel}` : "1";
-                    
-                    console.log(`🎯 Guardando ranking con nivel: ${currentLevel}`);
-                    
-                    // Guardar la puntuación
-                    const savePromise = window.apiClient.ranking.save(playerName, puntajeTotal, deviceType, ubicacion, currentLevel);
-                    
-                    // Aplicar un timeout para evitar bloqueos
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error("Timeout al guardar")), 8000)
-                    );
-                    
-                    const result = await Promise.race([savePromise, timeoutPromise]);
-                    
-                    console.log("Resultado de guardar puntuación:", result);
-                    
-                    // Guardar el nombre del jugador en localStorage para futuras partidas
-                    try {
-                        localStorage.setItem('rejasEspacialesPlayerName', playerName);
-                        console.log("Nombre del jugador guardado en localStorage:", playerName);
-                    } catch(storageError) {
-                        console.warn("No se pudo guardar el nombre en localStorage:", storageError);
-                    }
-                    
-                    // Mostrar mensaje según el resultado
-                    if (result.fallbackUsed) {
-                        // Se usó el respaldo local
-                        messageDiv.innerHTML = `
-                            <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
-                                ⚠️ Servidor no disponible<br>
-                                <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
-                            </p>
-                            <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
-                                Se sincronizará cuando el servidor esté disponible
-                            </p>
-                        `;
-                    } else if (result.serverSave) {
-                        // Guardado exitoso en el servidor
-                        messageDiv.innerHTML = `
-                            <p style="color: rgba(0, 255, 0, 0.9);">
-                                ✅ Puntuación guardada exitosamente
-                            </p>
-                        `;
-                    } else {
-                        // Resultado desconocido pero exitoso
-                        messageDiv.innerHTML = `
-                            <p style="color: rgba(0, 255, 0, 0.9);">
-                                ✅ Puntuación guardada
-                            </p>
-                        `;
-                    }
-                    
-                    // Mostrar el ranking inmediatamente sin temporizador
-                    mostrarRankingList(panel, puntajeTotal, playerName);
-                } else {
-                    throw new Error("API Client no disponible");
+                // Verificar disponibilidad del cliente API
+                if (!window.apiClient) {
+                    throw new Error("API Client no está disponible");
                 }
-            } catch (saveError) {
-                console.error("❌ Error al guardar puntuación:", saveError);
                 
-                // Si no es un reintento y el error podría estar relacionado con geolocalización,
-                // ofrecer guardar sin geolocalización
-                if (!isRetryWithoutGeo) {
+                if (!window.apiClient.ranking) {
+                    throw new Error("Módulo de ranking no está disponible");
+                }
+                
+                console.log('✅ [API] Cliente API y módulo de ranking disponibles');
+                
+                // Usar el nivel proporcionado
+                const currentLevel = nivel ? `${nivel}` : "1";
+                
+                console.log(`🎯 [DATOS] Guardando ranking:`, {
+                    nombre: playerName,
+                    puntaje: puntajeTotal,
+                    nivel: currentLevel,
+                    dispositivo: deviceType,
+                    ubicacion: ubicacion
+                });
+                
+                // Guardar la puntuación
+                console.log('📤 [ENVÍO] Enviando datos al servidor...');
+                const savePromise = window.apiClient.ranking.save(playerName, puntajeTotal, deviceType, ubicacion, currentLevel);
+                
+                // Aplicar un timeout para evitar bloqueos
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Timeout al guardar (8 segundos)")), 8000)
+                );
+                
+                const result = await Promise.race([savePromise, timeoutPromise]);
+                console.log('📥 [RESPUESTA] Respuesta recibida:', result);
+                
+                // Guardar el nombre del jugador en localStorage para futuras partidas
+                try {
+                    localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                    console.log("✅ [STORAGE] Nombre guardado en localStorage:", playerName);
+                } catch(storageError) {
+                    console.warn("⚠️ [STORAGE] No se pudo guardar en localStorage:", storageError);
+                }
+                
+                // Mostrar mensaje según el resultado
+                if (result.fallbackUsed) {
+                    console.log('⚠️ [RESULTADO] Respaldo local usado');
+                    // Se usó el respaldo local
                     messageDiv.innerHTML = `
-                        <p style="color: rgba(255, 100, 100, 0.9); margin-bottom: 10px;">
-                            Error al guardar. Esto podría deberse a problemas de conexión<br>
-                            o con la geolocalización.
+                        <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                            ⚠️ Servidor no disponible<br>
+                            <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
+                        </p>
+                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
+                            Se sincronizará cuando el servidor esté disponible
+                        </p>
+                    `;
+                } else if (result.serverSave) {
+                    console.log('✅ [RESULTADO] Guardado exitoso en servidor');
+                    // Guardado exitoso en el servidor
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(0, 255, 0, 0.9);">
+                            ✅ Puntuación guardada exitosamente
+                        </p>
+                    `;
+                } else {
+                    console.log('✅ [RESULTADO] Guardado exitoso (resultado desconocido)');
+                    // Resultado desconocido pero exitoso
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(0, 255, 0, 0.9);">
+                            ✅ Puntuación guardada
+                        </p>
+                    `;
+                }
+                
+                // Mostrar el ranking inmediatamente sin temporizador
+                console.log('📊 [RANKING] Mostrando ranking...');
+                mostrarRankingList(panel, puntajeTotal, playerName, anteriorModalData);
+            } catch (saveError) {
+                console.error("❌ [ERROR] Primer intento falló:", saveError.message);
+                
+                // 🔄 SISTEMA DE REINTENTO AUTOMÁTICO (15 segundos)
+                console.log('🔄 [REINTENTO] Iniciando reintentos automáticos por 15 segundos...');
+                
+                messageDiv.innerHTML = `
+                    <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                        🔄 Reintentando conexión...
+                    </p>
+                    <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
+                        El servidor puede estar ocupado, reintentando automáticamente...
+                    </p>
+                `;
+                
+                const maxRetries = 3; // Máximo 3 reintentos en 15 segundos
+                const retryInterval = 5000; // 5 segundos entre intentos
+                let retryCount = 0;
+                let retrySuccess = false;
+                
+                const executeRetry = async () => {
+                    retryCount++;
+                    console.log(`🔄 [REINTENTO] Intento ${retryCount}/${maxRetries}...`);
+                    
+                    messageDiv.innerHTML = `
+                        <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                            🔄 Reintentando (${retryCount}/${maxRetries})...
                         </p>
                         <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
-                            ¿Intentar guardar sin ubicación?
+                            Conectando con el servidor...
                         </p>
                     `;
                     
-                    // Cambiar el botón para permitir reintento sin geolocalización
-                    saveButton.disabled = false;
-                    saveButton.textContent = "GUARDAR SIN UBICACIÓN";
-                    saveButton.style.backgroundColor = "rgba(255, 165, 0, 0.8)"; // Color naranja para diferenciarlo
-                    saveButton.dataset.retryWithoutGeo = 'true';
-                    
-                } else {
-                    // Si ya falló el reintento sin geo, mostrar error final
-                    messageDiv.innerHTML = `
-                        <p style="color: rgba(255, 50, 50, 0.9);">
-                            Error persistente al guardar.<br>
-                            <span style="font-size: 0.9em;">Verifica tu conexión e intenta más tarde.</span>
-                        </p>
-                    `;
-                    
-                    // Reactivar botón para otro intento completo
-                    saveButton.disabled = false;
-                    saveButton.textContent = "REINTENTAR";
-                    saveButton.style.backgroundColor = "rgba(50, 205, 50, 0.8)";
-                    saveButton.dataset.retryWithoutGeo = 'false';
-                }
+                    try {
+                        // Reintentar el guardado completo
+                        const retryPromise = window.apiClient.ranking.save(playerName, puntajeTotal, deviceType, ubicacion, currentLevel);
+                        const retryTimeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error("Timeout en reintento")), 8000)
+                        );
+                        
+                        const retryResult = await Promise.race([retryPromise, retryTimeoutPromise]);
+                        console.log(`✅ [REINTENTO] Éxito en intento ${retryCount}:`, retryResult);
+                        
+                        // ¡Éxito! Procesar como guardado exitoso
+                        retrySuccess = true;
+                        
+                        // Guardar nombre en localStorage
+                        try {
+                            localStorage.setItem('rejasEspacialesPlayerName', playerName);
+                            console.log("✅ [STORAGE] Nombre guardado en localStorage:", playerName);
+                        } catch(storageError) {
+                            console.warn("⚠️ [STORAGE] No se pudo guardar en localStorage:", storageError);
+                        }
+                        
+                        // Mostrar mensaje según el resultado
+                        if (retryResult.fallbackUsed) {
+                            console.log('⚠️ [RESULTADO] Respaldo local usado en reintento');
+                            messageDiv.innerHTML = `
+                                <p style="color: rgba(255, 165, 0, 0.9); margin-bottom: 10px;">
+                                    ⚠️ Servidor no disponible<br>
+                                    <span style="font-size: 0.9em;">Puntuación guardada localmente</span>
+                                </p>
+                                <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.8em;">
+                                    Se sincronizará cuando el servidor esté disponible
+                                </p>
+                            `;
+                        } else if (retryResult.serverSave) {
+                            console.log('✅ [RESULTADO] Guardado exitoso en servidor (reintento)');
+                            messageDiv.innerHTML = `
+                                <p style="color: rgba(0, 255, 0, 0.9);">
+                                    ✅ Puntuación guardada exitosamente
+                                </p>
+                            `;
+                        } else {
+                            console.log('✅ [RESULTADO] Guardado exitoso (reintento - resultado desconocido)');
+                            messageDiv.innerHTML = `
+                                <p style="color: rgba(0, 255, 0, 0.9);">
+                                    ✅ Puntuación guardada
+                                </p>
+                            `;
+                        }
+                        
+                        // Mostrar ranking
+                        console.log('📊 [RANKING] Mostrando ranking después de reintento exitoso...');
+                        mostrarRankingList(panel, puntajeTotal, playerName, anteriorModalData);
+                        
+                    } catch (retryError) {
+                        console.log(`❌ [REINTENTO] Falló intento ${retryCount}: ${retryError.message}`);
+                        
+                        if (retryCount < maxRetries) {
+                            // Programar siguiente intento
+                            console.log(`⏳ [REINTENTO] Esperando ${retryInterval/1000} segundos para próximo intento...`);
+                            setTimeout(executeRetry, retryInterval);
+                        } else {
+                            // Se agotaron los reintentos
+                            console.log('❌ [REINTENTO] Se agotaron todos los reintentos automáticos');
+                            
+                            messageDiv.innerHTML = `
+                                <p style="color: rgba(255, 100, 100, 0.9); margin-bottom: 10px;">
+                                    ❌ Error al guardar puntuación
+                                </p>
+                                <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
+                                    El servidor no responde. Verifica tu conexión e intenta nuevamente.
+                                </p>
+                            `;
+                            
+                            // Reactivar botón para permitir reintento manual
+                            saveButton.disabled = false;
+                            saveButton.textContent = "REINTENTAR";
+                            saveButton.style.backgroundColor = "rgba(255, 165, 0, 0.8)";
+                        }
+                    }
+                };
+                
+                // Iniciar el primer reintento después de 2 segundos
+                setTimeout(executeRetry, 2000);
             }
         };
         
-        // Handler para cancelar
+        // Handler para cancelar - VOLVER AL MODAL ANTERIOR
         const handleCancel = function(e) {
             e.preventDefault();
-            console.log('📝 Cancelando formulario de ranking');
-            cerrarModalActivo();
+            console.log('📝 Cancelando formulario de ranking - volviendo al modal anterior');
+            
+            // Si tenemos datos del modal anterior, restaurarlo
+            if (anteriorModalData) {
+                mostrarModalEntreNiveles(anteriorModalData);
+            } else {
+                // Fallback: cerrar completamente si no hay datos del modal anterior
+                console.warn('No hay datos del modal anterior, cerrando completamente');
+                cerrarModalActivo();
+            }
         };
         
         // Configurar eventos
@@ -1028,7 +1050,7 @@ function mostrarFormularioRanking(panel, puntajeTotal, nivel) {
 }
 
 // Mostrar ranking completo (P5-B2)
-async function mostrarRankingList(panel, playerScore, playerName) {
+async function mostrarRankingList(panel, playerScore, playerName, anteriorModalData = null) {
     console.log('📊 Mostrando ranking completo');
     
     const isMobile = modalSystem.isMobile;
@@ -1071,11 +1093,25 @@ async function mostrarRankingList(panel, playerScore, playerName) {
     const retryServerButton = document.getElementById('retry-server-button');
     const closeButton = document.getElementById('close-ranking-button');
     
-    // Configurar botón de cerrar
+    // Configurar botón de cerrar - VOLVER AL MODAL ANTERIOR
     if (closeButton) {
         closeButton.addEventListener('click', function() {
             panelClosed = true;
-            cerrarModalActivo();
+            
+            // Si tenemos datos del modal anterior, restaurarlo
+            if (anteriorModalData) {
+                console.log('📊 Volviendo al modal anterior desde ranking');
+                // 🚨 CORECCIÓN: Cerrar modal de ranking ANTES de mostrar el anterior
+                cerrarModalActivo();
+                // Pequeño delay para asegurar que se cierre completamente
+                setTimeout(() => {
+                    mostrarModalEntreNiveles(anteriorModalData);
+                }, 100);
+            } else {
+                // Fallback: cerrar completamente si no hay datos del modal anterior
+                console.warn('No hay datos del modal anterior desde ranking, cerrando completamente');
+                cerrarModalActivo();
+            }
         });
     }
     

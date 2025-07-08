@@ -3,6 +3,102 @@
 // Configuración para geolocalización
 window.MOCK_GEOLOCATION_ON_LOCALHOST = false; // Permitir geolocalización real en localhost
 
+// === SISTEMA DE GEOLOCALIZACIÓN SIMPLIFICADO ===
+const geoLocationSystem = {
+    // Obtener ubicación con sistema simplificado de timeouts
+    getLocationSimplified: async function() {
+        console.log('🌍 Iniciando sistema de geolocalización simplificado');
+        
+        // PASO 1: Intentar GPS/navegador (15 segundos máximo)
+        try {
+            const gpsLocation = await this.tryGPSLocation(15000);
+            if (gpsLocation) {
+                console.log('✅ Ubicación obtenida por GPS:', gpsLocation);
+                return gpsLocation;
+            }
+        } catch (error) {
+            console.log('⚠️ GPS falló:', error.message);
+        }
+        
+        // PASO 2: Intentar ubicación por IP (15 segundos máximo)
+        try {
+            const ipLocation = await this.tryIPLocation(15000);
+            if (ipLocation) {
+                console.log('✅ Ubicación obtenida por IP:', ipLocation);
+                return ipLocation;
+            }
+        } catch (error) {
+            console.log('⚠️ IP falló:', error.message);
+        }
+        
+        // PASO 3: Sin ubicación
+        console.log('📍 No se pudo obtener ubicación, continuando sin ella');
+        return "desconocida";
+    },
+    
+    // Intentar geolocalización GPS con timeout
+    tryGPSLocation: function(timeoutMs) {
+        return new Promise((resolve, reject) => {
+            // Verificar si la geolocalización está disponible
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocalización no disponible en el navegador'));
+                return;
+            }
+            
+            const timeout = setTimeout(() => {
+                reject(new Error(`Timeout GPS después de ${timeoutMs}ms`));
+            }, timeoutMs);
+            
+            const options = {
+                timeout: timeoutMs - 1000, // 1 segundo menos para dar margen
+                enableHighAccuracy: true,
+                maximumAge: 60000 // Usar ubicación cachada si tiene menos de 1 minuto
+            };
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    clearTimeout(timeout);
+                    try {
+                        // Convertir coordenadas a nombre de ubicación
+                        const locationName = await apiClient.ranking.getLocationFromCoords(
+                            position.coords.latitude, 
+                            position.coords.longitude
+                        );
+                        resolve(locationName);
+                    } catch (geoError) {
+                        console.warn('Error en geocodificación inversa:', geoError);
+                        resolve("desconocida");
+                    }
+                },
+                (error) => {
+                    clearTimeout(timeout);
+                    reject(new Error(`Error GPS: ${error.message}`));
+                },
+                options
+            );
+        });
+    },
+    
+    // Intentar geolocalización por IP con timeout
+    tryIPLocation: function(timeoutMs) {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error(`Timeout IP después de ${timeoutMs}ms`));
+            }, timeoutMs);
+            
+            apiClient.ranking.getLocationFromIP()
+                .then(location => {
+                    clearTimeout(timeout);
+                    resolve(location);
+                })
+                .catch(error => {
+                    clearTimeout(timeout);
+                    reject(new Error(`Error IP: ${error.message}`));
+                });
+        });
+    }
+};
+
 // Sistema de respaldo local para cuando falle el backend
 const localRanking = {
     // Guardar puntuación en localStorage
@@ -81,7 +177,8 @@ const apiClient = {
     config: {
         // URLs de los entornos
         urls: {
-            // local: 'http://localhost:3000',  // COMENTADO: Usar solo cuando necesites backend local
+            // CONFIGURACIÓN ACTUAL: Frontend localhost → Backend Render (NECESITA WAKE-UP)
+            // local: 'http://localhost:3000',  // Descomenta SOLO si tienes backend local
             local: 'https://rejas-espaciales-backend-v2.onrender.com',  // Live Server → Backend Render
             production: 'https://rejas-espaciales-backend-v2.onrender.com'
         },
@@ -89,6 +186,11 @@ const apiClient = {
         isLocalEnvironment: function() {
             return window.location.hostname === 'localhost' || 
                    window.location.hostname === '127.0.0.1';
+        },
+        // Verificar si el BACKEND es realmente local
+        isBackendLocal: function() {
+            const backendUrl = this.getBaseUrl();
+            return backendUrl.includes('localhost') || backendUrl.includes('127.0.0.1');
         },
         // Obtener la URL base según el entorno
         getBaseUrl: function() {
@@ -419,10 +521,14 @@ apiClient.ranking.healthCheck = async function() {
 
 // Función para wake-up del backend en inicio de nivel
 apiClient.wakeUpForLevel = async function(level) {
-    if (apiClient.config.isLocalEnvironment()) {
-        console.log("🏠 Entorno local - No se necesita wake-up");
+    if (apiClient.config.isBackendLocal()) {
+        console.log("🏠 Backend local detectado - No se necesita wake-up");
+        console.log(`   Backend URL: ${apiClient.config.getBaseUrl()}`);
         return true;
     }
+    
+    console.log(`🌐 Backend remoto detectado - Wake-up necesario`);
+    console.log(`   Backend URL: ${apiClient.config.getBaseUrl()}`);
     
     console.log(`🚀 WAKE-UP CRÍTICO: Despertar backend para nivel ${level}...`);
     
@@ -473,9 +579,71 @@ apiClient.wakeUpForLevel = async function(level) {
     }
 };
 
+// === FUNCIÓN DE DIAGNÓSTICO COMPLETO ===
+window.debugRankingSystem = function() {
+    console.log('🔧 [DIAGNÓSTICO] Iniciando diagnóstico completo del sistema de ranking...');
+    
+    // 1. Verificar disponibilidad de componentes
+    console.log('📋 [COMPONENTES] Verificando disponibilidad...');
+    console.log(`   - window.apiClient: ${window.apiClient ? '✅ Disponible' : '❌ NO disponible'}`);
+    console.log(`   - window.geoLocationSystem: ${window.geoLocationSystem ? '✅ Disponible' : '❌ NO disponible'}`);
+    console.log(`   - apiClient.ranking: ${window.apiClient?.ranking ? '✅ Disponible' : '❌ NO disponible'}`);
+    console.log(`   - wakeUpForLevel: ${typeof window.apiClient?.wakeUpForLevel}`);
+    
+    // 2. Verificar estado del backend
+    console.log('🌐 [BACKEND] Verificando estado...');
+    console.log(`   - Frontend en: ${window.location.hostname}`);
+    console.log(`   - Backend URL: ${window.apiClient?.config.getBaseUrl()}`);
+    console.log(`   - Frontend local: ${window.apiClient?.config.isLocalEnvironment()}`);
+    console.log(`   - Backend local: ${window.apiClient?.config.isBackendLocal()}`);
+    console.log(`   - Wake-up necesario: ${!window.apiClient?.config.isBackendLocal()}`);
+    
+    // 3. Probar wake-up manualmente
+    if (window.apiClient?.wakeUpForLevel) {
+        console.log('🚀 [WAKE-UP] Ejecutando prueba de wake-up...');
+        window.apiClient.wakeUpForLevel(1)
+            .then(success => {
+                console.log(`🚀 [WAKE-UP] Resultado: ${success ? '✅ Exitoso' : '❌ Falló'}`);
+            })
+            .catch(error => {
+                console.log(`🚀 [WAKE-UP] Error: ${error.message}`);
+            });
+    }
+    
+    // 4. Probar sistema de geolocalización
+    if (window.geoLocationSystem?.getLocationSimplified) {
+        console.log('🌍 [GEOLOC] Ejecutando prueba de geolocalización...');
+        window.geoLocationSystem.getLocationSimplified()
+            .then(location => {
+                console.log(`🌍 [GEOLOC] Resultado: "${location}"`);
+            })
+            .catch(error => {
+                console.log(`🌍 [GEOLOC] Error: ${error.message}`);
+            });
+    }
+    
+    // 5. Verificar localStorage
+    console.log('💾 [STORAGE] Verificando localStorage...');
+    try {
+        const testKey = 'rejas-test-' + Date.now();
+        localStorage.setItem(testKey, 'test');
+        localStorage.removeItem(testKey);
+        console.log('💾 [STORAGE] LocalStorage: ✅ Funcionando');
+    } catch (error) {
+        console.log('💾 [STORAGE] LocalStorage: ❌ Error:', error.message);
+    }
+    
+    // 6. Verificar ranking local
+    const localData = window.localRanking?.getLocal();
+    console.log(`💾 [RANKING] Ranking local: ${localData ? `${localData.length} entradas` : 'No disponible'}`);
+    
+    console.log('🔧 [DIAGNÓSTICO] Diagnóstico completado. Revisa los resultados arriba.');
+};
+
 // Hacer el cliente disponible globalmente
 window.apiClient = apiClient;
 window.localRanking = localRanking;
+window.geoLocationSystem = geoLocationSystem;
 
 console.log("✅ API Client inicializado");
 console.log(`🌐 Backend URL: ${apiClient.config.getBaseUrl()}`);
@@ -488,9 +656,13 @@ if (localEntries.length > 0) {
     console.log("📊 No hay ranking local guardado");
 }
 
-// Ejecutar health check automático en entorno de producción
-if (!apiClient.config.isLocalEnvironment()) {
+// Mensaje de ayuda para diagnóstico
+console.log("🔧 [AYUDA] Para diagnosticar problemas del ranking, ejecuta: debugRankingSystem()");
+
+// Ejecutar health check automático solo si el backend es remoto
+if (!apiClient.config.isBackendLocal()) {
     console.log("🚀 Iniciando sistema de wake-up del backend...");
+    console.log(`🌐 Frontend: ${window.location.hostname} | Backend: ${apiClient.config.getBaseUrl()}`);
     
     // Sistema mejorado de wake-up para Render
     const wakeUpBackend = async () => {

@@ -455,18 +455,25 @@ function iniciarCronometroJuego() {
             // Obtener nivel actual
             const nivelActual = window.gameEngine ? window.gameEngine.currentLevel : 1;
             
+            console.log(`🚀 [WAKE-UP] Iniciando wake-up del backend para nivel ${nivelActual}`);
+            console.log(`🚀 [WAKE-UP] gameEngine.currentLevel: ${window.gameEngine?.currentLevel || 'undefined'}`);
+            
             // Wake-up asíncrono para no bloquear el juego
             window.apiClient.wakeUpForLevel(nivelActual)
                 .then(success => {
                     if (success) {
-                        console.log(`✅ Backend preparado para recibir ranking del nivel ${nivelActual}`);
+                        console.log(`✅ [WAKE-UP] Backend preparado para nivel ${nivelActual} - Respuesta exitosa`);
                     } else {
-                        console.log(`⚠️ Backend no responde para nivel ${nivelActual}, se usará respaldo local`);
+                        console.log(`⚠️ [WAKE-UP] Backend no responde para nivel ${nivelActual} - Se usará respaldo local`);
                     }
                 })
                 .catch(error => {
-                    console.log(`❌ Error en wake-up para nivel ${nivelActual}: ${error.message}`);
+                    console.log(`❌ [WAKE-UP] Error para nivel ${nivelActual}: ${error.message}`);
                 });
+        } else {
+            console.log(`❌ [WAKE-UP] Sistema no disponible:`);
+            console.log(`   - window.apiClient: ${window.apiClient ? 'disponible' : 'NO disponible'}`);
+            console.log(`   - wakeUpForLevel: ${typeof window.apiClient?.wakeUpForLevel}`);
         }
     }
 }
