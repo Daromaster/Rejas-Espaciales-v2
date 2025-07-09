@@ -1718,11 +1718,11 @@ class GridObj {
         console.log(`✨ GridObj ${this.id}: Reja base dibujada con patrón nivel 2`);
     }
     
-    // === MÉTODO DE DIBUJO POR DEFECTO (BASADO EN NIVEL 2 QUE FUNCIONA BIEN) ===
+    // === MÉTODO DE DIBUJO POR DEFECTO (BASADO EN NIVEL 1 CON if (1==0) PARA PRUEBAS) ===
     dibujarRejaBasePorDefecto(ctx) {
         const colors = this.colores;
         
-        // === LÍNEAS HORIZONTALES ===
+        // === LÍNEAS HORIZONTALES (EXACTAMENTE COMO NIVEL 1) ===
         for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
             const y = this.config.baseY + i * this.config.tamCuadrado;
             const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
@@ -1736,39 +1736,59 @@ class GridObj {
             ctx.stroke();
         }
         
-        // === LÍNEAS VERTICALES ENTRELAZADAS (EXACTAMENTE COMO NIVEL 2) ===
-        let y1 = 1;
-        let par = false;
-        for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
-            const x = this.config.baseX + j * this.config.tamCuadrado;
-            if (par == false) {
-                y1 = this.config.baseY + (this.config.tamCuadrado*1.5) - (this.config.grosorLinea/2);
-            } else {
-                y1 = this.config.baseY + (this.config.tamCuadrado*0.5) - (this.config.grosorLinea/2);
+        // === LÍNEAS VERTICALES CON if (1==0) PARA PRUEBAS (EXACTAMENTE COMO NIVEL 1) ===
+        if (1==1) {
+
+            // Dibujar líneas verticales - anulado reemplazado
+            for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
+                const x = this.config.baseX + j * this.config.tamCuadrado;
+                const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
+                grad.addColorStop(0, colors.dark);
+                grad.addColorStop(0.5, colors.bright);
+                grad.addColorStop(1, colors.dark);
+                ctx.strokeStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(x, this.config.baseY);
+                ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
+                ctx.stroke();
             }
-            const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
-            grad.addColorStop(0, colors.dark);
-            grad.addColorStop(0.5, colors.bright);
-            grad.addColorStop(1, colors.dark);
-            ctx.strokeStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(x, this.config.baseY);
-            ctx.lineTo(x, y1);
-            y1 = y1 + this.config.grosorLinea;
-            ctx.moveTo(x, y1);
-            ctx.lineTo(x, y1+(this.config.tamCuadrado*2) - this.config.grosorLinea);
-            if (par == false) {
-                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
-            } else {
-                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
-            }
-            ctx.moveTo(x, y1);
-            ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
-            ctx.stroke();
-            if (par == false) {
-                par = true;
-            } else {
-                par = false;
+
+        } else {
+
+            // Dibujar líneas verticales entrelazadas
+            let y1 = 1
+            let par = false
+            for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
+                const x = this.config.baseX + j * this.config.tamCuadrado;
+                if (par == false) {
+                    y1 = this.config.baseY +  (this.config.tamCuadrado*1.5)-(this.config.grosorLinea/2)
+                } else {
+                    y1 = this.config.baseY +  (this.config.tamCuadrado*0.5)-(this.config.grosorLinea/2)
+                }
+                const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
+                grad.addColorStop(0, colors.dark);
+                grad.addColorStop(0.5, colors.bright);
+                grad.addColorStop(1, colors.dark);
+                ctx.strokeStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(x, this.config.baseY);
+                ctx.lineTo(x, y1 );
+                y1= y1 + this.config.grosorLinea;
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, y1+(this.config.tamCuadrado*2) - this.config.grosorLinea);
+                if (par == false) {
+                    y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
+                } else {
+                    y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea+(this.config.grosorLinea);
+                }
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
+                ctx.stroke();
+                if (par == false) {
+                    par = true
+                } else {
+                    par = false
+                }
             }
         }
     }
