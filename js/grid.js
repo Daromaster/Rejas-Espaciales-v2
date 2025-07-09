@@ -6,7 +6,8 @@ import { relojJuego } from './relojJuego.js';
 // === VARIABLES PRINCIPALES ===
 let configGrid = null; // Configuración única para todos los niveles
 let gridCanvases = []; // Array de canvas virtuales para composición
-let transformMatrix = null; // Matriz de transformación para cálculos
+let transformMatrix = null; // Matriz de transformación para cálculos (compatibilidad niveles 1-2)
+let transformMatrices = {}; // Matrices específicas por reja para nivel 3+
 let distanciaMaxima = 200; // Variable global para viaje de pelota
 
 // === BANDERAS DE INICIALIZACIÓN POR NIVEL ===
@@ -524,23 +525,28 @@ function composeGrid(level, alpha = 1.0) {
                     reja2.render(gridCanvases[2], alpha);
                 }
                 
-                // === CAPTURAR MATRIZ DE TRANSFORMACIÓN (DEL ÚLTIMO OBJETO RENDERIZADO) ===
-                // Para compatibilidad con el sistema de coordenadas, usar transformMatrix de reja2 si existe
+                // === CAPTURAR MATRICES DE TRANSFORMACIÓN ESPECÍFICAS POR REJA ===
+                // Sistema mejorado: mantener matrices específicas para cada reja
+                transformMatrices = {
+                    reja1: (reja1 && reja1.transformMatrix) ? reja1.transformMatrix : new DOMMatrix(),
+                    reja2: (reja2 && reja2.transformMatrix) ? reja2.transformMatrix : new DOMMatrix()
+                };
+                
+                // Mantener compatibilidad: transformMatrix apunta a reja2 por defecto para niveles anteriores
                 if (reja2 && reja2.transformMatrix) {
                     transformMatrix = reja2.transformMatrix;
                 } else if (reja1 && reja1.transformMatrix) {
                     transformMatrix = reja1.transformMatrix;
                 } else {
-                    // Fallback: matriz identidad
                     transformMatrix = new DOMMatrix();
                 }
                 
                 // Debug ocasional para verificar renderizado
                 if (Math.random() < 0.005) { // 0.5% de probabilidad
-                    console.log(`🎯 [DEBUG] Nivel 3 GridObj renderizado:`);
-                    console.log(`   Reja1 activa: ${reja1 ? reja1.activo : 'NO EXISTE'}`);
-                    console.log(`   Reja2 activa: ${reja2 ? reja2.activo : 'NO EXISTE'}`);
-                    console.log(`   Alpha: ${alpha.toFixed(3)}`);
+                   // console.log(`🎯 [DEBUG] Nivel 3 GridObj renderizado:`);
+                    //console.log(`   Reja1 activa: ${reja1 ? reja1.activo : 'NO EXISTE'}`);
+                    //console.log(`   Reja2 activa: ${reja2 ? reja2.activo : 'NO EXISTE'}`);
+                   // console.log(`   Alpha: ${alpha.toFixed(3)}`);
                 }
                 
                 return 2; // Retornar índice del canvas final para este nivel
@@ -881,10 +887,10 @@ export function updateGridLogic(deltaTime, level) {
                         
                         // === MOTOR DE ROTACIÓN COMPLEJO ===
                         // Configuración de ritmos y velocidades
-                        DIRECTION_CHANGE_INTERVAL: 10000,      // 10 segundos para cambio de dirección
+                        DIRECTION_CHANGE_INTERVAL: 5000,      // 5 segundos para cambio de dirección
                         ACCELERATION_START_TIME: 30000,        // 30 segundos para iniciar aceleración
                         BASE_ROTATION_SPEED: 20 * DEG_TO_RAD,  // Velocidad base lenta (20°/seg)
-                        FAST_ROTATION_SPEED: 45 * DEG_TO_RAD,  // Velocidad rápida inicial (45°/seg)
+                        FAST_ROTATION_SPEED: 30 * DEG_TO_RAD,  // Velocidad rápida inicial (45°/seg)
                         ACCELERATION_RATE: 10 * DEG_TO_RAD,    // Aceleración (10°/seg²)
                         MAX_ROTATION_SPEED: 120 * DEG_TO_RAD,  // Velocidad máxima (120°/seg)
                         
@@ -1120,13 +1126,16 @@ export function renderGrid(ctx, level) {
 }
 
 // === COORDENADAS TRANSFORMADAS ===
-function applyTransformMatrix(x, y) {
-    if (!transformMatrix) {
+function applyTransformMatrix(x, y, rejaId = null) {
+    // Si se especifica una reja, intentar usar su matriz específica
+    const matrix = rejaId ? getTransformMatrix(rejaId) : transformMatrix;
+    
+    if (!matrix) {
         return { x, y };
     }
     
-    const transformedX = transformMatrix.a * x + transformMatrix.c * y + transformMatrix.e;
-    const transformedY = transformMatrix.b * x + transformMatrix.d * y + transformMatrix.f;
+    const transformedX = matrix.a * x + matrix.c * y + matrix.e;
+    const transformedY = matrix.b * x + matrix.d * y + matrix.f;
     
     return {
         x: transformedX,
@@ -1258,8 +1267,19 @@ export function initGrid(level = 1) {
 }
 
 // === EXPORTACIONES ADICIONALES ===
-export function getTransformMatrix() {
+export function getTransformMatrix(rejaId = null) {
+    // Nivel 3+: Si se especifica una reja, usar su matriz específica
+    if (rejaId && transformMatrices && transformMatrices[rejaId]) {
+        return transformMatrices[rejaId];
+    }
+    
+    // Niveles 1-2 o fallback: usar matriz tradicional
     return transformMatrix;
+}
+
+// === NUEVA FUNCIÓN: OBTENER TODAS LAS MATRICES POR REJA ===
+export function getTransformMatrices() {
+    return transformMatrices || {};
 }
 
 export function getGridConfig() {
@@ -1985,9 +2005,9 @@ class GridObj {
             compCtx.rotate(interpolatedState.rot);
             compCtx.translate(-centerX, -centerY);
             
-            console.log(`🔄 GridObj ${this.id}: Posición (${interpolatedState.posX.toFixed(1)}, ${interpolatedState.posY.toFixed(1)}) + Rotación ${(interpolatedState.rot * 180/Math.PI).toFixed(1)}°`);
+            // Logs removidos para limpiar consola
         } else if (interpolatedState.posX !== 0 || interpolatedState.posY !== 0) {
-            console.log(`📍 GridObj ${this.id}: Solo posición (${interpolatedState.posX.toFixed(1)}, ${interpolatedState.posY.toFixed(1)})`);
+            // Logs removidos para limpiar consola
         }
         
         // Capturar matriz de transformación

@@ -48,10 +48,10 @@ class RejasEspacialesGame {
         // this.canvasManager = new CanvasManager(); // DESACTIVADO - Nuevo sistema de canvas
         this.ctx = null;
         this.gameState = GAME_CONFIG.GAME_STATES.MENU;
-        this.currentLevel = 3;
+        this.currentLevel = 1;
         
         // ⚠️ IMPORTANTE: Sincronizar nivel inicial con GameLevel global
-        GameLevel.setLevel(3);
+        GameLevel.setLevel(1);
         
         // Sistema de tiempo para lógica e interpolación
         this.logicTimer = 0;

@@ -1,7 +1,7 @@
 // disparos.js - Sistema de disparos del juego Rejas Espaciales V2 - P4
 
 import { GAME_CONFIG } from './config.js';
-import { getCoordenadasCubiertas, getCoordenadasDescubiertas } from './grid.js';
+import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridObj } from './grid.js';
 import { getPelotaPosition, getPelotaState } from './pelota.js';
 import { relojJuego } from './relojJuego.js';
 
@@ -243,47 +243,98 @@ function crearDisparoVisual() {
 function detectarEstadoPelota() {
     const posicionPelota = getPelotaPosition();
     
+    // Obtener nivel actual del game engine
+    const nivelActual = window.gameEngine ? window.gameEngine.currentLevel : 1;
+    
     // Método geométrico principal (del Ensayo)
     const margenCelda = 15;        // Tolerancia para centros de celdas
     const margenInterseccion = 15; // Tolerancia para intersecciones
     
+    let puntosDescubiertos = [];
+    let puntosCubiertos = [];
+    
+    // === OBTENER COORDENADAS SEGÚN EL NIVEL ===
+    if (nivelActual <= 2) {
+        // Niveles 1 y 2: Grid unificado tradicional
+        puntosDescubiertos = getCoordenadasDescubiertas(nivelActual) || [];
+        puntosCubiertos = getCoordenadasCubiertas(nivelActual) || [];
+        
+    } else if (nivelActual === 3) {
+        // Nivel 3: Rejas instanciadas - obtener coordenadas de ambas rejas
+        const reja1 = getGridObj('reja1');
+        const reja2 = getGridObj('reja2');
+        
+        if (reja1 && reja2) {
+            // Combinar coordenadas de ambas rejas
+            const desc1 = reja1.getCoordenadasDescubiertas() || [];
+            const desc2 = reja2.getCoordenadasDescubiertas() || [];
+            const cub1 = reja1.getCoordenadasCubiertas() || [];
+            const cub2 = reja2.getCoordenadasCubiertas() || [];
+            
+            puntosDescubiertos = [...desc1, ...desc2];
+            puntosCubiertos = [...cub1, ...cub2];
+            
+            console.log(`🎯 [DEBUG] Nivel 3 detección: ${desc1.length}+${desc2.length}=${puntosDescubiertos.length} desc, ${cub1.length}+${cub2.length}=${puntosCubiertos.length} cub`);
+        } else {
+            console.warn(`⚠️ GridObj no encontrados para detección: reja1=${!!reja1}, reja2=${!!reja2}`);
+            return 'cubierta'; // Fallback
+        }
+        
+    } else {
+        // Niveles futuros: usar grid tradicional como fallback
+        puntosDescubiertos = getCoordenadasDescubiertas(nivelActual) || [];
+        puntosCubiertos = getCoordenadasCubiertas(nivelActual) || [];
+    }
+    
     // 1. Verificar distancia a puntos descubiertos (centros de celdas)
-    const puntosDescubiertos = getCoordenadasDescubiertas();
-    if (puntosDescubiertos && puntosDescubiertos.length > 0) {
+    if (puntosDescubiertos.length > 0) {
         let distanciaMinima = Infinity;
+        let puntoMasCercano = null;
         
         for (const punto of puntosDescubiertos) {
             const distancia = Math.hypot(
                 posicionPelota.x - punto.x,
                 posicionPelota.y - punto.y
             );
-            distanciaMinima = Math.min(distanciaMinima, distancia);
+            if (distancia < distanciaMinima) {
+                distanciaMinima = distancia;
+                puntoMasCercano = punto;
+            }
         }
         
         if (distanciaMinima < margenCelda) {
+            console.log(`✅ [DISPARO] Pelota DESCUBIERTA - dist: ${distanciaMinima.toFixed(1)}px a (${puntoMasCercano.x.toFixed(1)}, ${puntoMasCercano.y.toFixed(1)})`);
             return 'descubierta';
         }
     }
     
     // 2. Verificar distancia a puntos cubiertos (intersecciones)
-    const puntosCubiertos = getCoordenadasCubiertas();
-    if (puntosCubiertos && puntosCubiertos.length > 0) {
+    if (puntosCubiertos.length > 0) {
         let distanciaMinima = Infinity;
+        let puntoMasCercano = null;
         
         for (const punto of puntosCubiertos) {
             const distancia = Math.hypot(
                 posicionPelota.x - punto.x,
                 posicionPelota.y - punto.y
             );
-            distanciaMinima = Math.min(distanciaMinima, distancia);
+            if (distancia < distanciaMinima) {
+                distanciaMinima = distancia;
+                puntoMasCercano = punto;
+            }
         }
         
         if (distanciaMinima < margenInterseccion) {
+            console.log(`❌ [DISPARO] Pelota CUBIERTA - dist: ${distanciaMinima.toFixed(1)}px a (${puntoMasCercano.x.toFixed(1)}, ${puntoMasCercano.y.toFixed(1)})`);
             return 'cubierta';
         }
     }
     
-    // Por defecto asumir cubierta si no se puede determinar
+    // Si no está cerca de ningún punto específico, asumir cubierta
+    console.log(`❓ [DISPARO] Pelota en zona indefinida - asumiendo CUBIERTA`);
+    console.log(`   Posición pelota: (${posicionPelota.x.toFixed(1)}, ${posicionPelota.y.toFixed(1)})`);
+    console.log(`   Puntos disponibles: ${puntosDescubiertos.length} desc, ${puntosCubiertos.length} cub`);
+    
     return 'cubierta';
 }
 
