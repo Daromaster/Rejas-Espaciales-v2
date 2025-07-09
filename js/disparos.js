@@ -46,6 +46,7 @@ export function initDisparos(nivel) {
     // Resetear estado para nuevo nivel
     disparosState.activo = false;
     disparosState.primerDisparoRealizado = false; // Permitir wake-up en cada nuevo nivel
+    console.log(`🔄 [CRONÓMETRO] Sistema resetado para nivel ${nivel} - primerDisparoRealizado: ${disparosState.primerDisparoRealizado}`);
     disparosState.disparosActivos = [];
     disparosState.particulasActivas = [];
     disparosState.puntaje = 0;
@@ -165,6 +166,8 @@ export function isAudioMuted() {
 
 // === FUNCIÓN PRINCIPAL DE DISPARO ===
 export function realizarDisparo() {
+    console.log(`🎯 [CRONÓMETRO] realizarDisparo() llamado - Nivel: ${window.gameInstance?.currentLevel || 'undefined'}, primerDisparo: ${disparosState.primerDisparoRealizado}`);
+    
     if (!disparosState.inicializado) {
         console.warn('⚠️ Sistema de disparos no inicializado');
         return false;
@@ -179,8 +182,10 @@ export function realizarDisparo() {
     
     // Marcar primer disparo para iniciar cronómetro
     if (!disparosState.primerDisparoRealizado) {
+        console.log(`🔥 [CRONÓMETRO] PRIMER DISPARO DETECTADO - Nivel: ${window.gameInstance?.currentLevel || 'undefined'}`);
         disparosState.primerDisparoRealizado = true;
         iniciarCronometroJuego();
+        console.log(`⏰ [CRONÓMETRO] Estado relojJuego después de iniciar: ${relojJuego.getEstado()}`);
     }
     
     // Reproducir sonido de disparo
@@ -497,9 +502,19 @@ function crearEfectoParticulas(posicion) {
 
 // === INICIO DE CRONÓMETRO ===
 function iniciarCronometroJuego() {
+    console.log(`🔥 [CRONÓMETRO] Intentando iniciar cronómetro - relojJuego disponible: ${typeof relojJuego.iniciar === 'function'}`);
     if (typeof relojJuego.iniciar === 'function') {
+        const estadoAntes = relojJuego.getEstado ? relojJuego.getEstado() : 'sin getEstado()';
         relojJuego.iniciar();
-        console.log('⏰ Cronómetro del juego iniciado con primer disparo');
+        const estadoDespues = relojJuego.getEstado ? relojJuego.getEstado() : 'sin getEstado()';
+        console.log(`⏰ Cronómetro del juego iniciado con primer disparo - Estado: ${estadoAntes} → ${estadoDespues}`);
+        
+        // Verificar que realmente se inició
+        if (estadoDespues === 'jugando') {
+            console.log(`✅ [CRONÓMETRO] CONFIRMADO: Cronómetro iniciado correctamente`);
+        } else {
+            console.warn(`❌ [CRONÓMETRO] PROBLEMA: Cronómetro NO se inició - Estado: ${estadoDespues}`);
+        }
         
         // 🚀 WAKE-UP CRÍTICO: Despertar backend al iniciar nivel con primer disparo
         if (window.apiClient && typeof window.apiClient.wakeUpForLevel === 'function') {
@@ -802,4 +817,48 @@ function agregarEfectoPulsoPuntaje(esPenalizacion = false) {
     }
 }
 
-console.log('🎯 Disparos.js cargado - Sistema P4 iniciando...'); 
+// === FUNCIONES DE DEBUG DEL CRONÓMETRO ===
+window.debugCronometroEstado = function() {
+    const nivel = window.gameInstance ? window.gameInstance.currentLevel : 'undefined';
+    const estadoCronometro = relojJuego.getEstado ? relojJuego.getEstado() : 'sin getEstado()';
+    const primerDisparo = disparosState.primerDisparoRealizado;
+    const inicializado = disparosState.inicializado;
+    
+    console.log(`🔍 [DEBUG] Estado del sistema de cronómetro:`);
+    console.log(`   Nivel actual: ${nivel}`);
+    console.log(`   Estado cronómetro: ${estadoCronometro}`);
+    console.log(`   Primer disparo realizado: ${primerDisparo}`);
+    console.log(`   Sistema disparos inicializado: ${inicializado}`);
+    console.log(`   relojJuego disponible: ${typeof relojJuego}`);
+    console.log(`   relojJuego.iniciar disponible: ${typeof relojJuego.iniciar === 'function'}`);
+    
+    return {
+        nivel,
+        estadoCronometro,
+        primerDisparo,
+        inicializado,
+        relojJuegoDisponible: typeof relojJuego !== 'undefined',
+        iniciarDisponible: typeof relojJuego.iniciar === 'function'
+    };
+};
+
+window.debugForzarIniciarCronometro = function() {
+    console.log(`🔧 [DEBUG] Forzando inicio de cronómetro manualmente...`);
+    
+    if (typeof relojJuego.iniciar === 'function') {
+        const estadoAntes = relojJuego.getEstado ? relojJuego.getEstado() : 'sin getEstado()';
+        relojJuego.iniciar();
+        const estadoDespues = relojJuego.getEstado ? relojJuego.getEstado() : 'sin getEstado()';
+        
+        console.log(`🔧 Estado: ${estadoAntes} → ${estadoDespues}`);
+        return estadoDespues;
+    } else {
+        console.warn(`❌ relojJuego.iniciar no está disponible`);
+        return null;
+    }
+};
+
+console.log('🎯 Disparos.js cargado - Sistema P4 iniciando...');
+console.log('🔧 Funciones debug cronómetro disponibles:');
+console.log('   debugCronometroEstado() - Ver estado actual');
+console.log('   debugForzarIniciarCronometro() - Forzar inicio manual'); 

@@ -1229,7 +1229,7 @@ export function initGrid(level = 1) {
             reja1.setConfiguracionManual(2, 3); // 2 celdas horizontales, 3 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
             // 🎨 ASIGNAR COLORES VERDES A REJA1
             reja1.colorDark = "rgb(0, 31, 20)";      // Verde oscuro
-            reja1.colorClaro = "rgb(67, 152, 186)";   // Verde brillante
+            reja1.colorClaro = "rgb(45, 200, 214)";   // Verde brillante
             reja1.init(width, height, level);
             console.log("✅ Reja1 (2x3) creada e inicializada - CENTRADA automáticamente - 🎨 COLORES VERDES");
             

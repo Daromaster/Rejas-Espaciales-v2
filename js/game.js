@@ -16,7 +16,8 @@ import {
     getCoordenadasCubiertas, 
     getCoordenadasDescubiertas, 
     updateGridLogic,
-    getTransformMatrix 
+    getTransformMatrix,
+    getGridObj
 } from './grid.js';
 import { 
     initPelota, 
@@ -446,39 +447,89 @@ class RejasEspacialesGame {
         // Debug pelota: mostrar destino actual con coordenadas transformadas
         const pelotaState = getPelotaState();
         if (pelotaState.destinoActual) {
-            // Aplicar matriz de transformación para obtener coordenadas actuales
-            const transformMatrix = getTransformMatrix();
             let destinoTransformado = pelotaState.destinoActual;
             
-            if (transformMatrix && pelotaState.destinoActual.coordenadasBase) {
-                // Aplicar transformación a las coordenadas base
+            // === SISTEMA ADAPTADO PARA NIVELES 1-2 VS NIVEL 3 ===
+            if (pelotaState.destinoActual.coordenadasBase) {
                 const base = pelotaState.destinoActual.coordenadasBase;
-                const transformedX = transformMatrix.a * base.x + transformMatrix.c * base.y + transformMatrix.e;
-                const transformedY = transformMatrix.b * base.x + transformMatrix.d * base.y + transformMatrix.f;
                 
-                destinoTransformado = {
-                    ...pelotaState.destinoActual,
-                    x: transformedX,
-                    y: transformedY
-                };
+                if (this.currentLevel === 3 && pelotaState.destinoActual.reja) {
+                    // === NIVEL 3: USAR MATRIZ ESPECÍFICA DE LA REJA ===
+                    const reja = getGridObj(pelotaState.destinoActual.reja);
+                    
+                    if (reja && reja.transformMatrix) {
+                        const coordenadasTransformadas = reja.applyTransformMatrix(base.x, base.y);
+                        destinoTransformado = {
+                            ...pelotaState.destinoActual,
+                            x: coordenadasTransformadas.x,
+                            y: coordenadasTransformadas.y
+                        };
+                    }
+                    
+                } else {
+                    // === NIVELES 1-2: USAR MATRIZ GLOBAL TRADICIONAL ===
+                    const transformMatrix = getTransformMatrix(); // Sin parámetro = matriz global
+                    
+                    if (transformMatrix) {
+                        const transformedX = transformMatrix.a * base.x + transformMatrix.c * base.y + transformMatrix.e;
+                        const transformedY = transformMatrix.b * base.x + transformMatrix.d * base.y + transformMatrix.f;
+                        
+                        destinoTransformado = {
+                            ...pelotaState.destinoActual,
+                            x: transformedX,
+                            y: transformedY
+                        };
+                    }
+                }
             }
             
-            // Color según tipo: rojo=descubierto, amarillo=cubierto
+            // === RENDERIZADO CON COLORES ESPECÍFICOS POR NIVEL ===
+            let color, etiqueta;
             const esDescubierto = pelotaState.destinoActual.tipo === 'descubierto';
-            this.ctx.fillStyle = esDescubierto ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 0, 0.8)';
+            
+            if (this.currentLevel === 3) {
+                // Nivel 3: Color según reja + tipo
+                const esReja1 = pelotaState.destinoActual.reja === 'reja1';
+                if (esDescubierto) {
+                    color = esReja1 ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 0, 0, 0.9)'; // Rojo claro/oscuro
+                    etiqueta = esReja1 ? 'DESC R1' : 'DESC R2';
+                } else {
+                    color = esReja1 ? 'rgba(255, 255, 100, 0.9)' : 'rgba(255, 200, 0, 0.9)'; // Amarillo claro/oscuro
+                    etiqueta = esReja1 ? 'CUB R1' : 'CUB R2';
+                }
+            } else {
+                // Niveles 1-2: Color tradicional
+                color = esDescubierto ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 0, 0.8)';
+                etiqueta = esDescubierto ? 'DESC' : 'CUB';
+            }
+            
+
+            // Dibujar círculo principal
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            this.ctx.arc(destinoTransformado.x, destinoTransformado.y, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+
+
+            if (1==0) {
+            // Dibujar círculo principal
+            this.ctx.fillStyle = color;
             this.ctx.beginPath();
             this.ctx.arc(destinoTransformado.x, destinoTransformado.y, 8, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Indicador de estado
-            if (1==0) {
-                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                    this.ctx.font = '12px Arial';
-                    this.ctx.fillText(
-                        `${pelotaState.viajando ? '🚀' : '🌀'} ${pelotaState.destinoActual.tipo}`,
-                        destinoTransformado.x + 12,
-                        destinoTransformado.y - 12
-                    );
+            // Dibujar borde negro para mayor visibilidad
+            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            
+            // Etiqueta informativa
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            this.ctx.font = 'bold 11px Arial';
+            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeText(etiqueta, destinoTransformado.x + 12, destinoTransformado.y - 8);
+            this.ctx.fillText(etiqueta, destinoTransformado.x + 12, destinoTransformado.y - 8);
             }
         }
     }
