@@ -381,50 +381,18 @@ export function dibujarRejaBase(level) {
         }
         
         case 3: {
-            // NIVEL 3: Reja con cuadrado giratorio integrado
+            // === NIVEL 3 CON GRIDOBJ ===
+            // Solo mantener configuración para compatibilidad con sistemas legacy
             configGrid = calcularConfiguracionGrid(width, height, level);
             
-            // CANVAS BASE (1): Reja sin transformaciones
+            // CANVAS BASE (1): Solo limpiar para compatibilidad
             ensureGridCanvas(1);
             gridCanvases[1].clearRect(0, 0, width, height);
-            gridCanvases[1].lineWidth = configGrid.grosorLinea;
             
-            // Colores para nivel 3 (magenta/morado)
-            const gradientColors = {
-                dark: "rgb(32, 81, 40)",
-                bright: "rgb(196, 25, 202)",
-                border: "rgb(0, 0, 0)"
-            };
+            // ⚠️ IMPORTANTE: Las instancias GridObj se crean en initGrid(), no aquí
+            // dibujarRejaBase no debe crear objetos GridObj, solo manejar sistemas legacy
             
-            // Dibujar líneas horizontales
-            for (let i = 0.5; i <= configGrid.cantidadVert + 0.5; i++) {
-                const y = configGrid.baseY + i * configGrid.tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(0, y - configGrid.grosorLinea/2, 0, y + configGrid.grosorLinea/2);
-                grad.addColorStop(0, gradientColors.border);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.border);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(configGrid.baseX + (configGrid.tamCuadrado*.5), y);
-                gridCanvases[1].lineTo(configGrid.baseX  + (configGrid.cantidadHoriz + 1) * configGrid.tamCuadrado - (configGrid.tamCuadrado*.5), y);
-                gridCanvases[1].stroke();
-            }
-            
-            // Dibujar líneas verticales
-            for (let j = 0.5; j <= configGrid.cantidadHoriz + 0.5; j++) {
-                const x = configGrid.baseX + j * configGrid.tamCuadrado;
-                const grad = gridCanvases[1].createLinearGradient(x - configGrid.grosorLinea/2, 0, x + configGrid.grosorLinea/2, 0);
-                grad.addColorStop(0, gradientColors.border);
-                grad.addColorStop(0.5, gradientColors.bright);
-                grad.addColorStop(1, gradientColors.border);
-                gridCanvases[1].strokeStyle = grad;
-                gridCanvases[1].beginPath();
-                gridCanvases[1].moveTo(x, configGrid.baseY + (configGrid.tamCuadrado*.5));
-                gridCanvases[1].lineTo(x, configGrid.baseY + (configGrid.cantidadVert + 1) * configGrid.tamCuadrado - (configGrid.tamCuadrado*.5));
-                gridCanvases[1].stroke();
-            }
-            
-            console.log("✨ Reja base nivel 3 dibujada CORRECTAMENTE en gridCanvases[1]");
+            console.log("✨ Nivel 3 - dibujarRejaBase (legacy) completado. GridObj se maneja en initGrid()");
             break;
         }
 
@@ -538,135 +506,44 @@ function composeGrid(level, alpha = 1.0) {
             
 
             case 3: {
-                // NIVEL 3: Reja con cuadrado giratorio integrado
-                // Según las especificaciones de "Objetos Ideas.md":
-                // - gridCanvases[2] para dibujar el cuadrado
-                // - gridCanvases[3] para pegar el cuadrado girando
-                // - gridCanvases[4] para pegar reja base + cuadrado desplazado
-                // - gridCanvases[5] para el conjunto con flotación
+                // === NIVEL 3 CON GRIDOBJ - RENDERIZADO DE DOS REJAS INDEPENDIENTES ===
                 
-                // PASO 1: Dibujar cuadrado base en gridCanvases[2]
+                // CANVAS FINAL (2): Limpiar canvas de composición final
                 ensureGridCanvas(2);
                 gridCanvases[2].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
                 
-                if (window.gridLevel3State && window.gridLevel3State.cuadradoGiratorio.activo) {
-                    const obj = window.gridLevel3State.cuadradoGiratorio;
-                    const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
-                    const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
-                    const mitadTamaño = obj.tamaño / 2;
-                    //––– Gradiente del anillo (gradRad1) ––––––––––––––––––––––––––
-                    //const gradRad1 = gridCanvases[2].createRadialGradient(centroX, centroY, obj.radioInterior, centroX,centroY, obj.radioExterior );
-                    //gradRad1.addColorStop(0, obj.colorPerimetroOscuro);
-                    //gradRad1.addColorStop(0.45, obj.colorPerimetroClaro);
-                    //gradRad1.addColorStop(0.55, obj.colorPerimetroClaro);
-                    //gradRad1.addColorStop(1, obj.colorPerimetroOscuro);
-
-                    const  distCircInt = obj.radioInterior *.85;
-                    const  RadCenCirculos = ((obj.radioInterior - distCircInt) + obj.radioExterior) *.5;
-                    const gradRad1b = gridCanvases[2].createRadialGradient(centroX, centroY, obj.radioInterior - distCircInt, centroX,centroY, obj.radioExterior - distCircInt );
-                    gradRad1b.addColorStop(0, obj.colorPerimetroOscuro);
-                    gradRad1b.addColorStop(0.45, obj.colorPerimetroClaro);
-                    gradRad1b.addColorStop(0.55, obj.colorPerimetroClaro);
-                    gradRad1b.addColorStop(1, obj.colorPerimetroOscuro);
-                                        
-                    gridCanvases[2].save();
-                    gridCanvases[2].lineWidth   =   obj.grosorPerimetro;
-                    //gridCanvases[2].strokeStyle = gradRad1;
-                    //gridCanvases[2].beginPath();
-                    //gridCanvases[2].arc(centroX, centroY, obj.radioMedio, 0, Math.PI * 2);
-                    //gridCanvases[2].stroke();
-                    gridCanvases[2].strokeStyle = gradRad1b;
-                    gridCanvases[2].beginPath();
-                    gridCanvases[2].arc(centroX, centroY, obj.radioMedio - distCircInt, 0, Math.PI * 2);
-                    gridCanvases[2].stroke();
-                    gridCanvases[2].restore();
-
-
-
-
-
-                    //––– Tres círculos interiores ––––––––––––––––––––––––––––––––––
-                    for (let i = 0; i < 4; i++) {
-                        const angulo = (i * 2 * Math.PI) / 4; // 0°, 120°, 240°
-                        const cx = centroX + RadCenCirculos * Math.cos(angulo);
-                        const cy = centroY + RadCenCirculos * Math.sin(angulo);
-                        
-                       
-                        const gradRad2 = gridCanvases[2].createRadialGradient(cx, cy, 0, cx, cy, (obj.radioMedio - distCircInt)*2);
-                        gradRad2.addColorStop(1, obj.colorRellenoOscuro);
-                        //gradRad2.addColorStop(0.6, obj.colorRellenoClaro);
-                        gradRad2.addColorStop(0.2, obj.colorRellenoClaro);
-
-
-                        gridCanvases[2].save();
-                        gridCanvases[2].fillStyle = gradRad2;
-                        gridCanvases[2].beginPath();
-                        gridCanvases[2].arc(cx, cy, (obj.radioMedio - distCircInt)*2, 0, Math.PI * 2);
-                        gridCanvases[2].fill();
-                        gridCanvases[2].restore();
-                    }
-
-                    
+                // === RENDERIZAR REJA1 (2x3 CELDAS, SOLO FLOTACIÓN) ===
+                const reja1 = getGridObj('reja1');
+                if (reja1 && reja1.activo) {
+                    reja1.render(gridCanvases[2], alpha);
                 }
                 
-                // PASO 2: Aplicar rotación al cuadrado en gridCanvases[3]
-                ensureGridCanvas(3);
-                gridCanvases[3].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
-                
-                if (window.gridLevel3State && window.gridLevel3State.cuadradoGiratorio.activo) {
-                    const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
-                    const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
-                    
-                    gridCanvases[3].save();
-                    gridCanvases[3].translate(centroX, centroY);
-                    // ⚠️ USAR ROTACIÓN INTERPOLADA EN LUGAR DE VALOR DIRECTO
-                    gridCanvases[3].rotate(interpolatedObjectsLevel3.cuadradoGiratorio.rotacion);
-                    gridCanvases[3].translate(-centroX, -centroY);
-                    
-                    // Dibujar el cuadrado base rotado
-                    gridCanvases[3].drawImage(gridCanvases[2].canvas, 0, 0);
-                    
-                    gridCanvases[3].restore();
+                // === RENDERIZAR REJA2 (3x4 CELDAS, FLOTACIÓN + ROTACIÓN) ===
+                const reja2 = getGridObj('reja2');
+                if (reja2 && reja2.activo) {
+                    reja2.render(gridCanvases[2], alpha);
                 }
                 
-                // PASO 3: Componer reja base + cuadrado en gridCanvases[4]
-                ensureGridCanvas(4);
-                gridCanvases[4].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
-                
-                // Dibujar reja base primero
-                gridCanvases[4].drawImage(gridCanvases[1].canvas, 0, 0);
-                
-                // Dibujar cuadrado giratorio encima aplicando la nueva posición
-                if (window.gridLevel3State && window.gridLevel3State.cuadradoGiratorio.activo) {
-                    const centroX = GAME_CONFIG.LOGICAL_WIDTH / 2;
-                    const centroY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
-                    
-                    gridCanvases[4].save();
-                    // ⚠️ USAR POSICIÓN INTERPOLADA EN LUGAR DE VALORES DIRECTOS
-                    gridCanvases[4].translate(
-                        interpolatedObjectsLevel3.cuadradoGiratorio.x - centroX, 
-                        interpolatedObjectsLevel3.cuadradoGiratorio.y - centroY
-                    );
-                    gridCanvases[4].drawImage(gridCanvases[3].canvas, 0, 0);
-                    gridCanvases[4].restore();
+                // === CAPTURAR MATRIZ DE TRANSFORMACIÓN (DEL ÚLTIMO OBJETO RENDERIZADO) ===
+                // Para compatibilidad con el sistema de coordenadas, usar transformMatrix de reja2 si existe
+                if (reja2 && reja2.transformMatrix) {
+                    transformMatrix = reja2.transformMatrix;
+                } else if (reja1 && reja1.transformMatrix) {
+                    transformMatrix = reja1.transformMatrix;
+                } else {
+                    // Fallback: matriz identidad
+                    transformMatrix = new DOMMatrix();
                 }
                 
-                // PASO 4: Aplicar flotación al conjunto en gridCanvases[5]
-                ensureGridCanvas(5);
-                gridCanvases[5].clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+                // Debug ocasional para verificar renderizado
+                if (Math.random() < 0.005) { // 0.5% de probabilidad
+                    console.log(`🎯 [DEBUG] Nivel 3 GridObj renderizado:`);
+                    console.log(`   Reja1 activa: ${reja1 ? reja1.activo : 'NO EXISTE'}`);
+                    console.log(`   Reja2 activa: ${reja2 ? reja2.activo : 'NO EXISTE'}`);
+                    console.log(`   Alpha: ${alpha.toFixed(3)}`);
+                }
                 
-                gridCanvases[5].save();
-                gridCanvases[5].translate(interpolatedState.offsetX, interpolatedState.offsetY);
-                
-                // CAPTURAR MATRIZ DE TRANSFORMACIÓN
-                transformMatrix = gridCanvases[5].getTransform();
-                
-                // Componer imagen final con flotación
-                gridCanvases[5].drawImage(gridCanvases[4].canvas, 0, 0);
-                
-                gridCanvases[5].restore();
-                
-                return 5; // Retornar índice del canvas final para este nivel
+                return 2; // Retornar índice del canvas final para este nivel
             }
 
             default:
@@ -962,230 +839,115 @@ export function updateGridLogic(deltaTime, level) {
         }
         
         case 3: {
-            // === MOTOR DE MOVIMIENTO NIVEL 3: FLOTACIÓN + CUADRADO GIRATORIO ===
+            // === MOTOR DE MOVIMIENTO NIVEL 3 CON GRIDOBJ ===
             
             // ============================================================================
-            // 🏗️ INICIALIZACIÓN DE VARIABLES PERSISTENTES NIVEL 3 (SOLO UNA VEZ)
+            // 🎯 INICIALIZACIÓN NIVEL 3 CON GRIDOBJ (SOLO UNA VEZ)
             // ============================================================================
             
-            // Variables estáticas que persisten entre frames (SOLO se inicializan UNA vez)
             if (!initFlagsGrid.level3) {
-                // Asegurar que tenemos configGrid
-                if (!configGrid) {
-                    configGrid = calcularConfiguracionGrid(GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT, level);
-                }
-                
-                // ============================================================================
-                // 🎯 VARIABLES DE CONFIGURACIÓN NIVEL 3 (TODAS VISIBLES Y AJUSTABLES)
-                // ============================================================================
-                
-                // Calcular variables geométricas ANTES de crear el objeto
-                const tamObjeto = configGrid.tamCuadrado * 1.35;
-                const lineEsp = configGrid.grosorLinea * .7;
-                const radioExterior = tamObjeto / 2;
-                const radioInterior = radioExterior - lineEsp;
-                const radioMedio = (radioExterior + radioInterior) / 2;
-                const radioCirculo = radioInterior / 2;
-                
-                // Crear objeto cuadrado giratorio con valores referenciados a la reja
-                window.gridLevel3State = {
-                    
-                    cuadradoGiratorio: {
-                        // --- PARÁMETROS GEOMÉTRICOS REFERENCIADOS A LA REJA ---
-                        tamaño: tamObjeto,
-                        grosorPerimetro: configGrid.grosorLinea,
-                        lineEsp: lineEsp,
-                        tamObjeto: tamObjeto,
-                        radioExterior: radioExterior,
-                        radioInterior: radioInterior,
-                        radioMedio: radioMedio,
-                        radioCirculo: radioCirculo,
-
-                        
-                        // --- COLORES DEL PERÍMETRO TUBULAR (ESTILO BARROTES) ---
-                        colorPerimetroClaro: "rgb(198, 197, 193)",          // Dorado claro
-                        colorPerimetroOscuro: "rgb(12, 10, 9)",            // Marrón muy oscuro
-                        
-                        // --- COLORES DEL RELLENO PIRAMIDAL ---
-                        colorRellenoClaro: "rgb(246, 9, 21)",             // Rojo claro
-                        colorRellenoOscuro: "rgb(38, 29, 29)",               // Rojo muy oscuro
-                        
-                        // --- PARÁMETROS DE MOVIMIENTO ---
-                        velocidadRotacion: 0.002,                          // rad/ms - velocidad de giro
-                        velocidadDesplazamiento: configGrid.tamCuadrado / 2000, // Basada en tamaño de celda
-                        
-                        // --- ESTADO DE ROTACIÓN ---
-                        rotacion: 0,                                       // Ángulo actual de rotación (rad)
-                        
-                        // --- ESTADO DE POSICIÓN ---
-                        x: 0,                                              // Posición X actual
-                        y: 0,                                              // Posición Y actual
-                        
-                        // --- POSICIONES DE RECORRIDO RECTANGULAR ---
-                        inicioX: configGrid.baseX + configGrid.tamCuadrado/2,
-                        inicioY: configGrid.baseY + configGrid.tamCuadrado/2,
-                        finX: configGrid.baseX + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadHoriz),
-                        finY: configGrid.baseY + configGrid.tamCuadrado/2 + (configGrid.tamCuadrado * configGrid.cantidadVert),
-                        
-                        // --- CONTROL DE RECORRIDO RECTANGULAR ---
-                        fase: 0,                                           // 0=derecha, 1=abajo, 2=izquierda, 3=arriba
-                        progreso: 0,                                       // Progreso actual en la fase (0 a 1)
-                        activo: true                                       // ¿Está activo el objeto?
+                // Crear estado para las dos rejas GridObj
+                window.gridLevel3StateNew = {
+                    initialized: true,
+                    reja1: {
+                        id: 'reja1',
+                        // Parámetros de flotación únicos para Reja1
+                        amplitudeY: 15,
+                        amplitudeX: 12,
+                        frequencyY: 0.0008,
+                        frequencyX: 0.0006,
+                        speed: 0.8,
+                        phaseY: 0,
+                        phaseX: Math.PI / 4
+                    },
+                    reja2: {
+                        id: 'reja2',
+                        // Parámetros de flotación y rotación únicos para Reja2
+                        amplitudeY: 20,
+                        amplitudeX: 18,
+                        frequencyY: 0.0010,
+                        frequencyX: 0.0007,
+                        speed: 1.2,
+                        phaseY: Math.PI / 3,
+                        phaseX: Math.PI / 6,
+                        // Parámetros de rotación
+                        rotationSpeed: 0.001,  // rad/ms
+                        currentRotation: 0
                     }
                 };
                 
-                // Establecer posición inicial
-                const obj = window.gridLevel3State.cuadradoGiratorio;
-                obj.x = obj.inicioX;
-                obj.y = obj.inicioY;
-                
-                // ⚠️ INICIALIZAR ESTADO DE INTERPOLACIÓN CON VALORES INICIALES
-                objectsLevel3State.previous.cuadradoGiratorio = {
-                    x: obj.x,
-                    y: obj.y,
-                    rotacion: obj.rotacion
-                };
-                objectsLevel3State.current.cuadradoGiratorio = {
-                    x: obj.x,
-                    y: obj.y,
-                    rotacion: obj.rotacion
-                };
-                
-                initFlagsGrid.level3 = true; // Marcar como inicializado
-                console.log("🎯 Nivel 3: Variables de cuadrado giratorio inicializadas");
-                console.log(`   Tamaño: ${obj.tamaño.toFixed(1)}px (${(obj.tamaño/configGrid.tamCuadrado*100).toFixed(1)}% de celda)`);
-                console.log(`   Grosor perímetro: ${obj.grosorPerimetro.toFixed(1)}px (igual a barrotes)`);
-                console.log(`   Velocidad desplazamiento: ${obj.velocidadDesplazamiento.toFixed(4)} px/ms`);
-                console.log(`   Recorrido: (${obj.inicioX.toFixed(1)}, ${obj.inicioY.toFixed(1)}) → (${obj.finX.toFixed(1)}, ${obj.finY.toFixed(1)})`);
-                console.log(`   Distancia total: ${(obj.finX - obj.inicioX).toFixed(1)} x ${(obj.finY - obj.inicioY).toFixed(1)}`);
+                initFlagsGrid.level3 = true;
+                console.log("🎯 Nivel 3 GridObj: Estado de motores inicializado");
             }
             
-            // --- PARÁMETROS DE FLOTACIÓN NIVEL 3 ---
-            const amplitudeY = 25;        // Amplitud vertical diferente
-            const amplitudeX = 20;        // Amplitud horizontal diferente
-            const frequencyY = 0.0012;    // Frecuencia vertical
-            const frequencyX = 0.0008;    // Frecuencia horizontal
-            const speed = 1.0;            // Velocidad general
-            const phaseY = Math.PI / 4;   // Fase inicial Y
-            const phaseX = Math.PI / 6;   // Fase inicial X
+            // ============================================================================
+            // 🚀 MOTORES EXTERNOS PARA CONTROL DE REJAS GRIDOBJ
+            // ============================================================================
             
-            // Motor de flotación Y
-            gridState.current.offsetY = MathUtils.sineWave(
-                currentTime * speed, 
-                frequencyY, 
-                amplitudeY, 
-                phaseY
-            );
+            const state = window.gridLevel3StateNew;
             
-            // Motor de flotación X  
-            gridState.current.offsetX = MathUtils.sineWave(
-                currentTime * speed, 
-                frequencyX, 
-                amplitudeX, 
-                phaseX
-            );
+            // === MOTOR EXTERNO PARA REJA1 (SOLO FLOTACIÓN) ===
+            const reja1 = getGridObj('reja1');
+            if (reja1) {
+                const r1 = state.reja1;
+                
+                // Calcular flotación para Reja1
+                const offsetY1 = MathUtils.sineWave(
+                    currentTime * r1.speed,
+                    r1.frequencyY,
+                    r1.amplitudeY,
+                    r1.phaseY
+                );
+                
+                const offsetX1 = MathUtils.cosineWave(
+                    currentTime * r1.speed,
+                    r1.frequencyX,
+                    r1.amplitudeX,
+                    r1.phaseX
+                );
+                
+                // Controlar Reja1 externamente (solo flotación, sin rotación)
+                reja1.setMovimiento(offsetX1, offsetY1, 0);
+                reja1.updateLogic(deltaTime);
+            }
             
-            // Sin rotación de la reja en nivel 3
+            // === MOTOR EXTERNO PARA REJA2 (FLOTACIÓN + ROTACIÓN) ===
+            const reja2 = getGridObj('reja2');
+            if (reja2) {
+                const r2 = state.reja2;
+                
+                // Calcular flotación para Reja2 (diferente a Reja1)
+                const offsetY2 = MathUtils.sineWave(
+                    currentTime * r2.speed,
+                    r2.frequencyY,
+                    r2.amplitudeY,
+                    r2.phaseY
+                );
+                
+                const offsetX2 = MathUtils.sineWave(
+                    currentTime * r2.speed,
+                    r2.frequencyX,
+                    r2.amplitudeX,
+                    r2.phaseX
+                );
+                
+                // Calcular rotación para Reja2
+                r2.currentRotation += r2.rotationSpeed * deltaTime;
+                
+                // Normalizar ángulo
+                if (r2.currentRotation >= 2 * Math.PI) {
+                    r2.currentRotation -= 2 * Math.PI;
+                }
+                
+                // Controlar Reja2 externamente (flotación + rotación)
+                reja2.setMovimiento(offsetX2, offsetY2, r2.currentRotation);
+                reja2.updateLogic(deltaTime);
+            }
+            
+            // === LIMPIAR GRIDSTATE GLOBAL (NO SE USA EN NIVEL 3 CON GRIDOBJ) ===
+            gridState.current.offsetX = 0;
+            gridState.current.offsetY = 0;
             gridState.current.rotationAngle = 0;
-            
-            // --- MOTOR DEL CUADRADO GIRATORIO ---
-            if (window.gridLevel3State && window.gridLevel3State.cuadradoGiratorio.activo) {
-                const obj = window.gridLevel3State.cuadradoGiratorio;
-                
-                // ⚠️ GUARDAR ESTADO ANTERIOR PARA INTERPOLACIÓN
-                objectsLevel3State.previous.cuadradoGiratorio = {
-                    x: objectsLevel3State.current.cuadradoGiratorio.x,
-                    y: objectsLevel3State.current.cuadradoGiratorio.y,
-                    rotacion: objectsLevel3State.current.cuadradoGiratorio.rotacion
-                };
-                
-                // Actualizar rotación del cuadrado
-                obj.rotacion += obj.velocidadRotacion * deltaTime;
-                
-                // Normalizar ángulo (0 a 2π)
-                if (obj.rotacion >= 2 * Math.PI) {
-                    obj.rotacion -= 2 * Math.PI;
-                }
-                
-                // --- MOTOR DE DESPLAZAMIENTO RECTANGULAR ---
-                // Calcular cuántos píxeles se mueve en este frame
-                const pixelesRecorridos = obj.velocidadDesplazamiento * deltaTime;
-                
-                // Calcular distancia de la fase actual y actualizar progreso correctamente
-                let distanciaFase = 0;
-                switch (obj.fase) {
-                    case 0: // Horizontal: inicioX → finX
-                    case 2: // Horizontal: finX → inicioX
-                        distanciaFase = Math.abs(obj.finX - obj.inicioX);
-                        break;
-                    case 1: // Vertical: inicioY → finY
-                    case 3: // Vertical: finY → inicioY
-                        distanciaFase = Math.abs(obj.finY - obj.inicioY);
-                        break;
-                }
-                
-                // Incrementar progreso basado en la distancia real de la fase
-                obj.progreso += pixelesRecorridos / distanciaFase;
-                
-                // Debug temporal: verificar que se está ejecutando
-                if (Math.random() < 0.01) { // 1% de probabilidad para no saturar la consola
-                    console.log(`🎯 [DEBUG] Cuadrado - Fase: ${obj.fase}, Progreso: ${(obj.progreso * 100).toFixed(1)}%, Distancia: ${distanciaFase.toFixed(1)}px, Píxeles/frame: ${pixelesRecorridos.toFixed(2)}`);
-                }
-                
-                // Calcular posición según la fase actual
-                switch (obj.fase) {
-                    case 0: // FASE 0: Moverse hacia la derecha (X aumenta, Y constante)
-                        obj.x = obj.inicioX + (obj.finX - obj.inicioX) * Math.min(obj.progreso, 1);
-                        obj.y = obj.inicioY;
-                        
-                        if (obj.progreso >= 1) {
-                            obj.fase = 1;
-                            obj.progreso = 0;
-                            console.log("🎯 Cuadrado: Fase 0→1 (derecha→abajo)");
-                        }
-                        break;
-                        
-                    case 1: // FASE 1: Moverse hacia abajo (X constante, Y aumenta)
-                        obj.x = obj.finX;
-                        obj.y = obj.inicioY + (obj.finY - obj.inicioY) * Math.min(obj.progreso, 1);
-                        
-                        if (obj.progreso >= 1) {
-                            obj.fase = 2;
-                            obj.progreso = 0;
-                            console.log("🎯 Cuadrado: Fase 1→2 (abajo→izquierda)");
-                        }
-                        break;
-                        
-                    case 2: // FASE 2: Moverse hacia la izquierda (X disminuye, Y constante)
-                        obj.x = obj.finX - (obj.finX - obj.inicioX) * Math.min(obj.progreso, 1);
-                        obj.y = obj.finY;
-                        
-                        if (obj.progreso >= 1) {
-                            obj.fase = 3;
-                            obj.progreso = 0;
-                            console.log("🎯 Cuadrado: Fase 2→3 (izquierda→arriba)");
-                        }
-                        break;
-                        
-                    case 3: // FASE 3: Moverse hacia arriba (X constante, Y disminuye)
-                        obj.x = obj.inicioX;
-                        obj.y = obj.finY - (obj.finY - obj.inicioY) * Math.min(obj.progreso, 1);
-                        
-                        if (obj.progreso >= 1) {
-                            obj.fase = 0;
-                            obj.progreso = 0;
-                            console.log("🎯 Cuadrado: Fase 3→0 (arriba→derecha) - Ciclo completado");
-                        }
-                        break;
-                }
-                
-                // ⚠️ ACTUALIZAR ESTADO ACTUAL PARA INTERPOLACIÓN
-                objectsLevel3State.current.cuadradoGiratorio = {
-                    x: obj.x,
-                    y: obj.y,
-                    rotacion: obj.rotacion
-                };
-            }
             
             break;
         }
@@ -1294,19 +1056,62 @@ export function initGrid(level = 1) {
     
     // DIBUJAR REJA BASE (SOLO UNA VEZ)
     
-    // Preparar canvas de composición
+    // === INICIALIZACIÓN ESPECÍFICA POR NIVEL ===
     switch (level) {
         case 1:
         case 2:
-        case 3:
-            ensureGridCanvas(1); // Canvas para composición
-            ensureGridCanvas(2); // Canvas para composición
+            // Preparar canvas de composición para niveles legacy
+            ensureGridCanvas(1); // Canvas base
+            ensureGridCanvas(2); // Canvas composición
             break;
+            
+        case 3:
+            // === INICIALIZACIÓN NIVEL 3 CON GRIDOBJ ===
+            console.log("🎯 Inicializando nivel 3 con sistema GridObj");
+            
+            // Limpiar objetos GridObj anteriores
+            clearAllGridObjs();
+            
+            // Obtener dimensiones del canvas
+            const width = GAME_CONFIG.LOGICAL_WIDTH;
+            const height = GAME_CONFIG.LOGICAL_HEIGHT;
+            
+            // === CREAR E INICIALIZAR REJA1 (2x3 CELDAS, SOLO FLOTACIÓN) ===
+            const reja1 = createGridObj('reja1', 'nivel3');
+            reja1.setConfiguracionManual(2, 3); // 2 celdas horizontales, 3 verticales
+            reja1.config.baseX = width * 0.15;  // Lado izquierdo
+            reja1.config.baseY = height * 0.25;
+            reja1.init(width, height, level);
+            console.log("✅ Reja1 (2x3) creada e inicializada en lado izquierdo");
+            
+            // === CREAR E INICIALIZAR REJA2 (3x4 CELDAS, FLOTACIÓN + ROTACIÓN) ===
+            const reja2 = createGridObj('reja2', 'nivel3');
+            reja2.setConfiguracionManual(3, 4); // 3 celdas horizontales, 4 verticales
+            reja2.config.baseX = width * 0.55;  // Lado derecho
+            reja2.config.baseY = height * 0.15;
+            reja2.init(width, height, level);
+            console.log("✅ Reja2 (3x4) creada e inicializada en lado derecho");
+            
+            // Preparar canvas de composición mínimo (para compatibilidad)
+            ensureGridCanvas(1); // Canvas base (no usado)
+            ensureGridCanvas(2); // Canvas composición final
+            
+            console.log("🎯 Nivel 3 con GridObj inicializado correctamente");
+            break;
+            
         default:
+            ensureGridCanvas(1); // Fallback
+            ensureGridCanvas(2);
             break;
     }
 
-    dibujarRejaBase(level);
+    // DIBUJAR REJA BASE (SOLO PARA NIVELES LEGACY 1 Y 2)
+    if (level <= 2) {
+        dibujarRejaBase(level);
+    } else {
+        // Para nivel 3+, los objetos GridObj manejan su propio dibujo en init()
+        console.log("✨ Nivel 3+: GridObj maneja su propio dibujarRejaBase");
+    }
 
 }
 
@@ -1463,124 +1268,161 @@ window.debugTemporalSync = function(durationSeconds = 10) {
 };
 
 // Mensaje de ayuda para debug
-// === FUNCIONES DE DEBUG PARA NIVEL 3 ===
-// Función para mostrar estado del cuadrado giratorio
-window.debugObjetoNivel3 = function() {
-    if (!window.gridLevel3State || !window.gridLevel3State.cuadradoGiratorio.activo) {
-        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo o inicializado");
+// === FUNCIONES DE DEBUG PARA NIVEL 3 CON GRIDOBJ ===
+// Función para mostrar estado de las rejas GridObj del nivel 3
+window.debugGridObjNivel3 = function() {
+    console.log("🧪 [DEBUG] Estado de rejas GridObj nivel 3:");
+    
+    const reja1 = getGridObj('reja1');
+    const reja2 = getGridObj('reja2');
+    const state = window.gridLevel3StateNew;
+    
+    if (!state) {
+        console.log("❌ Sistema GridObj nivel 3 no inicializado");
         return null;
     }
     
-    const obj = window.gridLevel3State.cuadradoGiratorio;
-    const rotacionGrados = (obj.rotacion * 180 / Math.PI).toFixed(1);
-    const velocidadGrados = (obj.velocidadRotacion * 180 / Math.PI * 1000).toFixed(1); // por segundo
-    const faseNombres = ['→ Derecha', '↓ Abajo', '← Izquierda', '↑ Arriba'];
+    console.log("=== REJA1 (2x3, SOLO FLOTACIÓN) ===");
+    if (reja1) {
+        console.log(`   ID: ${reja1.id}, Tipo: ${reja1.tipoVariante}`);
+        console.log(`   Configuración: ${reja1.config.cantHor}x${reja1.config.cantVert} celdas`);
+        console.log(`   Posición: (${reja1.posX.toFixed(1)}, ${reja1.posY.toFixed(1)}) | Rotación: ${(reja1.rot * 180 / Math.PI).toFixed(1)}°`);
+        console.log(`   Base: (${reja1.config.baseX.toFixed(1)}, ${reja1.config.baseY.toFixed(1)})`);
+        console.log(`   Activo: ${reja1.activo ? '✅ SÍ' : '❌ NO'} | Inicializado: ${reja1.inicializado ? '✅ SÍ' : '❌ NO'}`);
+        console.log(`   Motor - Amplitud: X=${state.reja1.amplitudeX}, Y=${state.reja1.amplitudeY}`);
+        console.log(`   Motor - Frecuencia: X=${state.reja1.frequencyX}, Y=${state.reja1.frequencyY}`);
+        console.log(`   Motor - Velocidad: ${state.reja1.speed}, Fase: X=${(state.reja1.phaseX * 180 / Math.PI).toFixed(1)}°, Y=${(state.reja1.phaseY * 180 / Math.PI).toFixed(1)}°`);
+    } else {
+        console.log("❌ Reja1 no existe");
+    }
     
-    console.log("🧪 [DEBUG] Estado del cuadrado giratorio nivel 3:");
-    console.log(`   Posición lógica: (${obj.x.toFixed(1)}, ${obj.y.toFixed(1)})`);
-    console.log(`   Posición anterior: (${objectsLevel3State.previous.cuadradoGiratorio.x.toFixed(1)}, ${objectsLevel3State.previous.cuadradoGiratorio.y.toFixed(1)})`);
-    console.log(`   Posición actual: (${objectsLevel3State.current.cuadradoGiratorio.x.toFixed(1)}, ${objectsLevel3State.current.cuadradoGiratorio.y.toFixed(1)})`);
-    console.log(`   Rotación lógica: ${rotacionGrados}°`);
-    console.log(`   Rotación anterior: ${(objectsLevel3State.previous.cuadradoGiratorio.rotacion * 180 / Math.PI).toFixed(1)}°`);
-    console.log(`   Rotación actual: ${(objectsLevel3State.current.cuadradoGiratorio.rotacion * 180 / Math.PI).toFixed(1)}°`);
-    console.log(`   Velocidad rotación: ${velocidadGrados}°/s`);
-    console.log(`   Fase recorrido: ${obj.fase} - ${faseNombres[obj.fase]}`);
-    console.log(`   Progreso fase: ${(obj.progreso * 100).toFixed(1)}%`);
-    console.log(`   Velocidad desplazamiento: ${obj.velocidadDesplazamiento} px/ms`);
-    console.log(`   Tamaño: ${obj.tamaño}px`);
-    console.log(`   Activo: ${obj.activo ? '✅ SÍ' : '❌ NO'}`);
-    console.log(`   Recorrido: (${obj.inicioX.toFixed(1)}, ${obj.inicioY.toFixed(1)}) → (${obj.finX.toFixed(1)}, ${obj.finY.toFixed(1)})`);
-    console.log(`   🎯 Interpolación: ${objectsLevel3State.previous.cuadradoGiratorio.x !== objectsLevel3State.current.cuadradoGiratorio.x ? '✅ ACTIVA' : '❌ INACTIVA'}`);
+    console.log("=== REJA2 (3x4, FLOTACIÓN + ROTACIÓN) ===");
+    if (reja2) {
+        console.log(`   ID: ${reja2.id}, Tipo: ${reja2.tipoVariante}`);
+        console.log(`   Configuración: ${reja2.config.cantHor}x${reja2.config.cantVert} celdas`);
+        console.log(`   Posición: (${reja2.posX.toFixed(1)}, ${reja2.posY.toFixed(1)}) | Rotación: ${(reja2.rot * 180 / Math.PI).toFixed(1)}°`);
+        console.log(`   Base: (${reja2.config.baseX.toFixed(1)}, ${reja2.config.baseY.toFixed(1)})`);
+        console.log(`   Activo: ${reja2.activo ? '✅ SÍ' : '❌ NO'} | Inicializado: ${reja2.inicializado ? '✅ SÍ' : '❌ NO'}`);
+        console.log(`   Motor - Amplitud: X=${state.reja2.amplitudeX}, Y=${state.reja2.amplitudeY}`);
+        console.log(`   Motor - Frecuencia: X=${state.reja2.frequencyX}, Y=${state.reja2.frequencyY}`);
+        console.log(`   Motor - Velocidad: ${state.reja2.speed}, Fase: X=${(state.reja2.phaseX * 180 / Math.PI).toFixed(1)}°, Y=${(state.reja2.phaseY * 180 / Math.PI).toFixed(1)}°`);
+        console.log(`   Motor - Rot. Velocidad: ${(state.reja2.rotationSpeed * 180 / Math.PI * 1000).toFixed(1)}°/s | Rot. Actual: ${(state.reja2.currentRotation * 180 / Math.PI).toFixed(1)}°`);
+    } else {
+        console.log("❌ Reja2 no existe");
+    }
     
     return {
-        posicion: { x: obj.x, y: obj.y },
-        rotacion: rotacionGrados,
-        velocidadRotacion: velocidadGrados,
-        fase: obj.fase,
-        faseNombre: faseNombres[obj.fase],
-        progreso: obj.progreso,
-        velocidadDesplazamiento: obj.velocidadDesplazamiento,
-        tamaño: obj.tamaño,
-        color: obj.color,
-        activo: obj.activo,
-        recorrido: { inicioX: obj.inicioX, inicioY: obj.inicioY, finX: obj.finX, finY: obj.finY }
+        state: state,
+        reja1: reja1 ? {
+            id: reja1.id,
+            configuracion: `${reja1.config.cantHor}x${reja1.config.cantVert}`,
+            posicion: { x: reja1.posX, y: reja1.posY },
+            rotacion: reja1.rot * 180 / Math.PI,
+            activo: reja1.activo,
+            inicializado: reja1.inicializado
+        } : null,
+        reja2: reja2 ? {
+            id: reja2.id,
+            configuracion: `${reja2.config.cantHor}x${reja2.config.cantVert}`,
+            posicion: { x: reja2.posX, y: reja2.posY },
+            rotacion: reja2.rot * 180 / Math.PI,
+            activo: reja2.activo,
+            inicializado: reja2.inicializado
+        } : null
     };
 };
 
-// Función para modificar velocidad de rotación del cuadrado giratorio
-window.debugSetVelocidadRotacion = function(gradosPorSegundo) {
-    if (!window.gridLevel3State || !window.gridLevel3State.cuadradoGiratorio.activo) {
-        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo o inicializado");
+// Función para modificar parámetros de flotación de Reja1
+window.debugSetReja1Flotacion = function(amplitudeX, amplitudeY, frequencyX, frequencyY, speed) {
+    if (!window.gridLevel3StateNew) {
+        console.log("🧪 [DEBUG] Sistema GridObj nivel 3 no inicializado");
         return;
     }
     
-    const radianesPorMs = (gradosPorSegundo * Math.PI / 180) / 1000;
-    const velocidadAnterior = window.gridLevel3State.cuadradoGiratorio.velocidadRotacion;
+    const state = window.gridLevel3StateNew.reja1;
+    console.log(`🧪 [DEBUG] Modificando parámetros de flotación Reja1:`);
+    console.log(`   Anterior: Ampl(${state.amplitudeX}, ${state.amplitudeY}), Freq(${state.frequencyX}, ${state.frequencyY}), Speed(${state.speed})`);
     
-    window.gridLevel3State.cuadradoGiratorio.velocidadRotacion = radianesPorMs;
+    if (amplitudeX !== undefined) state.amplitudeX = amplitudeX;
+    if (amplitudeY !== undefined) state.amplitudeY = amplitudeY;
+    if (frequencyX !== undefined) state.frequencyX = frequencyX;
+    if (frequencyY !== undefined) state.frequencyY = frequencyY;
+    if (speed !== undefined) state.speed = speed;
     
-    console.log(`🧪 [DEBUG] Velocidad de rotación cambiada:`);
-    console.log(`   Anterior: ${(velocidadAnterior * 180 / Math.PI * 1000).toFixed(1)}°/s`);
-    console.log(`   Nueva: ${gradosPorSegundo}°/s`);
+    console.log(`   Nueva: Ampl(${state.amplitudeX}, ${state.amplitudeY}), Freq(${state.frequencyX}, ${state.frequencyY}), Speed(${state.speed})`);
     
-    return window.debugObjetoNivel3();
+    return window.debugGridObjNivel3();
 };
 
-// Función para modificar velocidad de desplazamiento del cuadrado
-window.debugSetVelocidadDesplazamiento = function(pixelesPorMs) {
-    if (!window.gridLevel3State || !window.gridLevel3State.cuadradoGiratorio.activo) {
-        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo o inicializado");
+// Función para modificar parámetros de flotación y rotación de Reja2
+window.debugSetReja2Movimiento = function(amplitudeX, amplitudeY, frequencyX, frequencyY, speed, rotationSpeed) {
+    if (!window.gridLevel3StateNew) {
+        console.log("🧪 [DEBUG] Sistema GridObj nivel 3 no inicializado");
         return;
     }
     
-    const velocidadAnterior = window.gridLevel3State.cuadradoGiratorio.velocidadDesplazamiento;
-    window.gridLevel3State.cuadradoGiratorio.velocidadDesplazamiento = pixelesPorMs;
+    const state = window.gridLevel3StateNew.reja2;
+    console.log(`🧪 [DEBUG] Modificando parámetros de movimiento Reja2:`);
+    console.log(`   Anterior: Ampl(${state.amplitudeX}, ${state.amplitudeY}), Freq(${state.frequencyX}, ${state.frequencyY}), Speed(${state.speed})`);
+    console.log(`   Anterior rotación: ${(state.rotationSpeed * 180 / Math.PI * 1000).toFixed(1)}°/s`);
     
-    console.log(`🧪 [DEBUG] Velocidad de desplazamiento cambiada:`);
-    console.log(`   Anterior: ${velocidadAnterior} px/ms`);
-    console.log(`   Nueva: ${pixelesPorMs} px/ms`);
+    if (amplitudeX !== undefined) state.amplitudeX = amplitudeX;
+    if (amplitudeY !== undefined) state.amplitudeY = amplitudeY;
+    if (frequencyX !== undefined) state.frequencyX = frequencyX;
+    if (frequencyY !== undefined) state.frequencyY = frequencyY;
+    if (speed !== undefined) state.speed = speed;
+    if (rotationSpeed !== undefined) state.rotationSpeed = rotationSpeed / 1000 * Math.PI / 180; // Convertir de °/s a rad/ms
     
-    return window.debugObjetoNivel3();
+    console.log(`   Nueva: Ampl(${state.amplitudeX}, ${state.amplitudeY}), Freq(${state.frequencyX}, ${state.frequencyY}), Speed(${state.speed})`);
+    console.log(`   Nueva rotación: ${(state.rotationSpeed * 180 / Math.PI * 1000).toFixed(1)}°/s`);
+    
+    return window.debugGridObjNivel3();
 };
 
-// Función para forzar fase del recorrido
-window.debugForzarFase = function(numeroFase) {
-    if (!window.gridLevel3State || !window.gridLevel3State.cuadradoGiratorio.activo) {
-        console.log("🧪 [DEBUG] Cuadrado giratorio nivel 3 no está activo o inicializado");
-        return;
+// Función para resetear posiciones de ambas rejas
+window.debugResetRejasNivel3 = function() {
+    const reja1 = getGridObj('reja1');
+    const reja2 = getGridObj('reja2');
+    
+    if (reja1) {
+        reja1.setPosicion(0, 0);
+        reja1.setRotacion(0);
+        console.log("🔄 Reja1 reseteada a posición (0,0) y rotación 0°");
     }
     
-    if (numeroFase < 0 || numeroFase > 3) {
-        console.log("🧪 [DEBUG] Fase inválida. Use: 0=derecha, 1=abajo, 2=izquierda, 3=arriba");
-        return;
+    if (reja2) {
+        reja2.setPosicion(0, 0);
+        reja2.setRotacion(0);
+        if (window.gridLevel3StateNew) {
+            window.gridLevel3StateNew.reja2.currentRotation = 0;
+        }
+        console.log("🔄 Reja2 reseteada a posición (0,0) y rotación 0°");
     }
     
-    const faseAnterior = window.gridLevel3State.cuadradoGiratorio.fase;
-    window.gridLevel3State.cuadradoGiratorio.fase = numeroFase;
-    window.gridLevel3State.cuadradoGiratorio.progreso = 0;
-    
-    console.log(`🧪 [DEBUG] Fase del recorrido cambiada de ${faseAnterior} a ${numeroFase}`);
-    
-    return window.debugObjetoNivel3();
+    return window.debugGridObjNivel3();
 };
 
-// Función para mostrar estado completo del nivel 3
+// Función para mostrar estado completo del nivel 3 con GridObj
 window.debugStatusNivel3 = function() {
-    console.log("🧪 [DEBUG] Estado completo nivel 3:");
-    console.log("=== GRID STATE ===");
-    console.log(`   Offset X: ${gridState.current.offsetX.toFixed(1)}`);
-    console.log(`   Offset Y: ${gridState.current.offsetY.toFixed(1)}`);
-    console.log(`   Rotación grid: ${(gridState.current.rotationAngle * 180 / Math.PI).toFixed(1)}°`);
+    console.log("🧪 [DEBUG] Estado completo nivel 3 con GridObj:");
+    console.log("=== GRID STATE GLOBAL ===");
+    console.log(`   Offset X: ${gridState.current.offsetX.toFixed(1)} (no usado en nivel 3)`);
+    console.log(`   Offset Y: ${gridState.current.offsetY.toFixed(1)} (no usado en nivel 3)`);
+    console.log(`   Rotación grid: ${(gridState.current.rotationAngle * 180 / Math.PI).toFixed(1)}° (no usado en nivel 3)`);
     
-    console.log("=== OBJETOS GRID ===");
-    window.debugObjetoNivel3();
+    console.log("=== REGISTRY GRIDOBJ ===");
+    window.debugGridObjs();
+    
+    console.log("=== NIVEL 3 ESPECÍFICO ===");
+    const debugResult = window.debugGridObjNivel3();
     
     console.log("=== BANDERAS ===");
     console.log(`   Nivel 3 inicializado: ${initFlagsGrid.level3 ? '✅ SÍ' : '❌ NO'}`);
     
     return {
         gridState: gridState.current,
-        gridLevel3State: window.gridLevel3State,
+        gridLevel3StateNew: window.gridLevel3StateNew,
+        gridObjsDebug: debugResult,
         inicializado: initFlagsGrid.level3
     };
 };
@@ -1592,12 +1434,14 @@ console.log("   debugRotationStatus() - Ver estado actual de rotación");
 console.log("   debugForcePhase(0|1|2) - Forzar fase específica");
 console.log("   debugInterpolationSystem() - Verificar sistema de interpolación");
 console.log("   debugTemporalSync(segundos) - Test de sincronización temporal");
-console.log("=== NIVEL 3 ===");
-console.log("   debugObjetoNivel3() - Ver estado del cuadrado giratorio");
-console.log("   debugSetVelocidadRotacion(grados/s) - Cambiar velocidad de rotación");
-console.log("   debugSetVelocidadDesplazamiento(px/ms) - Cambiar velocidad de desplazamiento");
-console.log("   debugForzarFase(0-3) - Forzar fase del recorrido (0=derecha, 1=abajo, 2=izq, 3=arriba)");
-console.log("   debugStatusNivel3() - Estado completo del nivel 3");
+console.log("=== NIVEL 3 CON GRIDOBJ ===");
+console.log("   debugGridObjNivel3() - Ver estado de las rejas GridObj del nivel 3");
+console.log("   debugSetReja1Flotacion(amplX, amplY, freqX, freqY, speed) - Modificar flotación Reja1");
+console.log("   debugSetReja2Movimiento(amplX, amplY, freqX, freqY, speed, rotSpeed) - Modificar movimiento Reja2");
+console.log("   debugResetRejasNivel3() - Resetear posiciones de ambas rejas");
+console.log("   debugStatusNivel3() - Estado completo del nivel 3 con GridObj");
+console.log("=== GRIDOBJ GENERAL ===");
+console.log("   debugGridObjs() - Ver estado del registry de GridObj");
 
 console.log('Grid.js V2 P2b IMPLEMENTADO - Motores de movimiento por nivel con personalidad propia');
 
@@ -1623,6 +1467,9 @@ function resetInitFlagsForLevel(level) {
                     delete window.gridLevel3State;
                     console.log(`🎯 Estado global del nivel ${level} eliminado`);
                 }
+                // Limpiar objetos GridObj del nivel 3
+                clearAllGridObjs();
+                console.log(`🎯 Objetos GridObj del nivel ${level} eliminados`);
                 break;
             // Agregar más niveles según necesidad
         }
@@ -1854,7 +1701,7 @@ class GridObj {
         return this.canvases[index];
     }
     
-    // === MÉTODO DE DIBUJO DE REJA BASE ===
+    // === MÉTODO DE DIBUJO DE REJA BASE (ÚNICO Y SIMPLE) ===
     dibujarRejaBase(level) {
         if (!this.needsRedrawBase) return; // Solo redibujar si es necesario
         
@@ -1864,32 +1711,18 @@ class GridObj {
         ctx.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
         ctx.lineWidth = this.config.grosorLinea;
         
-        // Dibujar según tipo variante
-        switch (this.tipoVariante) {
-            case 'nivel1':
-            case 'default':
-                this.dibujarRejaBaseEstiloNivel1(ctx);
-                break;
-            case 'nivel2':
-                this.dibujarRejaBaseEstiloNivel2(ctx);
-                break;
-            case 'nivel3':
-                this.dibujarRejaBaseEstiloNivel3(ctx);
-                break;
-            default:
-                this.dibujarRejaBaseEstiloNivel1(ctx); // Fallback
-                break;
-        }
+        // USAR EXACTAMENTE EL MISMO PATRÓN DE DIBUJO QUE FUNCIONA EN NIVEL 2
+        this.dibujarRejaBasePorDefecto(ctx);
         
         this.needsRedrawBase = false;
-        console.log(`✨ GridObj ${this.id}: Reja base ${this.tipoVariante} dibujada`);
+        console.log(`✨ GridObj ${this.id}: Reja base dibujada con patrón nivel 2`);
     }
     
-    // === ESTILOS DE DIBUJO ESPECÍFICOS ===
-    dibujarRejaBaseEstiloNivel1(ctx) {
+    // === MÉTODO DE DIBUJO POR DEFECTO (BASADO EN NIVEL 2 QUE FUNCIONA BIEN) ===
+    dibujarRejaBasePorDefecto(ctx) {
         const colors = this.colores;
         
-        // Líneas horizontales
+        // === LÍNEAS HORIZONTALES ===
         for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
             const y = this.config.baseY + i * this.config.tamCuadrado;
             const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
@@ -1903,7 +1736,7 @@ class GridObj {
             ctx.stroke();
         }
         
-        // Líneas verticales entrelazadas (basado en el código actual)
+        // === LÍNEAS VERTICALES ENTRELAZADAS (EXACTAMENTE COMO NIVEL 2) ===
         let y1 = 1;
         let par = false;
         for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
@@ -1932,92 +1765,16 @@ class GridObj {
             ctx.moveTo(x, y1);
             ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
             ctx.stroke();
-            par = !par;
+            if (par == false) {
+                par = true;
+            } else {
+                par = false;
+            }
         }
     }
     
-    dibujarRejaBaseEstiloNivel2(ctx) {
-        // Similar al estilo nivel 1 pero con colores del nivel 2
-        const colors = this.colores;
-        
-        // Líneas horizontales
-        for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
-            const y = this.config.baseY + i * this.config.tamCuadrado;
-            const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
-            grad.addColorStop(0, colors.dark);
-            grad.addColorStop(0.5, colors.bright);
-            grad.addColorStop(1, colors.dark);
-            ctx.strokeStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(this.config.baseX, y);
-            ctx.lineTo(this.config.baseX + (this.config.cantHor + 1) * this.config.tamCuadrado, y);
-            ctx.stroke();
-        }
-        
-        // Líneas verticales entrelazadas (igual que nivel 1)
-        let y1 = 1;
-        let par = false;
-        for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
-            const x = this.config.baseX + j * this.config.tamCuadrado;
-            if (par == false) {
-                y1 = this.config.baseY + (this.config.tamCuadrado*1.5) - (this.config.grosorLinea/2);
-            } else {
-                y1 = this.config.baseY + (this.config.tamCuadrado*0.5) - (this.config.grosorLinea/2);
-            }
-            const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
-            grad.addColorStop(0, colors.dark);
-            grad.addColorStop(0.5, colors.bright);
-            grad.addColorStop(1, colors.dark);
-            ctx.strokeStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(x, this.config.baseY);
-            ctx.lineTo(x, y1);
-            y1 = y1 + this.config.grosorLinea;
-            ctx.moveTo(x, y1);
-            ctx.lineTo(x, y1+(this.config.tamCuadrado*2) - this.config.grosorLinea);
-            if (par == false) {
-                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
-            } else {
-                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
-            }
-            ctx.moveTo(x, y1);
-            ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
-            ctx.stroke();
-            par = !par;
-        }
-    }
-    
-    dibujarRejaBaseEstiloNivel3(ctx) {
-        const colors = this.colores;
-        
-        // Líneas horizontales más cortas (basado en caso 4 del código actual)
-        for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
-            const y = this.config.baseY + i * this.config.tamCuadrado;
-            const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
-            grad.addColorStop(0, colors.border);
-            grad.addColorStop(0.5, colors.bright);
-            grad.addColorStop(1, colors.border);
-            ctx.strokeStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(this.config.baseX + (this.config.tamCuadrado*.5), y);
-            ctx.lineTo(this.config.baseX + (this.config.cantHor + 1) * this.config.tamCuadrado - (this.config.tamCuadrado*.5), y);
-            ctx.stroke();
-        }
-        
-        // Líneas verticales más cortas
-        for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
-            const x = this.config.baseX + j * this.config.tamCuadrado;
-            const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
-            grad.addColorStop(0, colors.border);
-            grad.addColorStop(0.5, colors.bright);
-            grad.addColorStop(1, colors.border);
-            ctx.strokeStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(x, this.config.baseY + (this.config.tamCuadrado*.5));
-            ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado - (this.config.tamCuadrado*.5));
-            ctx.stroke();
-        }
-    }
+    // === MÉTODOS DE DIBUJO ESPECÍFICOS ELIMINADOS ===
+    // Se simplificó la clase para usar solo dibujarRejaBasePorDefecto() basado en el patrón correcto del nivel 2
     
     // === ACTUALIZACIÓN LÓGICA (30 FPS) - BASADO EN UPDATEGRIDLOGIC ===
     updateLogic(deltaTime) {
