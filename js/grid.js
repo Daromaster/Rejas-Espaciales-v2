@@ -1645,3 +1645,628 @@ function needsInitialization(level) {
     const levelKey = `level${level}`;
     return !initFlagsGrid[levelKey];
 }
+
+// =============================================================================================
+// === NUEVA CLASE GRIDOBJ - OBJETO REJA INDEPENDIENTE ===
+// =============================================================================================
+
+/**
+ * Clase GridObj - Representa una reja independiente con sus propios canvas, estado y configuración
+ * Basada en las ideas del sistema de rejas del nivel 2 pero completamente independiente
+ */
+class GridObj {
+    constructor(id, tipoVariante = 'default') {
+        this.id = id;
+        this.tipoVariante = tipoVariante;
+        
+        // === CONFIGURACIÓN GEOMÉTRICA (FLEXIBLE) ===
+        this.config = {
+            // Valores opcionales - si están null se calculan automáticamente
+            cantHor: null,      // Cantidad horizontal de celdas
+            cantVert: null,     // Cantidad vertical de celdas
+            tamCuadrado: null,  // Tamaño de cada celda
+            grosorLinea: null,  // Grosor de los barrotes
+            baseX: null,        // Posición base X
+            baseY: null,        // Posición base Y
+            
+            // Configuración automática calculada
+            numCeldasX: 0,
+            numCeldasY: 0,
+            cellSize: 0,
+            gridWidth: 0,
+            gridHeight: 0,
+            
+            // Coordenadas base (sin transformaciones)
+            coordenadasCubiertasBase: [],
+            coordenadasDescubiertasBase: [],
+            poligonosColision: []
+        };
+        
+        // === COLORES POR TIPO VARIANTE ===
+        this.colores = this.initColoresPorTipo(tipoVariante);
+        
+        // === ESTADO DE POSICIÓN Y ROTACIÓN (CONTROLADO EXTERNAMENTE) ===
+        this.posX = 0;      // Posición X actual (controlada por motor externo)
+        this.posY = 0;      // Posición Y actual (controlada por motor externo)
+        this.rot = 0;       // Rotación actual en radianes (controlada por motor externo)
+        
+        // === ESTADO DE INTERPOLACIÓN (BASADO EN GRIDSTATE) ===
+        this.interpolationState = {
+            // Estado anterior (para interpolación)
+            previous: {
+                posX: 0,
+                posY: 0,
+                rot: 0,
+                timestamp: 0
+            },
+            // Estado actual (30 FPS lógica)
+            current: {
+                posX: 0,
+                posY: 0,
+                rot: 0,
+                timestamp: 0
+            }
+        };
+        
+        // === CANVAS VIRTUALES PROPIOS (BASADO EN GRIDCANVASES) ===
+        this.canvases = [];
+        this.transformMatrix = null;
+        
+        // === BANDERAS DE CONTROL ===
+        this.inicializado = false;
+        this.needsRedrawBase = true;  // Para redibujo de reja base
+        this.activo = true;
+        
+        console.log(`🏗️ GridObj creado: ID=${id}, TipoVariante=${tipoVariante}`);
+    }
+    
+    // === INICIALIZACIÓN DE COLORES POR TIPO VARIANTE ===
+    initColoresPorTipo(tipo) {
+        const tiposColores = {
+            default: {
+                dark: "rgb(0, 19, 24)",
+                bright: "rgba(0, 255, 255, 1)"
+            },
+            nivel1: {
+                dark: "rgb(0, 19, 24)",
+                bright: "rgba(0, 255, 255, 1)"
+            },
+            nivel2: {
+                dark: "rgb(0, 31, 20)",
+                bright: "rgb(19, 231, 16)"
+            },
+            nivel3: {
+                dark: "rgb(32, 81, 40)",
+                bright: "rgb(196, 25, 202)",
+                border: "rgb(0, 0, 0)"
+            },
+            // Futuros tipos para diferentes variantes
+            metalico: {
+                dark: "rgb(40, 40, 40)",
+                bright: "rgb(200, 200, 200)"
+            },
+            dorado: {
+                dark: "rgb(60, 45, 20)",
+                bright: "rgb(255, 215, 0)"
+            }
+        };
+        
+        return tiposColores[tipo] || tiposColores.default;
+    }
+    
+    // === CÁLCULO DE CONFIGURACIÓN GEOMÉTRICA ===
+    calcularConfiguracion(width, height, level = 1) {
+        // Si hay valores manuales configurados, usarlos; si no, calcular automáticamente
+        const cantHor = this.config.cantHor || this.calcularCantidadHorizontalPorDefecto(width, height, level);
+        const cantVert = this.config.cantVert || this.calcularCantidadVerticalPorDefecto(width, height, level);
+        const tamCuadrado = this.config.tamCuadrado || this.calcularTamCuadradoPorDefecto(width, height, level);
+        const grosorLinea = this.config.grosorLinea || this.calcularGrosorLineaPorDefecto(tamCuadrado, level);
+        
+        // Actualizar configuración
+        this.config.cantHor = cantHor;
+        this.config.cantVert = cantVert;
+        this.config.tamCuadrado = tamCuadrado;
+        this.config.grosorLinea = grosorLinea;
+        this.config.numCeldasX = cantHor;
+        this.config.numCeldasY = cantVert;
+        this.config.cellSize = tamCuadrado;
+        
+        // Calcular dimensiones totales
+        const anchoRejaReal = (cantHor + 1) * tamCuadrado;
+        const altoRejaReal = (cantVert + 1) * tamCuadrado;
+        
+        this.config.gridWidth = anchoRejaReal;
+        this.config.gridHeight = altoRejaReal;
+        
+        // Calcular posición base (si no está definida manualmente)
+        this.config.baseX = this.config.baseX || (width - anchoRejaReal) / 2;
+        this.config.baseY = this.config.baseY || (height - altoRejaReal) / 2;
+        
+        // Calcular coordenadas base
+        this.calcularCoordenadasBase();
+        
+        console.log(`📐 GridObj ${this.id}: Configuración calculada - ${cantHor}x${cantVert}, celda=${tamCuadrado.toFixed(1)}px`);
+        
+        return this.config;
+    }
+    
+    // === MÉTODOS DE CÁLCULO AUTOMÁTICO POR DEFECTO ===
+    calcularCantidadHorizontalPorDefecto(width, height, level) {
+        // Los mismos cálculos que el sistema actual pero como métodos independientes
+        return 5; // 6 barrotes
+    }
+    
+    calcularCantidadVerticalPorDefecto(width, height, level) {
+        return 3; // 4 barrotes
+    }
+    
+    calcularTamCuadradoPorDefecto(width, height, level) {
+        return width / 7.5;
+    }
+    
+    calcularGrosorLineaPorDefecto(tamCuadrado, level) {
+        return tamCuadrado / 6;
+    }
+    
+    // === CÁLCULO DE COORDENADAS BASE ===
+    calcularCoordenadasBase() {
+        this.config.coordenadasCubiertasBase = [];
+        this.config.coordenadasDescubiertasBase = [];
+        
+        // Intersecciones (cubiertas) - Basado en getCoordenadasCubiertas
+        for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
+            for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
+                this.config.coordenadasCubiertasBase.push({
+                    x: this.config.baseX + j * this.config.tamCuadrado,
+                    y: this.config.baseY + i * this.config.tamCuadrado,
+                    tipo: "interseccion",
+                    indiceInterseccion: { i_linea: i, j_linea: j }
+                });
+            }
+        }
+        
+        // Centros de celdas (descubiertas) - Basado en getCoordenadasDescubiertas
+        for (let i = 0; i < this.config.cantVert; i++) {
+            for (let j = 0; j < this.config.cantHor; j++) {
+                this.config.coordenadasDescubiertasBase.push({
+                    x: this.config.baseX + (j + 1.0) * this.config.tamCuadrado,
+                    y: this.config.baseY + (i + 1.0) * this.config.tamCuadrado,
+                    tipo: "celda",
+                    indiceCelda: { fila: i, columna: j }
+                });
+            }
+        }
+        
+        // TODO: Calcular polígonos de colisión para áreas cubiertas
+    }
+    
+    // === GESTIÓN DE CANVAS VIRTUALES PROPIOS (BASADO EN ENSUREGRIDCANVAS) ===
+    ensureCanvas(index) {
+        if (!this.canvases[index]) {
+            const canvas = document.createElement('canvas');
+            this.canvases[index] = canvas.getContext('2d');
+            console.log(`📊 GridObj ${this.id}: Canvas virtual ${index} creado`);
+        }
+        
+        this.canvases[index].canvas.width = GAME_CONFIG.LOGICAL_WIDTH;
+        this.canvases[index].canvas.height = GAME_CONFIG.LOGICAL_HEIGHT;
+        
+        return this.canvases[index];
+    }
+    
+    // === MÉTODO DE DIBUJO DE REJA BASE ===
+    dibujarRejaBase(level) {
+        if (!this.needsRedrawBase) return; // Solo redibujar si es necesario
+        
+        // Canvas base (0) para la reja sin transformaciones
+        this.ensureCanvas(0);
+        const ctx = this.canvases[0];
+        ctx.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+        ctx.lineWidth = this.config.grosorLinea;
+        
+        // Dibujar según tipo variante
+        switch (this.tipoVariante) {
+            case 'nivel1':
+            case 'default':
+                this.dibujarRejaBaseEstiloNivel1(ctx);
+                break;
+            case 'nivel2':
+                this.dibujarRejaBaseEstiloNivel2(ctx);
+                break;
+            case 'nivel3':
+                this.dibujarRejaBaseEstiloNivel3(ctx);
+                break;
+            default:
+                this.dibujarRejaBaseEstiloNivel1(ctx); // Fallback
+                break;
+        }
+        
+        this.needsRedrawBase = false;
+        console.log(`✨ GridObj ${this.id}: Reja base ${this.tipoVariante} dibujada`);
+    }
+    
+    // === ESTILOS DE DIBUJO ESPECÍFICOS ===
+    dibujarRejaBaseEstiloNivel1(ctx) {
+        const colors = this.colores;
+        
+        // Líneas horizontales
+        for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
+            const y = this.config.baseY + i * this.config.tamCuadrado;
+            const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
+            grad.addColorStop(0, colors.dark);
+            grad.addColorStop(0.5, colors.bright);
+            grad.addColorStop(1, colors.dark);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(this.config.baseX, y);
+            ctx.lineTo(this.config.baseX + (this.config.cantHor + 1) * this.config.tamCuadrado, y);
+            ctx.stroke();
+        }
+        
+        // Líneas verticales entrelazadas (basado en el código actual)
+        let y1 = 1;
+        let par = false;
+        for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
+            const x = this.config.baseX + j * this.config.tamCuadrado;
+            if (par == false) {
+                y1 = this.config.baseY + (this.config.tamCuadrado*1.5) - (this.config.grosorLinea/2);
+            } else {
+                y1 = this.config.baseY + (this.config.tamCuadrado*0.5) - (this.config.grosorLinea/2);
+            }
+            const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
+            grad.addColorStop(0, colors.dark);
+            grad.addColorStop(0.5, colors.bright);
+            grad.addColorStop(1, colors.dark);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(x, this.config.baseY);
+            ctx.lineTo(x, y1);
+            y1 = y1 + this.config.grosorLinea;
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, y1+(this.config.tamCuadrado*2) - this.config.grosorLinea);
+            if (par == false) {
+                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
+            } else {
+                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
+            }
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
+            ctx.stroke();
+            par = !par;
+        }
+    }
+    
+    dibujarRejaBaseEstiloNivel2(ctx) {
+        // Similar al estilo nivel 1 pero con colores del nivel 2
+        const colors = this.colores;
+        
+        // Líneas horizontales
+        for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
+            const y = this.config.baseY + i * this.config.tamCuadrado;
+            const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
+            grad.addColorStop(0, colors.dark);
+            grad.addColorStop(0.5, colors.bright);
+            grad.addColorStop(1, colors.dark);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(this.config.baseX, y);
+            ctx.lineTo(this.config.baseX + (this.config.cantHor + 1) * this.config.tamCuadrado, y);
+            ctx.stroke();
+        }
+        
+        // Líneas verticales entrelazadas (igual que nivel 1)
+        let y1 = 1;
+        let par = false;
+        for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
+            const x = this.config.baseX + j * this.config.tamCuadrado;
+            if (par == false) {
+                y1 = this.config.baseY + (this.config.tamCuadrado*1.5) - (this.config.grosorLinea/2);
+            } else {
+                y1 = this.config.baseY + (this.config.tamCuadrado*0.5) - (this.config.grosorLinea/2);
+            }
+            const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
+            grad.addColorStop(0, colors.dark);
+            grad.addColorStop(0.5, colors.bright);
+            grad.addColorStop(1, colors.dark);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(x, this.config.baseY);
+            ctx.lineTo(x, y1);
+            y1 = y1 + this.config.grosorLinea;
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, y1+(this.config.tamCuadrado*2) - this.config.grosorLinea);
+            if (par == false) {
+                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
+            } else {
+                y1 = y1+(this.config.tamCuadrado*2) - this.config.grosorLinea + this.config.grosorLinea;
+            }
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado);
+            ctx.stroke();
+            par = !par;
+        }
+    }
+    
+    dibujarRejaBaseEstiloNivel3(ctx) {
+        const colors = this.colores;
+        
+        // Líneas horizontales más cortas (basado en caso 4 del código actual)
+        for (let i = 0.5; i <= this.config.cantVert + 0.5; i++) {
+            const y = this.config.baseY + i * this.config.tamCuadrado;
+            const grad = ctx.createLinearGradient(0, y - this.config.grosorLinea/2, 0, y + this.config.grosorLinea/2);
+            grad.addColorStop(0, colors.border);
+            grad.addColorStop(0.5, colors.bright);
+            grad.addColorStop(1, colors.border);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(this.config.baseX + (this.config.tamCuadrado*.5), y);
+            ctx.lineTo(this.config.baseX + (this.config.cantHor + 1) * this.config.tamCuadrado - (this.config.tamCuadrado*.5), y);
+            ctx.stroke();
+        }
+        
+        // Líneas verticales más cortas
+        for (let j = 0.5; j <= this.config.cantHor + 0.5; j++) {
+            const x = this.config.baseX + j * this.config.tamCuadrado;
+            const grad = ctx.createLinearGradient(x - this.config.grosorLinea/2, 0, x + this.config.grosorLinea/2, 0);
+            grad.addColorStop(0, colors.border);
+            grad.addColorStop(0.5, colors.bright);
+            grad.addColorStop(1, colors.border);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(x, this.config.baseY + (this.config.tamCuadrado*.5));
+            ctx.lineTo(x, this.config.baseY + (this.config.cantVert + 1) * this.config.tamCuadrado - (this.config.tamCuadrado*.5));
+            ctx.stroke();
+        }
+    }
+    
+    // === ACTUALIZACIÓN LÓGICA (30 FPS) - BASADO EN UPDATEGRIDLOGIC ===
+    updateLogic(deltaTime) {
+        if (!this.activo) return;
+        
+        // Guardar estado anterior para interpolación (basado en gridState)
+        this.interpolationState.previous = { ...this.interpolationState.current };
+        
+        // Actualizar estado actual con valores controlados externamente
+        this.interpolationState.current = {
+            posX: this.posX,
+            posY: this.posY,
+            rot: this.rot,
+            timestamp: performance.now()
+        };
+    }
+    
+    // === COMPOSICIÓN Y RENDERIZADO (60 FPS CON INTERPOLACIÓN) - BASADO EN COMPOSEGRID ===
+    render(ctxDestino, alpha = 1.0) {
+        if (!this.activo || !this.canvases[0]) return;
+        
+        // Interpolación suave (basada en composeGrid)
+        const interpolatedState = {
+            posX: Utils.lerp(this.interpolationState.previous.posX, this.interpolationState.current.posX, alpha),
+            posY: Utils.lerp(this.interpolationState.previous.posY, this.interpolationState.current.posY, alpha),
+            rot: this.lerpAngle(this.interpolationState.previous.rot, this.interpolationState.current.rot, alpha)
+        };
+        
+        // Canvas de composición (1)
+        this.ensureCanvas(1);
+        const compCtx = this.canvases[1];
+        compCtx.clearRect(0, 0, GAME_CONFIG.LOGICAL_WIDTH, GAME_CONFIG.LOGICAL_HEIGHT);
+        
+        // Aplicar transformaciones
+        compCtx.save();
+        
+        // Aplicar rotación si existe (basado en case 2 del composeGrid)
+        if (interpolatedState.rot !== 0) {
+            const centerX = GAME_CONFIG.LOGICAL_WIDTH / 2;
+            const centerY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+            
+            compCtx.translate(centerX, centerY);
+            compCtx.rotate(interpolatedState.rot);
+            compCtx.translate(-centerX, -centerY);
+        }
+        
+        // Aplicar traslación
+        compCtx.translate(interpolatedState.posX, interpolatedState.posY);
+        
+        // Capturar matriz de transformación
+        this.transformMatrix = compCtx.getTransform();
+        
+        // Dibujar reja base
+        compCtx.drawImage(this.canvases[0].canvas, 0, 0);
+        
+        compCtx.restore();
+        
+        // Renderizar al contexto destino
+        ctxDestino.drawImage(this.canvases[1].canvas, 0, 0);
+    }
+    
+    // === UTILIDADES ===
+    lerpAngle(from, to, t) {
+        // Función de interpolación angular (copiada del composeGrid)
+        const TWO_PI = Math.PI * 2;
+        
+        // Normalizar ángulos al rango [0, 2π]
+        from = ((from % TWO_PI) + TWO_PI) % TWO_PI;
+        to = ((to % TWO_PI) + TWO_PI) % TWO_PI;
+        
+        // Calcular la diferencia más corta
+        let diff = to - from;
+        if (diff > Math.PI) {
+            diff -= TWO_PI;
+        } else if (diff < -Math.PI) {
+            diff += TWO_PI;
+        }
+        
+        // Interpolación suave
+        return from + diff * t;
+    }
+    
+    // === COORDENADAS TRANSFORMADAS (BASADO EN GETCOORDENADAS) ===
+    getCoordenadasCubiertas() {
+        return this.config.coordenadasCubiertasBase.map(coord => {
+            const transformed = this.applyTransformMatrix(coord.x, coord.y);
+            return {
+                ...coord,
+                x: transformed.x,
+                y: transformed.y,
+                baseX: coord.x,
+                baseY: coord.y
+            };
+        });
+    }
+    
+    getCoordenadasDescubiertas() {
+        return this.config.coordenadasDescubiertasBase.map(coord => {
+            const transformed = this.applyTransformMatrix(coord.x, coord.y);
+            return {
+                ...coord,
+                x: transformed.x,
+                y: transformed.y,
+                baseX: coord.x,
+                baseY: coord.y
+            };
+        });
+    }
+    
+    applyTransformMatrix(x, y) {
+        // Aplicar matriz de transformación (copiado de applyTransformMatrix)
+        if (!this.transformMatrix) {
+            return { x, y };
+        }
+        
+        const transformedX = this.transformMatrix.a * x + this.transformMatrix.c * y + this.transformMatrix.e;
+        const transformedY = this.transformMatrix.b * x + this.transformMatrix.d * y + this.transformMatrix.f;
+        
+        return {
+            x: transformedX,
+            y: transformedY
+        };
+    }
+    
+    // === MÉTODO DE RESIZE ===
+    resize(width, height, level) {
+        this.calcularConfiguracion(width, height, level);
+        this.needsRedrawBase = true;
+        console.log(`🔄 GridObj ${this.id}: Resize aplicado`);
+    }
+    
+    // === MÉTODO DE INICIALIZACIÓN ===
+    init(width, height, level) {
+        this.calcularConfiguracion(width, height, level);
+        this.dibujarRejaBase(level);
+        this.inicializado = true;
+        
+        // Inicializar estado de interpolación
+        const now = performance.now();
+        this.interpolationState.previous = { posX: this.posX, posY: this.posY, rot: this.rot, timestamp: now };
+        this.interpolationState.current = { posX: this.posX, posY: this.posY, rot: this.rot, timestamp: now };
+        
+        console.log(`🎯 GridObj ${this.id}: Inicializado correctamente`);
+        return this;
+    }
+    
+    // === MÉTODO DE LIMPIEZA ===
+    dispose() {
+        this.canvases.forEach(ctx => {
+            if (ctx && ctx.canvas) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+        });
+        this.canvases.length = 0;
+        this.inicializado = false;
+        console.log(`🗑️ GridObj ${this.id}: Recursos liberados`);
+    }
+    
+    // === MÉTODOS DE CONFIGURACIÓN MANUAL ===
+    setConfiguracionManual(cantHor, cantVert, tamCuadrado = null, grosorLinea = null, baseX = null, baseY = null) {
+        this.config.cantHor = cantHor;
+        this.config.cantVert = cantVert;
+        this.config.tamCuadrado = tamCuadrado;
+        this.config.grosorLinea = grosorLinea;
+        this.config.baseX = baseX;
+        this.config.baseY = baseY;
+        this.needsRedrawBase = true;
+        console.log(`⚙️ GridObj ${this.id}: Configuración manual aplicada - ${cantHor}x${cantVert}`);
+    }
+    
+    // === MÉTODOS DE CONTROL EXTERNO DE ESTADO ===
+    setPosicion(x, y) {
+        this.posX = x;
+        this.posY = y;
+    }
+    
+    setRotacion(radianes) {
+        this.rot = radianes;
+    }
+    
+    setMovimiento(x, y, rotacionRad) {
+        this.posX = x;
+        this.posY = y;
+        this.rot = rotacionRad;
+    }
+}
+
+// === GESTOR GLOBAL DE GRIDOBJ ===
+let gridObjectsRegistry = new Map(); // Registro de objetos GridObj por ID
+
+// === FUNCIONES UTILITARIAS PARA GRIDOBJ ===
+export function createGridObj(id, tipoVariante = 'default') {
+    const gridObj = new GridObj(id, tipoVariante);
+    gridObjectsRegistry.set(id, gridObj);
+    console.log(`🎯 GridObj ${id} creado y registrado`);
+    return gridObj;
+}
+
+export function getGridObj(id) {
+    return gridObjectsRegistry.get(id) || null;
+}
+
+export function getAllGridObjs() {
+    return Array.from(gridObjectsRegistry.values());
+}
+
+export function removeGridObj(id) {
+    const gridObj = gridObjectsRegistry.get(id);
+    if (gridObj) {
+        gridObj.dispose();
+        gridObjectsRegistry.delete(id);
+        console.log(`🗑️ GridObj ${id} eliminado del registro`);
+        return true;
+    }
+    return false;
+}
+
+export function clearAllGridObjs() {
+    gridObjectsRegistry.forEach(gridObj => gridObj.dispose());
+    gridObjectsRegistry.clear();
+    console.log(`🗑️ Todos los GridObj eliminados del registro`);
+}
+
+// === DEBUG PARA GRIDOBJ ===
+window.debugGridObjs = function() {
+    console.log("🧪 [DEBUG] Estado de GridObj Registry:");
+    console.log(`   Total objetos: ${gridObjectsRegistry.size}`);
+    
+    gridObjectsRegistry.forEach((gridObj, id) => {
+        console.log(`   ${id}: activo=${gridObj.activo}, inicializado=${gridObj.inicializado}, tipo=${gridObj.tipoVariante}`);
+        console.log(`      posición=(${gridObj.posX.toFixed(1)}, ${gridObj.posY.toFixed(1)}), rotación=${(gridObj.rot * 180 / Math.PI).toFixed(1)}°`);
+        console.log(`      config=${gridObj.config.cantHor}x${gridObj.config.cantVert}, celda=${gridObj.config.tamCuadrado ? gridObj.config.tamCuadrado.toFixed(1) : 'auto'}px`);
+    });
+    
+    return {
+        totalObjetos: gridObjectsRegistry.size,
+        objetos: Array.from(gridObjectsRegistry.entries()).map(([id, obj]) => ({
+            id,
+            activo: obj.activo,
+            inicializado: obj.inicializado,
+            tipo: obj.tipoVariante,
+            posicion: { x: obj.posX, y: obj.posY },
+            rotacion: obj.rot * 180 / Math.PI
+        }))
+    };
+};
+
+console.log("✅ CLASE GRIDOBJ IMPLEMENTADA - Objetos de reja independientes disponibles");
+console.log("🧪 [DEBUG] Funciones disponibles:");
+console.log("   createGridObj(id, tipo) - Crear nuevo objeto reja");
+console.log("   getGridObj(id) - Obtener objeto por ID");
+console.log("   debugGridObjs() - Ver estado de todos los objetos");
