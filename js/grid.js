@@ -1077,16 +1077,22 @@ export function initGrid(level = 1) {
             const height = GAME_CONFIG.LOGICAL_HEIGHT;
             
             // === CREAR E INICIALIZAR REJA1 (2x3 CELDAS, SOLO FLOTACIÓN) ===
-            const reja1 = createGridObj('reja1', 'nivel3');
+            const reja1 = createGridObj('reja1');
             reja1.setConfiguracionManual(2, 3); // 2 celdas horizontales, 3 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
+            // 🎨 ASIGNAR COLORES VERDES A REJA1
+            reja1.colorDark = "rgb(0, 31, 20)";      // Verde oscuro
+            reja1.colorClaro = "rgb(67, 152, 186)";   // Verde brillante
             reja1.init(width, height, level);
-            console.log("✅ Reja1 (2x3) creada e inicializada - CENTRADA automáticamente");
+            console.log("✅ Reja1 (2x3) creada e inicializada - CENTRADA automáticamente - 🎨 COLORES VERDES");
             
             // === CREAR E INICIALIZAR REJA2 (3x4 CELDAS, FLOTACIÓN + ROTACIÓN) ===
-            const reja2 = createGridObj('reja2', 'nivel3');
+            const reja2 = createGridObj('reja2');
             reja2.setConfiguracionManual(3, 4); // 3 celdas horizontales, 4 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
+            // 🎨 ASIGNAR COLORES DORADOS A REJA2
+            reja2.colorDark = "rgb(29, 23, 13)";     // Dorado oscuro
+            reja2.colorClaro = "rgb(0, 255, 30)";   // Dorado brillante
             reja2.init(width, height, level);
-            console.log("✅ Reja2 (3x4) creada e inicializada - CENTRADA automáticamente");
+            console.log("✅ Reja2 (3x4) creada e inicializada - CENTRADA automáticamente - 🎨 COLORES DORADOS");
             console.log(`   Canvas lógico: ${width}x${height}`);
             
             // Preparar canvas de composición mínimo (para compatibilidad)
@@ -1499,9 +1505,8 @@ function needsInitialization(level) {
  * Basada en las ideas del sistema de rejas del nivel 2 pero completamente independiente
  */
 class GridObj {
-    constructor(id, tipoVariante = 'default') {
+    constructor(id) {
         this.id = id;
-        this.tipoVariante = tipoVariante;
         
         // === CONFIGURACIÓN GEOMÉTRICA (FLEXIBLE) ===
         this.config = {
@@ -1526,8 +1531,9 @@ class GridObj {
             poligonosColision: []
         };
         
-        // === COLORES POR TIPO VARIANTE ===
-        this.colores = this.initColoresPorTipo(tipoVariante);
+        // 🎨 COLORES SIMPLES Y DIRECTOS (MODIFICABLES)
+        this.colorDark = "rgb(0, 19, 24)";        // Color oscuro por defecto
+        this.colorClaro = "rgba(0, 255, 255, 1)"; // Color claro por defecto
         
         // === ESTADO DE POSICIÓN Y ROTACIÓN (CONTROLADO EXTERNAMENTE) ===
         this.posX = 0;      // Posición X actual (controlada por motor externo)
@@ -1561,41 +1567,15 @@ class GridObj {
         this.needsRedrawBase = true;  // Para redibujo de reja base
         this.activo = true;
         
-        console.log(`🏗️ GridObj creado: ID=${id}, TipoVariante=${tipoVariante}`);
+        console.log(`🏗️ GridObj creado: ID=${id}, colores: dark='${this.colorDark}', claro='${this.colorClaro}'`);
     }
     
-    // === INICIALIZACIÓN DE COLORES POR TIPO VARIANTE ===
-    initColoresPorTipo(tipo) {
-        const tiposColores = {
-            default: {
-                dark: "rgb(0, 19, 24)",
-                bright: "rgba(0, 255, 255, 1)"
-            },
-            nivel1: {
-                dark: "rgb(0, 19, 24)",
-                bright: "rgba(0, 255, 255, 1)"
-            },
-            nivel2: {
-                dark: "rgb(0, 31, 20)",
-                bright: "rgb(19, 231, 16)"
-            },
-            nivel3: {
-                dark: "rgb(32, 81, 40)",
-                bright: "rgb(196, 25, 202)",
-                border: "rgb(0, 0, 0)"
-            },
-            // Futuros tipos para diferentes variantes
-            metalico: {
-                dark: "rgb(40, 40, 40)",
-                bright: "rgb(200, 200, 200)"
-            },
-            dorado: {
-                dark: "rgb(60, 45, 20)",
-                bright: "rgb(255, 215, 0)"
-            }
-        };
-        
-        return tiposColores[tipo] || tiposColores.default;
+    // === MÉTODO PARA CAMBIAR COLORES FÁCILMENTE ===
+    setColores(colorDark, colorClaro) {
+        this.colorDark = colorDark;
+        this.colorClaro = colorClaro;
+        this.needsRedrawBase = true; // Marcar para redibujo
+        console.log(`🎨 GridObj ${this.id}: Colores cambiados - dark='${colorDark}', claro='${colorClaro}'`);
     }
     
     // === CÁLCULO DE CONFIGURACIÓN GEOMÉTRICA ===
@@ -1727,7 +1707,11 @@ class GridObj {
     
     // === MÉTODO DE DIBUJO POR DEFECTO (CENTRADO EN CANVAS COMO NIVEL 1 Y 2) ===
     dibujarRejaBasePorDefecto(ctx) {
-        const colors = this.colores;
+        // 🎨 USAR COLORES DIRECTOS CONFIGURABLES
+        const colors = {
+            dark: this.colorDark,
+            bright: this.colorClaro
+        };
         
         // ✅ CALCULAR POSICIÓN CENTRADA EN EL CANVAS (COMO NIVEL 1 Y 2)
         const canvasWidth = GAME_CONFIG.LOGICAL_WIDTH;
@@ -2007,8 +1991,8 @@ class GridObj {
 let gridObjectsRegistry = new Map(); // Registro de objetos GridObj por ID
 
 // === FUNCIONES UTILITARIAS PARA GRIDOBJ ===
-export function createGridObj(id, tipoVariante = 'default') {
-    const gridObj = new GridObj(id, tipoVariante);
+export function createGridObj(id) {
+    const gridObj = new GridObj(id);
     gridObjectsRegistry.set(id, gridObj);
     console.log(`🎯 GridObj ${id} creado y registrado`);
     return gridObj;
@@ -2045,9 +2029,10 @@ window.debugGridObjs = function() {
     console.log(`   Total objetos: ${gridObjectsRegistry.size}`);
     
     gridObjectsRegistry.forEach((gridObj, id) => {
-        console.log(`   ${id}: activo=${gridObj.activo}, inicializado=${gridObj.inicializado}, tipo=${gridObj.tipoVariante}`);
+        console.log(`   ${id}: activo=${gridObj.activo}, inicializado=${gridObj.inicializado}`);
         console.log(`      posición=(${gridObj.posX.toFixed(1)}, ${gridObj.posY.toFixed(1)}), rotación=${(gridObj.rot * 180 / Math.PI).toFixed(1)}°`);
         console.log(`      config=${gridObj.config.cantHor}x${gridObj.config.cantVert}, celda=${gridObj.config.tamCuadrado ? gridObj.config.tamCuadrado.toFixed(1) : 'auto'}px`);
+        console.log(`      🎨 colores: dark='${gridObj.colorDark}', claro='${gridObj.colorClaro}'`);
     });
     
     return {
@@ -2056,9 +2041,9 @@ window.debugGridObjs = function() {
             id,
             activo: obj.activo,
             inicializado: obj.inicializado,
-            tipo: obj.tipoVariante,
             posicion: { x: obj.posX, y: obj.posY },
-            rotacion: obj.rot * 180 / Math.PI
+            rotacion: obj.rot * 180 / Math.PI,
+            colores: { dark: obj.colorDark, claro: obj.colorClaro }
         }))
     };
 };
@@ -2079,6 +2064,7 @@ window.debugGridObjNivel3 = function() {
         console.log(`   ${obj.id} (${obj.config.cantHor}x${obj.config.cantVert}):`);
         console.log(`     Tamaño calculado: ${width.toFixed(1)}x${height.toFixed(1)}`);
         console.log(`     Movimiento: pos(${obj.posX}, ${obj.posY}) rot(${(obj.rot * 180/Math.PI).toFixed(1)}°)`);
+        console.log(`     🎨 Colores: dark='${obj.colorDark}' claro='${obj.colorClaro}'`);
         console.log(`     Canvas: ${GAME_CONFIG.LOGICAL_WIDTH}x${GAME_CONFIG.LOGICAL_HEIGHT} - ✅ Centrado automático`);
     });
     
@@ -2110,9 +2096,54 @@ window.debugSetReja2Movimiento = function(x, y, rotacionGrados) {
     }
 };
 
+window.debugCambiarColoresReja = function(rejaId, colorDark, colorClaro) {
+    const reja = getGridObj(rejaId);
+    if (!reja) {
+        console.log(`🧪 [DEBUG] Reja '${rejaId}' no encontrada`);
+        return;
+    }
+    
+    // Cambiar colores directamente
+    reja.colorDark = colorDark;
+    reja.colorClaro = colorClaro;
+    reja.needsRedrawBase = true;
+    
+    // Redibujar la reja con los nuevos colores
+    reja.dibujarRejaBase(3);
+    
+    console.log(`🧪 [DEBUG] ${rejaId} colores cambiados:`);
+    console.log(`   colorDark: ${colorDark}, colorClaro: ${colorClaro}`);
+    
+    return { rejaId, colorDark, colorClaro };
+};
+
+// Función auxiliar para colores predefinidos
+window.debugColoresPreset = function(rejaId, preset) {
+    const presets = {
+        'verde': { dark: "rgb(0, 31, 20)", claro: "rgb(19, 231, 16)" },
+        'dorado': { dark: "rgb(60, 45, 20)", claro: "rgb(255, 215, 0)" },
+        'gris': { dark: "rgb(40, 40, 40)", claro: "rgb(200, 200, 200)" },
+        'cyan': { dark: "rgb(0, 19, 24)", claro: "rgba(0, 255, 255, 1)" },
+        'magenta': { dark: "rgb(32, 81, 40)", claro: "rgb(196, 25, 202)" },
+        'rojo': { dark: "rgb(40, 10, 10)", claro: "rgb(255, 50, 50)" }
+    };
+    
+    if (!presets[preset]) {
+        console.log(`🧪 [DEBUG] Preset '${preset}' no disponible. Disponibles: ${Object.keys(presets).join(', ')}`);
+        return;
+    }
+    
+    const colores = presets[preset];
+    return window.debugCambiarColoresReja(rejaId, colores.dark, colores.claro);
+};
+
 console.log("✅ CLASE GRIDOBJ IMPLEMENTADA - Objetos de reja independientes disponibles");
 console.log("🧪 [DEBUG] Funciones disponibles:");
 console.log("   debugGridObjNivel3() - Ver estado de objetos nivel 3");
 console.log("   debugSetReja1Flotacion(y) - Mover Reja1 verticalmente");
 console.log("   debugSetReja2Movimiento(x, y, grados) - Mover y rotar Reja2");
+console.log("   debugCambiarColoresReja(id, colorDark, colorClaro) - Cambiar colores RGB directamente");
+console.log("   debugColoresPreset(id, preset) - Usar colores predefinidos");
+console.log("     Presets: 'verde', 'dorado', 'gris', 'cyan', 'magenta', 'rojo'");
 console.log("   debugGridObjs() - Ver estado detallado de todos los objetos");
+console.log("💡 [EJEMPLO] reja1.colorDark = 'rgb(100,0,0)'; reja1.colorClaro = 'rgb(255,100,100)';");
