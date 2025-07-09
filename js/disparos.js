@@ -244,7 +244,7 @@ function detectarEstadoPelota() {
     const posicionPelota = getPelotaPosition();
     
     // Obtener nivel actual del game engine
-    const nivelActual = window.gameEngine ? window.gameEngine.currentLevel : 1;
+    const nivelActual = window.gameInstance ? window.gameInstance.currentLevel : 1;
     
     // Método geométrico principal (del Ensayo)
     const margenCelda = 15;        // Tolerancia para centros de celdas
@@ -504,10 +504,10 @@ function iniciarCronometroJuego() {
         // 🚀 WAKE-UP CRÍTICO: Despertar backend al iniciar nivel con primer disparo
         if (window.apiClient && typeof window.apiClient.wakeUpForLevel === 'function') {
             // Obtener nivel actual
-            const nivelActual = window.gameEngine ? window.gameEngine.currentLevel : 1;
+            const nivelActual = window.gameInstance ? window.gameInstance.currentLevel : 1;
             
             console.log(`🚀 [WAKE-UP] Iniciando wake-up del backend para nivel ${nivelActual}`);
-            console.log(`🚀 [WAKE-UP] gameEngine.currentLevel: ${window.gameEngine?.currentLevel || 'undefined'}`);
+            console.log(`🚀 [WAKE-UP] gameInstance.currentLevel: ${window.gameInstance?.currentLevel || 'undefined'}`);
             
             // Wake-up asíncrono para no bloquear el juego
             window.apiClient.wakeUpForLevel(nivelActual)

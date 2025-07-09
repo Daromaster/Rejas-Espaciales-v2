@@ -382,11 +382,14 @@ function seleccionarProximoDestino(nivel) {
                     ciclo: destinoAlternarNivel3
                 };
                 
+               
+
+                console.log(`✅ DESTINO ASIGNADO: ${tipoDestino} de ${rejaSeleccionada} (ciclo ${destinoAlternarNivel3})`);
+                
                 // Tiempo fijo de permanencia para testing (luego se puede hacer variable)
                 pelotaState.tiempoPermanenciaDestino = 2000;
                 
-                console.log(`🎯 Nuevo destino nivel 3: ${tipoDestino} de ${rejaSeleccionada} (ciclo ${destinoAlternarNivel3}) - ${pelotaState.tiempoPermanenciaDestino}ms`);
-                console.log(`   Coord: (${coordenadaSeleccionada.x.toFixed(1)}, ${coordenadaSeleccionada.y.toFixed(1)}) | Total disponibles: ${coordenadas.length}`);
+                // Destino seleccionado (log mínimo arriba)
                 
                 // Avanzar al siguiente paso del ciclo
                 destinoAlternarNivel3 = (destinoAlternarNivel3 + 1) % 4;
@@ -444,7 +447,7 @@ function iniciarViajePelota(destino) {
     // Detener órbita si está activa
     pelotaState.orbitaPelota = null;
     
-    console.log(`🚀 Iniciando viaje: distancia ${distanciaInicial.toFixed(1)}px, ${totalPasos} pasos`);
+    // Viaje iniciado
 }
 
 function avanzarPelota() {
@@ -568,12 +571,18 @@ function actualizarDestinoTransformado() {
     if (!pelotaState.destinoActual || !pelotaState.destinoActual.coordenadasBase) return;
     
     // === NIVEL 3: USAR MATRIZ ESPECÍFICA DE LA REJA CORRESPONDIENTE ===
-    const nivelActual = window.gameEngine ? window.gameEngine.currentLevel : 1;
+    const nivelActual = window.gameInstance ? window.gameInstance.currentLevel : 1;
     
+
+if (nivelActual ==3) {
+    debugger;
+}
+
     if (nivelActual === 3 && pelotaState.destinoActual.reja) {
         // Nivel 3: obtener matriz de la reja específica
         const reja = getGridObj(pelotaState.destinoActual.reja);
-        
+        console.log(`🔧 MATRIZ ESPECÍFICA: ${pelotaState.destinoActual.reja} - reja:${!!reja} matriz:${!!(reja?.transformMatrix)}`);
+        debugger;
         if (reja && reja.transformMatrix) {
             const base = pelotaState.destinoActual.coordenadasBase;
             const coordenadasTransformadas = reja.applyTransformMatrix(base.x, base.y);
@@ -582,10 +591,7 @@ function actualizarDestinoTransformado() {
             pelotaState.destinoActual.x = coordenadasTransformadas.x;
             pelotaState.destinoActual.y = coordenadasTransformadas.y;
             
-            // DEBUG: Solo mostrar cuando realmente cambia el destino
-            if (Math.abs(coordenadasTransformadas.x - base.x) > 1 || Math.abs(coordenadasTransformadas.y - base.y) > 1) {
-                console.log(`🔄 [MATRIZ] ${pelotaState.destinoActual.reja}: base(${base.x.toFixed(1)}, ${base.y.toFixed(1)}) → transform(${coordenadasTransformadas.x.toFixed(1)}, ${coordenadasTransformadas.y.toFixed(1)})`);
-            }
+            // Matriz aplicada correctamente (sin log repetitivo)
         } else {
             console.warn(`⚠️ [MATRIZ] No se encontró reja ${pelotaState.destinoActual.reja} o sin matriz de transformación`);
         }
@@ -785,6 +791,7 @@ export function renderPelota(ctx, nivel, alpha = 1) {
         if (nivel === 3 && pelotaState.destinoActual.reja) {
             // Nivel 3: obtener matriz de la reja específica (60 FPS con interpolación)
             const reja = getGridObj(pelotaState.destinoActual.reja);
+            console.log(`🎾 RENDER MATRIZ: ${pelotaState.destinoActual.reja} - reja:${!!reja} matriz:${!!(reja?.transformMatrix)}`);
             
             if (reja && reja.transformMatrix) {
                 const base = pelotaState.destinoActual.coordenadasBase;
@@ -1773,132 +1780,15 @@ console.log("   1. debugEstadoInstantaneo() - Ver estado actual");
 console.log("   2. debugRastreadorAlternancia() - Monitorear 30s");
 console.log("   3. Si solo reja2: debugDiagnosticoCicloNivel3() - Ver disponibilidad");
 
-// === DEBUG ESPECÍFICO: VERIFICADOR DEL NUEVO SISTEMA DE MATRICES ===
-window.debugSistemaMatricesEspecificas = function() {
-    console.log("🔧 [MATRICES] Verificando nuevo sistema de matrices específicas por reja:");
+// === VERIFICACIÓN SIMPLE DEL SISTEMA DE MATRICES ===
+window.debugVerificarMatricesRapido = function() {
+    const nivel = window.gameInstance ? window.gameInstance.currentLevel : 1;
+    const destino = pelotaState.destinoActual;
     
-    // Verificar funciones disponibles
-    console.log("📋 [MATRICES] Funciones disponibles:");
-    console.log(`   getTransformMatrix(): ${typeof getTransformMatrix}`);
-    console.log(`   getTransformMatrices(): ${typeof getTransformMatrices}`);
+    console.log(`🔧 Nivel: ${nivel}, Destino: ${destino?.tipo || 'ninguno'} de ${destino?.reja || 'ninguna'}`);
     
-    // Probar matrices tradicionales (niveles 1-2)
-    const matrizTradicional = getTransformMatrix(); // Sin parámetro
-    console.log(`   Matriz tradicional: ${matrizTradicional ? '✅ disponible' : '❌ no disponible'}`);
-    
-    // Probar matrices específicas (nivel 3)
-    const todasLasMatrices = getTransformMatrices();
-    console.log(`   Matrices específicas: ${Object.keys(todasLasMatrices).length} encontradas`);
-    
-    Object.entries(todasLasMatrices).forEach(([rejaId, matriz]) => {
-        console.log(`     ${rejaId}: ${matriz ? '✅ matriz válida' : '❌ matriz inválida'}`);
-        if (matriz) {
-            console.log(`       [a=${matriz.a?.toFixed(3)}, b=${matriz.b?.toFixed(3)}, c=${matriz.c?.toFixed(3)}, d=${matriz.d?.toFixed(3)}, e=${matriz.e?.toFixed(1)}, f=${matriz.f?.toFixed(1)}]`);
-        }
-    });
-    
-    // Probar getTransformMatrix con parámetros específicos
-    console.log("🧪 [MATRICES] Pruebas de obtención por reja:");
-    ['reja1', 'reja2'].forEach(rejaId => {
-        const matrizEspecifica = getTransformMatrix(rejaId);
-        console.log(`   getTransformMatrix('${rejaId}'): ${matrizEspecifica ? '✅ devuelve matriz' : '❌ no devuelve matriz'}`);
-        
-        // Comparar con acceso directo
-        const matrizDirecta = todasLasMatrices[rejaId];
-        const sonIguales = matrizEspecifica === matrizDirecta;
-        console.log(`     ¿Misma referencia que acceso directo?: ${sonIguales ? '✅ SÍ' : '❌ NO'}`);
-    });
-    
-    // Verificar estado del destino actual
-    console.log("🎯 [MATRICES] Estado del destino actual:");
-    if (pelotaState.destinoActual && pelotaState.destinoActual.reja) {
-        const destino = pelotaState.destinoActual;
-        console.log(`   Destino actual: ${destino.tipo} de ${destino.reja}`);
-        
-        // Verificar matriz que se usaría
-        const matrizQueSeUsaria = getTransformMatrix(destino.reja);
-        console.log(`   Matriz que se usaría: ${matrizQueSeUsaria ? '✅ disponible' : '❌ NO disponible'}`);
-        
-        // Probar transformación actual
-        if (matrizQueSeUsaria && destino.coordenadasBase) {
-            const reja = getGridObj(destino.reja);
-            if (reja) {
-                const transformDirecta = reja.applyTransformMatrix(destino.coordenadasBase.x, destino.coordenadasBase.y);
-                console.log(`   Transform directa: (${transformDirecta.x.toFixed(1)}, ${transformDirecta.y.toFixed(1)})`);
-                console.log(`   Destino actual: (${destino.x?.toFixed(1)}, ${destino.y?.toFixed(1)})`);
-                
-                const diferencia = Math.hypot(transformDirecta.x - destino.x, transformDirecta.y - destino.y);
-                console.log(`   Diferencia: ${diferencia.toFixed(3)}px ${diferencia < 0.1 ? '✅ CORRECTA' : '❌ INCORRECTA'}`);
-            }
-        }
-    } else {
-        console.log(`   ⚠️ No hay destino actual o no especifica reja`);
+    if (nivel === 3 && destino?.reja) {
+        const reja = getGridObj(destino.reja);
+        console.log(`   Reja encontrada: ${!!reja}, Matriz: ${!!(reja?.transformMatrix)}`);
     }
-    
-    return {
-        matrizTradicionalDisponible: !!matrizTradicional,
-        matricesEspecificasDisponibles: Object.keys(todasLasMatrices),
-        destinoActual: pelotaState.destinoActual ? {
-            reja: pelotaState.destinoActual.reja,
-            tipo: pelotaState.destinoActual.tipo
-        } : null
-    };
 };
-
-// === DEBUG: COMPARADOR ANTES/DESPUÉS DEL CAMBIO ===
-window.debugCompararMatricesAntesDepues = function() {
-    console.log("📊 [COMPARACIÓN] Sistema de matrices antes vs después del cambio:");
-    
-    // Simular comportamiento anterior (siempre reja2)
-    const matrizAnterior = getTransformMatrix(); // Sin parámetro (comportamiento anterior)
-    console.log("❌ [ANTERIOR] Comportamiento anterior (siempre matriz global):");
-    console.log(`   Matriz global: ${matrizAnterior ? 'disponible' : 'no disponible'}`);
-    
-    // Mostrar comportamiento nuevo (específico por reja)
-    console.log("✅ [NUEVO] Comportamiento nuevo (matriz específica por reja):");
-    ['reja1', 'reja2'].forEach(rejaId => {
-        const matrizEspecifica = getTransformMatrix(rejaId);
-        console.log(`   ${rejaId}: ${matrizEspecifica ? 'matriz específica disponible' : 'no disponible'}`);
-        
-        // Verificar si son diferentes
-        if (matrizAnterior && matrizEspecifica) {
-            const sonIguales = matrizAnterior === matrizEspecifica;
-            console.log(`     ¿Misma que matriz global?: ${sonIguales ? 'SÍ (podría ser el problema)' : 'NO (diferente correctamente)'}`);
-        }
-    });
-    
-    // Test de transformación
-    if (pelotaState.destinoActual && pelotaState.destinoActual.coordenadasBase) {
-        const base = pelotaState.destinoActual.coordenadasBase;
-        console.log("🧪 [TEST] Transformación del destino actual:");
-        console.log(`   Coordenadas base: (${base.x.toFixed(1)}, ${base.y.toFixed(1)})`);
-        
-        // Método anterior (matriz global)
-        if (matrizAnterior) {
-            const transAnterior = PelotaMath.applyTransform(base.x, base.y, matrizAnterior);
-            console.log(`   ❌ Método anterior: (${transAnterior.x.toFixed(1)}, ${transAnterior.y.toFixed(1)})`);
-        }
-        
-        // Método nuevo (matriz específica)
-        if (pelotaState.destinoActual.reja) {
-            const matrizNueva = getTransformMatrix(pelotaState.destinoActual.reja);
-            if (matrizNueva) {
-                const transNueva = PelotaMath.applyTransform(base.x, base.y, matrizNueva);
-                console.log(`   ✅ Método nuevo: (${transNueva.x.toFixed(1)}, ${transNueva.y.toFixed(1)})`);
-            }
-        }
-    }
-    
-    return {
-        matrizGlobalDisponible: !!matrizAnterior,
-        matricesEspecificasDisponibles: Object.keys(getTransformMatrices() || {}).length
-    };
-};
-
-console.log("🔧 [MATRICES] Funciones de verificación del nuevo sistema:");
-console.log("   debugSistemaMatricesEspecificas() - Verificar que funciona el nuevo sistema");
-console.log("   debugCompararMatricesAntesDepues() - Comparar comportamiento anterior vs nuevo");
-console.log("💡 [USAR DESPUÉS DEL CAMBIO]:");
-console.log("   1. debugSistemaMatricesEspecificas() - Verificar que hay matrices por reja");
-console.log("   2. debugCompararMatricesAntesDepues() - Ver diferencias");
-console.log("   3. debugRastreadorAlternancia() - Confirmar que ahora alterna correctamente");
