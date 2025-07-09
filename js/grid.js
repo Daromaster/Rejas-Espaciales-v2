@@ -842,13 +842,19 @@ export function updateGridLogic(deltaTime, level) {
             // === MOTOR DE MOVIMIENTO NIVEL 3 CON GRIDOBJ ===
             
             // ============================================================================
-            // 🎯 INICIALIZACIÓN NIVEL 3 CON GRIDOBJ (SOLO UNA VEZ)
+            // 🎯 INICIALIZACIÓN NIVEL 3 CON GRIDOBJ Y MOTORES COMPLEJOS (SOLO UNA VEZ)
             // ============================================================================
             
             if (!initFlagsGrid.level3) {
-                // Crear estado para las dos rejas GridObj
+                const DEG_TO_RAD = Math.PI / 180;
+                
+                // Crear estado completo para las dos rejas GridObj
                 window.gridLevel3StateNew = {
                     initialized: true,
+                    levelStartTime: currentTime,     // Momento de inicio del nivel
+                    gameStartTime: null,             // Momento del primer disparo (cuando arranca cronómetro)
+                    
+                    // === REJA1: SOLO FLOTACIÓN ===
                     reja1: {
                         id: 'reja1',
                         // Parámetros de flotación únicos para Reja1
@@ -860,9 +866,11 @@ export function updateGridLogic(deltaTime, level) {
                         phaseY: 0,
                         phaseX: Math.PI / 4
                     },
+                    
+                    // === REJA2: FLOTACIÓN + ROTACIÓN COMPLEJA ===
                     reja2: {
                         id: 'reja2',
-                        // Parámetros de flotación y rotación únicos para Reja2
+                        // Parámetros de flotación únicos para Reja2
                         amplitudeY: 20,
                         amplitudeX: 18,
                         frequencyY: 0.0010,
@@ -870,14 +878,40 @@ export function updateGridLogic(deltaTime, level) {
                         speed: 1.2,
                         phaseY: Math.PI / 3,
                         phaseX: Math.PI / 6,
-                        // Parámetros de rotación
-                        rotationSpeed: 0.001,  // rad/ms
-                        currentRotation: 0
+                        
+                        // === MOTOR DE ROTACIÓN COMPLEJO ===
+                        // Configuración de ritmos y velocidades
+                        DIRECTION_CHANGE_INTERVAL: 10000,      // 10 segundos para cambio de dirección
+                        ACCELERATION_START_TIME: 30000,        // 30 segundos para iniciar aceleración
+                        BASE_ROTATION_SPEED: 20 * DEG_TO_RAD,  // Velocidad base lenta (20°/seg)
+                        FAST_ROTATION_SPEED: 45 * DEG_TO_RAD,  // Velocidad rápida inicial (45°/seg)
+                        ACCELERATION_RATE: 10 * DEG_TO_RAD,    // Aceleración (10°/seg²)
+                        MAX_ROTATION_SPEED: 120 * DEG_TO_RAD,  // Velocidad máxima (120°/seg)
+                        
+                        // Estado actual de rotación
+                        currentRotation: 0,                    // Ángulo actual en radianes
+                        rotationSpeed: 20 * DEG_TO_RAD,       // Velocidad actual (rad/seg)
+                        rotationDirection: 1,                  // 1=horario, -1=antihorario
+                        
+                        // Control de fases
+                        phase: 'preGame',                      // 'preGame', 'gameRunning', 'acceleration'
+                        lastDirectionChangeTime: currentTime, // Última vez que cambió dirección
+                        
+                        // Debug
+                        debugInfo: {
+                            elapsedSinceLevel: 0,
+                            elapsedSinceGame: 0,
+                            timeToAcceleration: 30000,
+                            currentPhase: "pre-juego: cambio dirección cada 10s",
+                            directionChanges: 0
+                        }
                     }
                 };
                 
                 initFlagsGrid.level3 = true;
-                console.log("🎯 Nivel 3 GridObj: Estado de motores inicializado");
+                console.log("🎯 Nivel 3 GridObj: Estado de motores complejos inicializado");
+                console.log("   📋 Reja1: Solo flotación");
+                console.log("   📋 Reja2: Flotación + rotación compleja con fases temporales");
             }
             
             // ============================================================================
@@ -885,6 +919,22 @@ export function updateGridLogic(deltaTime, level) {
             // ============================================================================
             
             const state = window.gridLevel3StateNew;
+            
+            // ⏰ CÁLCULO DE TIEMPOS Y CONTROL DE FASES
+            state.reja2.debugInfo.elapsedSinceLevel = currentTime - state.levelStartTime;
+            
+            // Detectar si el cronómetro del juego ha empezado (primer disparo)
+            if (relojJuego.getEstado() === 'jugando' && state.gameStartTime === null) {
+                state.gameStartTime = currentTime;
+                state.reja2.phase = 'gameRunning';
+                console.log("🎯 Nivel 3: Cronómetro iniciado, Reja2 entra en fase 'gameRunning'");
+            }
+            
+            // Calcular tiempo transcurrido desde el primer disparo
+            if (state.gameStartTime !== null) {
+                state.reja2.debugInfo.elapsedSinceGame = currentTime - state.gameStartTime;
+                state.reja2.debugInfo.timeToAcceleration = state.reja2.ACCELERATION_START_TIME - state.reja2.debugInfo.elapsedSinceGame;
+            }
             
             // === MOTOR EXTERNO PARA REJA1 (SOLO FLOTACIÓN) ===
             const reja1 = getGridObj('reja1');
@@ -911,7 +961,7 @@ export function updateGridLogic(deltaTime, level) {
                 reja1.updateLogic(deltaTime);
             }
             
-            // === MOTOR EXTERNO PARA REJA2 (FLOTACIÓN + ROTACIÓN) ===
+            // === MOTOR EXTERNO PARA REJA2 (FLOTACIÓN + ROTACIÓN COMPLEJA) ===
             const reja2 = getGridObj('reja2');
             if (reja2) {
                 const r2 = state.reja2;
@@ -931,15 +981,87 @@ export function updateGridLogic(deltaTime, level) {
                     r2.phaseX
                 );
                 
-                // Calcular rotación para Reja2
-                r2.currentRotation += r2.rotationSpeed * deltaTime;
+                // === MOTOR DE ROTACIÓN COMPLEJO POR FASES ===
+                const dt = deltaTime / 1000; // Delta time en segundos
                 
-                // Normalizar ángulo
-                if (r2.currentRotation >= 2 * Math.PI) {
-                    r2.currentRotation -= 2 * Math.PI;
+                switch (r2.phase) {
+                    case 'preGame': {
+                        // === FASE PRE-JUEGO: Cambio de dirección cada 10 segundos ===
+                        r2.debugInfo.currentPhase = "pre-juego: cambio dirección cada 10s";
+                        
+                        // Verificar si debe cambiar dirección
+                        if (currentTime - r2.lastDirectionChangeTime >= r2.DIRECTION_CHANGE_INTERVAL) {
+                            r2.rotationDirection *= -1; // Cambiar dirección
+                            r2.lastDirectionChangeTime = currentTime;
+                            r2.debugInfo.directionChanges++;
+                            
+                            const direction = r2.rotationDirection > 0 ? 'horario' : 'antihorario';
+                            console.log(`🔄 Reja2: Cambio de dirección #${r2.debugInfo.directionChanges} → ${direction}`);
+                        }
+                        
+                        // Aplicar rotación con dirección variable
+                        r2.currentRotation += r2.rotationDirection * r2.BASE_ROTATION_SPEED * dt;
+                        break;
+                    }
+                    
+                    case 'gameRunning': {
+                        // === FASE JUEGO CORRIENDO: Cambio dirección cada 10s + preparar aceleración ===
+                        
+                        // Verificar si debe acelerar (30 segundos después del primer disparo)
+                        if (r2.debugInfo.elapsedSinceGame >= r2.ACCELERATION_START_TIME) {
+                            r2.phase = 'acceleration';
+                            r2.rotationDirection = 1; // Forzar sentido horario
+                            r2.rotationSpeed = r2.FAST_ROTATION_SPEED; // Velocidad inicial rápida
+                            console.log("🚀 Reja2: Iniciando fase aceleración - solo horario a alta velocidad");
+                            break;
+                        }
+                        
+                        r2.debugInfo.currentPhase = `juego activo: cambios cada 10s | aceleración en ${(r2.debugInfo.timeToAcceleration/1000).toFixed(1)}s`;
+                        
+                        // Verificar si debe cambiar dirección (continúa cada 10 segundos)
+                        if (currentTime - r2.lastDirectionChangeTime >= r2.DIRECTION_CHANGE_INTERVAL) {
+                            r2.rotationDirection *= -1; // Cambiar dirección
+                            r2.lastDirectionChangeTime = currentTime;
+                            r2.debugInfo.directionChanges++;
+                            
+                            const direction = r2.rotationDirection > 0 ? 'horario' : 'antihorario';
+                            console.log(`🔄 Reja2: Cambio de dirección #${r2.debugInfo.directionChanges} → ${direction} (juego activo)`);
+                        }
+                        
+                        // Aplicar rotación con dirección variable
+                        r2.currentRotation += r2.rotationDirection * r2.BASE_ROTATION_SPEED * dt;
+                        break;
+                    }
+                    
+                    case 'acceleration': {
+                        // === FASE ACELERACIÓN: Solo horario, velocidad creciente ===
+                        r2.debugInfo.currentPhase = "aceleración horaria continua";
+                        
+                        // Acelerar velocidad (solo horario)
+                        r2.rotationSpeed += r2.ACCELERATION_RATE * dt;
+                        
+                        // Limitar velocidad máxima
+                        if (r2.rotationSpeed > r2.MAX_ROTATION_SPEED) {
+                            r2.rotationSpeed = r2.MAX_ROTATION_SPEED;
+                            r2.debugInfo.currentPhase = "velocidad máxima horaria";
+                        }
+                        
+                        // Aplicar rotación horaria acelerada
+                        r2.currentRotation += r2.rotationSpeed * dt;
+                        break;
+                    }
                 }
                 
-                // Controlar Reja2 externamente (flotación + rotación)
+                // Normalizar ángulo
+                const TWO_PI = Math.PI * 2;
+                if (r2.currentRotation >= TWO_PI) {
+                    r2.currentRotation = r2.currentRotation % TWO_PI;
+                }
+                if (r2.currentRotation < 0) {
+                    r2.currentRotation = (r2.currentRotation % TWO_PI) + TWO_PI;
+                }
+                
+                // Controlar Reja2 externamente (flotación + rotación compleja)
                 reja2.setMovimiento(offsetX2, offsetY2, r2.currentRotation);
                 reja2.updateLogic(deltaTime);
             }
@@ -948,6 +1070,23 @@ export function updateGridLogic(deltaTime, level) {
             gridState.current.offsetX = 0;
             gridState.current.offsetY = 0;
             gridState.current.rotationAngle = 0;
+            
+            // ============================================================================
+            // 🐛 DEBUG INFO NIVEL 3 (mostrar cada 2 segundos)
+            // ============================================================================
+            
+            if (Math.floor(currentTime / 2000) !== Math.floor((currentTime - deltaTime) / 2000)) {
+                const r2 = state.reja2;
+                const angleInDegrees = (r2.currentRotation * 180 / Math.PI).toFixed(1);
+                const speedInDegrees = (r2.rotationSpeed * 180 / Math.PI).toFixed(1);
+                const direction = r2.rotationDirection > 0 ? '↻' : '↺';
+                
+                console.log(`🎯 Nivel 3 Reja2: ${angleInDegrees}° ${direction} | ${r2.debugInfo.currentPhase} | Vel: ${speedInDegrees}°/s | Cambios: ${r2.debugInfo.directionChanges}`);
+                
+                if (r2.debugInfo.elapsedSinceGame > 0) {
+                    console.log(`   ⏱️ Tiempo juego: ${(r2.debugInfo.elapsedSinceGame/1000).toFixed(1)}s | Aceleración en: ${(r2.debugInfo.timeToAcceleration/1000).toFixed(1)}s`);
+                }
+            }
             
             break;
         }
@@ -2147,3 +2286,226 @@ console.log("   debugColoresPreset(id, preset) - Usar colores predefinidos");
 console.log("     Presets: 'verde', 'dorado', 'gris', 'cyan', 'magenta', 'rojo'");
 console.log("   debugGridObjs() - Ver estado detallado de todos los objetos");
 console.log("💡 [EJEMPLO] reja1.colorDark = 'rgb(100,0,0)'; reja1.colorClaro = 'rgb(255,100,100)';");
+
+// ============================================================================
+// 🎛️ FUNCIONES DE CONFIGURACIÓN DE MOTORES NIVEL 3
+// ============================================================================
+
+// === CONFIGURACIÓN DE PARÁMETROS DE TIEMPO Y VELOCIDAD ===
+window.configNivel3Parametros = function(config = {}) {
+    if (!window.gridLevel3StateNew) {
+        console.log("🚨 [CONFIG] Nivel 3 no está inicializado. Inicia el nivel 3 primero.");
+        return;
+    }
+    
+    const state = window.gridLevel3StateNew;
+    const r2 = state.reja2;
+    const DEG_TO_RAD = Math.PI / 180;
+    
+    // Aplicar nuevos parámetros si se proporcionan
+    if (config.intervaloChangeDir !== undefined) {
+        r2.DIRECTION_CHANGE_INTERVAL = config.intervaloChangeDir * 1000; // convertir segundos a milisegundos
+        console.log(`🎛️ [CONFIG] Intervalo cambio dirección: ${config.intervaloChangeDir}s`);
+    }
+    
+    if (config.tiempoAceleracion !== undefined) {
+        r2.ACCELERATION_START_TIME = config.tiempoAceleracion * 1000; // convertir segundos a milisegundos
+        console.log(`🎛️ [CONFIG] Tiempo para aceleración: ${config.tiempoAceleracion}s`);
+    }
+    
+    if (config.velocidadBaseDeg !== undefined) {
+        r2.BASE_ROTATION_SPEED = config.velocidadBaseDeg * DEG_TO_RAD;
+        console.log(`🎛️ [CONFIG] Velocidad base: ${config.velocidadBaseDeg}°/s`);
+    }
+    
+    if (config.velocidadRapidaDeg !== undefined) {
+        r2.FAST_ROTATION_SPEED = config.velocidadRapidaDeg * DEG_TO_RAD;
+        console.log(`🎛️ [CONFIG] Velocidad rápida inicial: ${config.velocidadRapidaDeg}°/s`);
+    }
+    
+    if (config.aceleracionDeg !== undefined) {
+        r2.ACCELERATION_RATE = config.aceleracionDeg * DEG_TO_RAD;
+        console.log(`🎛️ [CONFIG] Aceleración: ${config.aceleracionDeg}°/s²`);
+    }
+    
+    if (config.velocidadMaxDeg !== undefined) {
+        r2.MAX_ROTATION_SPEED = config.velocidadMaxDeg * DEG_TO_RAD;
+        console.log(`🎛️ [CONFIG] Velocidad máxima: ${config.velocidadMaxDeg}°/s`);
+    }
+    
+    // Mostrar configuración actual
+    console.log("🎛️ [CONFIG] Configuración actual Nivel 3:");
+    console.log(`   Cambio dirección cada: ${r2.DIRECTION_CHANGE_INTERVAL/1000}s`);
+    console.log(`   Aceleración inicia en: ${r2.ACCELERATION_START_TIME/1000}s (desde primer disparo)`);
+    console.log(`   Velocidad base: ${(r2.BASE_ROTATION_SPEED*180/Math.PI).toFixed(1)}°/s`);
+    console.log(`   Velocidad rápida: ${(r2.FAST_ROTATION_SPEED*180/Math.PI).toFixed(1)}°/s`);
+    console.log(`   Aceleración: ${(r2.ACCELERATION_RATE*180/Math.PI).toFixed(1)}°/s²`);
+    console.log(`   Velocidad máxima: ${(r2.MAX_ROTATION_SPEED*180/Math.PI).toFixed(1)}°/s`);
+    
+    return {
+        intervaloChangeDir: r2.DIRECTION_CHANGE_INTERVAL/1000,
+        tiempoAceleracion: r2.ACCELERATION_START_TIME/1000,
+        velocidadBase: r2.BASE_ROTATION_SPEED*180/Math.PI,
+        velocidadRapida: r2.FAST_ROTATION_SPEED*180/Math.PI,
+        aceleracion: r2.ACCELERATION_RATE*180/Math.PI,
+        velocidadMax: r2.MAX_ROTATION_SPEED*180/Math.PI
+    };
+};
+
+// === FUNCIONES ESPECÍFICAS PARA CADA PARÁMETRO ===
+window.setTiempoCambioDir = function(segundos) {
+    return window.configNivel3Parametros({ intervaloChangeDir: segundos });
+};
+
+window.setTiempoAceleracion = function(segundos) {
+    return window.configNivel3Parametros({ tiempoAceleracion: segundos });
+};
+
+window.setVelocidadBase = function(gradosPorSegundo) {
+    return window.configNivel3Parametros({ velocidadBaseDeg: gradosPorSegundo });
+};
+
+window.setVelocidadRapida = function(gradosPorSegundo) {
+    return window.configNivel3Parametros({ velocidadRapidaDeg: gradosPorSegundo });
+};
+
+window.setAceleracion = function(gradosPorSegundoCuadrado) {
+    return window.configNivel3Parametros({ aceleracionDeg: gradosPorSegundoCuadrado });
+};
+
+window.setVelocidadMaxima = function(gradosPorSegundo) {
+    return window.configNivel3Parametros({ velocidadMaxDeg: gradosPorSegundo });
+};
+
+// === FUNCIÓN PARA REINICIAR ROTACIÓN Y FASES ===
+window.resetReja2Rotacion = function() {
+    if (!window.gridLevel3StateNew) {
+        console.log("🚨 [RESET] Nivel 3 no está inicializado");
+        return;
+    }
+    
+    const currentTime = performance.now();
+    const r2 = window.gridLevel3StateNew.reja2;
+    
+    // Reiniciar estado de rotación
+    r2.currentRotation = 0;
+    r2.rotationSpeed = r2.BASE_ROTATION_SPEED;
+    r2.rotationDirection = 1;
+    r2.phase = window.gridLevel3StateNew.gameStartTime ? 'gameRunning' : 'preGame';
+    r2.lastDirectionChangeTime = currentTime;
+    r2.debugInfo.directionChanges = 0;
+    
+    console.log("🔄 [RESET] Reja2 rotación reiniciada");
+    console.log(`   Fase: ${r2.phase}`);
+    console.log(`   Dirección: ${r2.rotationDirection > 0 ? 'horario' : 'antihorario'}`);
+    
+    return r2.phase;
+};
+
+// === FUNCIÓN PARA FORZAR CAMBIO DE FASE ===
+window.forzarFaseReja2 = function(fase) {
+    if (!window.gridLevel3StateNew) {
+        console.log("🚨 [FORZAR] Nivel 3 no está inicializado");
+        return;
+    }
+    
+    const currentTime = performance.now();
+    const r2 = window.gridLevel3StateNew.reja2;
+    const fases = ['preGame', 'gameRunning', 'acceleration'];
+    
+    if (!fases.includes(fase)) {
+        console.log(`🚨 [FORZAR] Fase '${fase}' no válida. Disponibles: ${fases.join(', ')}`);
+        return;
+    }
+    
+    const faseAnterior = r2.phase;
+    r2.phase = fase;
+    
+    // Ajustar cronómetros según la fase
+    switch (fase) {
+        case 'preGame':
+            window.gridLevel3StateNew.gameStartTime = null;
+            break;
+        case 'gameRunning':
+            if (!window.gridLevel3StateNew.gameStartTime) {
+                window.gridLevel3StateNew.gameStartTime = currentTime;
+            }
+            break;
+        case 'acceleration':
+            if (!window.gridLevel3StateNew.gameStartTime) {
+                window.gridLevel3StateNew.gameStartTime = currentTime - r2.ACCELERATION_START_TIME;
+            }
+            r2.rotationDirection = 1; // Forzar horario
+            r2.rotationSpeed = r2.FAST_ROTATION_SPEED;
+            break;
+    }
+    
+    console.log(`🎭 [FORZAR] Fase cambiada: ${faseAnterior} → ${fase}`);
+    
+    return { anterior: faseAnterior, actual: fase };
+};
+
+// === FUNCIÓN PARA VER ESTADO COMPLETO DEL MOTOR ===
+window.estadoMotorReja2 = function() {
+    if (!window.gridLevel3StateNew) {
+        console.log("🚨 [ESTADO] Nivel 3 no está inicializado");
+        return null;
+    }
+    
+    const state = window.gridLevel3StateNew;
+    const r2 = state.reja2;
+    const currentTime = performance.now();
+    
+    const estado = {
+        fase: r2.phase,
+        tiempos: {
+            elapsedSinceLevel: (currentTime - state.levelStartTime) / 1000,
+            elapsedSinceGame: state.gameStartTime ? (currentTime - state.gameStartTime) / 1000 : 0,
+            timeToAcceleration: Math.max(0, r2.ACCELERATION_START_TIME - r2.debugInfo.elapsedSinceGame) / 1000,
+            timeToNextDirectionChange: Math.max(0, r2.DIRECTION_CHANGE_INTERVAL - (currentTime - r2.lastDirectionChangeTime)) / 1000
+        },
+        rotacion: {
+            angulo: r2.currentRotation * 180 / Math.PI,
+            velocidad: r2.rotationSpeed * 180 / Math.PI,
+            direccion: r2.rotationDirection > 0 ? 'horario' : 'antihorario',
+            cambiosDir: r2.debugInfo.directionChanges
+        },
+        configuracion: {
+            intervaloChangeDir: r2.DIRECTION_CHANGE_INTERVAL / 1000,
+            tiempoAceleracion: r2.ACCELERATION_START_TIME / 1000,
+            velocidadBase: r2.BASE_ROTATION_SPEED * 180 / Math.PI,
+            velocidadRapida: r2.FAST_ROTATION_SPEED * 180 / Math.PI,
+            aceleracion: r2.ACCELERATION_RATE * 180 / Math.PI,
+            velocidadMax: r2.MAX_ROTATION_SPEED * 180 / Math.PI
+        }
+    };
+    
+    console.log("📊 [ESTADO] Motor Reja2 Nivel 3:");
+    console.log(`   🎭 Fase actual: ${estado.fase}`);
+    console.log(`   ⏱️ Tiempo nivel: ${estado.tiempos.elapsedSinceLevel.toFixed(1)}s`);
+    console.log(`   ⏱️ Tiempo juego: ${estado.tiempos.elapsedSinceGame.toFixed(1)}s`);
+    console.log(`   🔄 Rotación: ${estado.rotacion.angulo.toFixed(1)}° ${estado.rotacion.direccion} @ ${estado.rotacion.velocidad.toFixed(1)}°/s`);
+    console.log(`   🔄 Cambios dirección: ${estado.rotacion.cambiosDir} | Próximo en: ${estado.tiempos.timeToNextDirectionChange.toFixed(1)}s`);
+    
+    if (estado.fase !== 'acceleration') {
+        console.log(`   🚀 Aceleración en: ${estado.tiempos.timeToAcceleration.toFixed(1)}s`);
+    }
+    
+    return estado;
+};
+
+console.log("🎛️ [CONFIG] Funciones de configuración Nivel 3 disponibles:");
+console.log("   configNivel3Parametros({intervaloChangeDir, tiempoAceleracion, velocidadBaseDeg, etc}) - Configurar múltiples");
+console.log("   setTiempoCambioDir(segundos) - Cambiar intervalo de cambio de dirección");
+console.log("   setTiempoAceleracion(segundos) - Cambiar tiempo para aceleración");
+console.log("   setVelocidadBase(grados/s) - Velocidad base de rotación");
+console.log("   setVelocidadRapida(grados/s) - Velocidad inicial en fase aceleración");
+console.log("   setAceleracion(grados/s²) - Tasa de aceleración");
+console.log("   setVelocidadMaxima(grados/s) - Velocidad máxima");
+console.log("   resetReja2Rotacion() - Reiniciar rotación y contadores");
+console.log("   forzarFaseReja2('preGame'|'gameRunning'|'acceleration') - Cambiar fase manualmente");
+console.log("   estadoMotorReja2() - Ver estado completo del motor");
+console.log("💡 [EJEMPLOS]:");
+console.log("   setTiempoCambioDir(5) - Cambiar dirección cada 5 segundos");
+console.log("   setTiempoAceleracion(20) - Acelerar después de 20 segundos");
+console.log("   setVelocidadBase(30) - Rotar a 30°/s en las primeras fases");
