@@ -392,15 +392,18 @@ function seleccionarProximoDestino(nivel) {
                 // Destino seleccionado (log mínimo arriba)
                 
                 // Avanzar al siguiente paso del ciclo
-                destinoAlternarNivel3 = (destinoAlternarNivel3 + 1) % 4;
-                
+                //destinoAlternarNivel3 = (destinoAlternarNivel3 + 1) % 4;
+                destinoAlternarNivel3 = 0;
+
                 // Iniciar viaje hacia el destino
                 iniciarViajePelota(pelotaState.destinoActual);
             } else {
                 console.warn(`⚠️ No hay coordenadas ${tipoDestino} disponibles en ${rejaSeleccionada}`);
                 
                 // Intentar con el siguiente paso del ciclo
-                destinoAlternarNivel3 = (destinoAlternarNivel3 + 1) % 4;
+                //destinoAlternarNivel3 = (destinoAlternarNivel3 + 1) % 4;
+                destinoAlternarNivel3 = 0;
+                
                 seleccionarProximoDestino(nivel); // Reintentar
             }
             break;
