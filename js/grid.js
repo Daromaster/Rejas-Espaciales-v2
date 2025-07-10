@@ -542,12 +542,12 @@ function composeGrid(level, alpha = 1.0) {
                 }
                 
                 // Debug ocasional para verificar renderizado
-                if (Math.random() < 0.005) { // 0.5% de probabilidad
+                //if (Math.random() < 0.005) { // 0.5% de probabilidad
                    // console.log(`🎯 [DEBUG] Nivel 3 GridObj renderizado:`);
                     //console.log(`   Reja1 activa: ${reja1 ? reja1.activo : 'NO EXISTE'}`);
                     //console.log(`   Reja2 activa: ${reja2 ? reja2.activo : 'NO EXISTE'}`);
                    // console.log(`   Alpha: ${alpha.toFixed(3)}`);
-                }
+                //}
                 
                 return 2; // Retornar índice del canvas final para este nivel
             }
@@ -885,12 +885,13 @@ export function updateGridLogic(deltaTime, level) {
                         phaseY: Math.PI / 3,
                         phaseX: Math.PI / 6,
                         
-                        // === MOTOR DE ROTACIÓN COMPLEJO ===
+                        // === MOTOR DE ROTACIÓN COMPLEJO - NUEVAS FASES ===
                         // Configuración de ritmos y velocidades
-                        DIRECTION_CHANGE_INTERVAL: 5000,      // 5 segundos para cambio de dirección
-                        ACCELERATION_START_TIME: 30000,        // 30 segundos para iniciar aceleración
-                        BASE_ROTATION_SPEED: 20 * DEG_TO_RAD,  // Velocidad base lenta (20°/seg)
-                        FAST_ROTATION_SPEED: 30 * DEG_TO_RAD,  // Velocidad rápida inicial (45°/seg)
+                        DIRECTION_CHANGE_INTERVAL: 5000,      // 5 segundos para cambio de dirección (fase intermitente)
+                        INTERMITTENT_START_TIME: 30000,       // 30 segundos para iniciar rotación intermitente
+                        ACCELERATION_START_TIME: 50000,       // 50 segundos para iniciar aceleración final
+                        BASE_ROTATION_SPEED: 20 * DEG_TO_RAD,  // Velocidad base para fase intermitente (20°/seg)
+                        FAST_ROTATION_SPEED: 30 * DEG_TO_RAD,  // Velocidad rápida inicial para aceleración (30°/seg)
                         ACCELERATION_RATE: 10 * DEG_TO_RAD,    // Aceleración (10°/seg²)
                         MAX_ROTATION_SPEED: 120 * DEG_TO_RAD,  // Velocidad máxima (120°/seg)
                         
@@ -900,15 +901,16 @@ export function updateGridLogic(deltaTime, level) {
                         rotationDirection: 1,                  // 1=horario, -1=antihorario
                         
                         // Control de fases
-                        phase: 'preGame',                      // 'preGame', 'gameRunning', 'acceleration'
+                        phase: 'preGame',                      // 'preGame', 'gameRunning', 'intermittent', 'acceleration'
                         lastDirectionChangeTime: currentTime, // Última vez que cambió dirección
                         
                         // Debug
                         debugInfo: {
                             elapsedSinceLevel: 0,
                             elapsedSinceGame: 0,
-                            timeToAcceleration: 30000,
-                            currentPhase: "pre-juego: cambio dirección cada 10s",
+                            timeToIntermittent: 30000,
+                            timeToAcceleration: 50000,
+                            currentPhase: "pre-juego: solo flotación",
                             directionChanges: 0
                         }
                     }
@@ -939,6 +941,7 @@ export function updateGridLogic(deltaTime, level) {
             // Calcular tiempo transcurrido desde el primer disparo
             if (state.gameStartTime !== null) {
                 state.reja2.debugInfo.elapsedSinceGame = currentTime - state.gameStartTime;
+                state.reja2.debugInfo.timeToIntermittent = state.reja2.INTERMITTENT_START_TIME - state.reja2.debugInfo.elapsedSinceGame;
                 state.reja2.debugInfo.timeToAcceleration = state.reja2.ACCELERATION_START_TIME - state.reja2.debugInfo.elapsedSinceGame;
             }
             
@@ -992,28 +995,37 @@ export function updateGridLogic(deltaTime, level) {
                 
                 switch (r2.phase) {
                     case 'preGame': {
-                        // === FASE PRE-JUEGO: Cambio de dirección cada 10 segundos ===
-                        r2.debugInfo.currentPhase = "pre-juego: cambio dirección cada 10s";
+                        // === FASE PRE-JUEGO: SOLO FLOTACIÓN (SIN ROTACIÓN) ===
+                        r2.debugInfo.currentPhase = "pre-juego: solo flotación";
                         
-                        // Verificar si debe cambiar dirección
-                        if (currentTime - r2.lastDirectionChangeTime >= r2.DIRECTION_CHANGE_INTERVAL) {
-                            r2.rotationDirection *= -1; // Cambiar dirección
-                            r2.lastDirectionChangeTime = currentTime;
-                            r2.debugInfo.directionChanges++;
-                            
-                            const direction = r2.rotationDirection > 0 ? 'horario' : 'antihorario';
-                            console.log(`🔄 Reja2: Cambio de dirección #${r2.debugInfo.directionChanges} → ${direction}`);
-                        }
-                        
-                        // Aplicar rotación con dirección variable
-                        r2.currentRotation += r2.rotationDirection * r2.BASE_ROTATION_SPEED * dt;
+                        // No rotación en preGame - mantener rotación actual sin cambios
+                        // r2.currentRotation se mantiene sin incrementar
                         break;
                     }
                     
                     case 'gameRunning': {
-                        // === FASE JUEGO CORRIENDO: Cambio dirección cada 10s + preparar aceleración ===
+                        // === FASE JUEGO CORRIENDO (0-30s): SOLO FLOTACIÓN ===
                         
-                        // Verificar si debe acelerar (30 segundos después del primer disparo)
+                        // Verificar si debe pasar a fase intermitente (30 segundos después del primer disparo)
+                        if (r2.debugInfo.elapsedSinceGame >= r2.INTERMITTENT_START_TIME) {
+                            r2.phase = 'intermittent';
+                            r2.lastDirectionChangeTime = currentTime; // Reiniciar contador para cambios
+                            r2.rotationDirection = 1; // Empezar en sentido horario
+                            console.log("🔄 Reja2: Iniciando fase intermitente - rotación cada 5 segundos");
+                            break;
+                        }
+                        
+                        r2.debugInfo.currentPhase = `juego activo: solo flotación | rotación intermitente en ${(r2.debugInfo.timeToIntermittent/1000).toFixed(1)}s`;
+                        
+                        // No rotación en gameRunning (0-30s) - mantener rotación actual sin cambios
+                        // r2.currentRotation se mantiene sin incrementar
+                        break;
+                    }
+                    
+                    case 'intermittent': {
+                        // === FASE INTERMITENTE (30-50s): ROTACIÓN CADA 5 SEGUNDOS CAMBIA SENTIDO ===
+                        
+                        // Verificar si debe pasar a fase aceleración (50 segundos después del primer disparo)
                         if (r2.debugInfo.elapsedSinceGame >= r2.ACCELERATION_START_TIME) {
                             r2.phase = 'acceleration';
                             r2.rotationDirection = 1; // Forzar sentido horario
@@ -1022,16 +1034,16 @@ export function updateGridLogic(deltaTime, level) {
                             break;
                         }
                         
-                        r2.debugInfo.currentPhase = `juego activo: cambios cada 10s | aceleración en ${(r2.debugInfo.timeToAcceleration/1000).toFixed(1)}s`;
+                        r2.debugInfo.currentPhase = `rotación intermitente cada 5s | aceleración en ${(r2.debugInfo.timeToAcceleration/1000).toFixed(1)}s`;
                         
-                        // Verificar si debe cambiar dirección (continúa cada 10 segundos)
+                        // Verificar si debe cambiar dirección (cada 5 segundos)
                         if (currentTime - r2.lastDirectionChangeTime >= r2.DIRECTION_CHANGE_INTERVAL) {
                             r2.rotationDirection *= -1; // Cambiar dirección
                             r2.lastDirectionChangeTime = currentTime;
                             r2.debugInfo.directionChanges++;
                             
                             const direction = r2.rotationDirection > 0 ? 'horario' : 'antihorario';
-                            console.log(`🔄 Reja2: Cambio de dirección #${r2.debugInfo.directionChanges} → ${direction} (juego activo)`);
+                            console.log(`🔄 Reja2: Cambio de dirección #${r2.debugInfo.directionChanges} → ${direction} (fase intermitente)`);
                         }
                         
                         // Aplicar rotación con dirección variable
@@ -1040,7 +1052,7 @@ export function updateGridLogic(deltaTime, level) {
                     }
                     
                     case 'acceleration': {
-                        // === FASE ACELERACIÓN: Solo horario, velocidad creciente ===
+                        // === FASE ACELERACIÓN (50s+): SOLO HORARIO, VELOCIDAD CRECIENTE ===
                         r2.debugInfo.currentPhase = "aceleración horaria continua";
                         
                         // Acelerar velocidad (solo horario)
@@ -2328,6 +2340,11 @@ window.configNivel3Parametros = function(config = {}) {
         console.log(`🎛️ [CONFIG] Intervalo cambio dirección: ${config.intervaloChangeDir}s`);
     }
     
+    if (config.tiempoIntermitente !== undefined) {
+        r2.INTERMITTENT_START_TIME = config.tiempoIntermitente * 1000; // convertir segundos a milisegundos
+        console.log(`🎛️ [CONFIG] Tiempo para rotación intermitente: ${config.tiempoIntermitente}s`);
+    }
+    
     if (config.tiempoAceleracion !== undefined) {
         r2.ACCELERATION_START_TIME = config.tiempoAceleracion * 1000; // convertir segundos a milisegundos
         console.log(`🎛️ [CONFIG] Tiempo para aceleración: ${config.tiempoAceleracion}s`);
@@ -2355,7 +2372,8 @@ window.configNivel3Parametros = function(config = {}) {
     
     // Mostrar configuración actual
     console.log("🎛️ [CONFIG] Configuración actual Nivel 3:");
-    console.log(`   Cambio dirección cada: ${r2.DIRECTION_CHANGE_INTERVAL/1000}s`);
+    console.log(`   Cambio dirección cada: ${r2.DIRECTION_CHANGE_INTERVAL/1000}s (en fase intermitente)`);
+    console.log(`   Rotación intermitente inicia en: ${r2.INTERMITTENT_START_TIME/1000}s (desde primer disparo)`);
     console.log(`   Aceleración inicia en: ${r2.ACCELERATION_START_TIME/1000}s (desde primer disparo)`);
     console.log(`   Velocidad base: ${(r2.BASE_ROTATION_SPEED*180/Math.PI).toFixed(1)}°/s`);
     console.log(`   Velocidad rápida: ${(r2.FAST_ROTATION_SPEED*180/Math.PI).toFixed(1)}°/s`);
@@ -2364,6 +2382,7 @@ window.configNivel3Parametros = function(config = {}) {
     
     return {
         intervaloChangeDir: r2.DIRECTION_CHANGE_INTERVAL/1000,
+        tiempoIntermitente: r2.INTERMITTENT_START_TIME/1000,
         tiempoAceleracion: r2.ACCELERATION_START_TIME/1000,
         velocidadBase: r2.BASE_ROTATION_SPEED*180/Math.PI,
         velocidadRapida: r2.FAST_ROTATION_SPEED*180/Math.PI,
@@ -2375,6 +2394,10 @@ window.configNivel3Parametros = function(config = {}) {
 // === FUNCIONES ESPECÍFICAS PARA CADA PARÁMETRO ===
 window.setTiempoCambioDir = function(segundos) {
     return window.configNivel3Parametros({ intervaloChangeDir: segundos });
+};
+
+window.setTiempoIntermitente = function(segundos) {
+    return window.configNivel3Parametros({ tiempoIntermitente: segundos });
 };
 
 window.setTiempoAceleracion = function(segundos) {
@@ -2431,7 +2454,7 @@ window.forzarFaseReja2 = function(fase) {
     
     const currentTime = performance.now();
     const r2 = window.gridLevel3StateNew.reja2;
-    const fases = ['preGame', 'gameRunning', 'acceleration'];
+    const fases = ['preGame', 'gameRunning', 'intermittent', 'acceleration'];
     
     if (!fases.includes(fase)) {
         console.log(`🚨 [FORZAR] Fase '${fase}' no válida. Disponibles: ${fases.join(', ')}`);
@@ -2450,6 +2473,13 @@ window.forzarFaseReja2 = function(fase) {
             if (!window.gridLevel3StateNew.gameStartTime) {
                 window.gridLevel3StateNew.gameStartTime = currentTime;
             }
+            break;
+        case 'intermittent':
+            if (!window.gridLevel3StateNew.gameStartTime) {
+                window.gridLevel3StateNew.gameStartTime = currentTime - r2.INTERMITTENT_START_TIME;
+            }
+            r2.lastDirectionChangeTime = currentTime; // Reiniciar contador
+            r2.rotationDirection = 1; // Empezar horario
             break;
         case 'acceleration':
             if (!window.gridLevel3StateNew.gameStartTime) {
@@ -2515,17 +2545,19 @@ window.estadoMotorReja2 = function() {
 };
 
 console.log("🎛️ [CONFIG] Funciones de configuración Nivel 3 disponibles:");
-console.log("   configNivel3Parametros({intervaloChangeDir, tiempoAceleracion, velocidadBaseDeg, etc}) - Configurar múltiples");
-console.log("   setTiempoCambioDir(segundos) - Cambiar intervalo de cambio de dirección");
-console.log("   setTiempoAceleracion(segundos) - Cambiar tiempo para aceleración");
-console.log("   setVelocidadBase(grados/s) - Velocidad base de rotación");
+console.log("   configNivel3Parametros({intervaloChangeDir, tiempoIntermitente, tiempoAceleracion, velocidadBaseDeg, etc}) - Configurar múltiples");
+console.log("   setTiempoCambioDir(segundos) - Cambiar intervalo de cambio de dirección (fase intermitente)");
+console.log("   setTiempoIntermitente(segundos) - Cambiar tiempo para iniciar rotación intermitente");
+console.log("   setTiempoAceleracion(segundos) - Cambiar tiempo para aceleración final");
+console.log("   setVelocidadBase(grados/s) - Velocidad base de rotación (fase intermitente)");
 console.log("   setVelocidadRapida(grados/s) - Velocidad inicial en fase aceleración");
 console.log("   setAceleracion(grados/s²) - Tasa de aceleración");
 console.log("   setVelocidadMaxima(grados/s) - Velocidad máxima");
 console.log("   resetReja2Rotacion() - Reiniciar rotación y contadores");
-console.log("   forzarFaseReja2('preGame'|'gameRunning'|'acceleration') - Cambiar fase manualmente");
+console.log("   forzarFaseReja2('preGame'|'gameRunning'|'intermittent'|'acceleration') - Cambiar fase manualmente");
 console.log("   estadoMotorReja2() - Ver estado completo del motor");
 console.log("💡 [EJEMPLOS]:");
-console.log("   setTiempoCambioDir(5) - Cambiar dirección cada 5 segundos");
-console.log("   setTiempoAceleracion(20) - Acelerar después de 20 segundos");
-console.log("   setVelocidadBase(30) - Rotar a 30°/s en las primeras fases");
+console.log("   setTiempoCambioDir(5) - Cambiar dirección cada 5 segundos (en fase intermitente)");
+console.log("   setTiempoIntermitente(30) - Rotación intermitente después de 30 segundos");
+console.log("   setTiempoAceleracion(50) - Acelerar después de 50 segundos");
+console.log("   setVelocidadBase(30) - Rotar a 30°/s en la fase intermitente");
