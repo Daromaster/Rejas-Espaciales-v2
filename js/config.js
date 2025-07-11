@@ -217,6 +217,10 @@ export const CanvasDimensions = {
                         logicW = Math.floor(logicW / 4) * 4;
                         logicH = Math.floor(logicH / 4) * 4;
 
+                        // *** CRÍTICO: Establecer CanvasDimensions.uml antes de resolve ***
+                        CanvasDimensions.uml = logicW / 1000;
+                        console.log(`✅ CanvasDimensions.uml establecido: ${CanvasDimensions.uml}`);
+
                         resolve({
                             LogicW: logicW,
                             LogicH: logicH,

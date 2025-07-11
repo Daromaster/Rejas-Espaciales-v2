@@ -1,6 +1,6 @@
 // pelota.js - Sistema de pelota del juego Rejas Espaciales V2
 
-import { GAME_CONFIG } from './config.js';
+import { CanvasDimensions, GAME_CONFIG } from './config.js';
 import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridConfig, getTransformMatrix, getTransformMatrices, distanciaMaxima, getGridObj } from './grid.js';
 import { relojJuego } from './relojJuego.js';
 
@@ -137,6 +137,8 @@ export function initPelota(nivel) {
             const gridConfig = getGridConfig(nivel);
             const nuevoRadio = Math.round(gridConfig.tamCuadrado * 0.35);
             
+
+
             // Si cambió el radio, marcar para redibujar
             const radioCambio = pelotaState.radio !== nuevoRadio;
             pelotaState.radio = nuevoRadio;
@@ -216,9 +218,14 @@ export function initPelota(nivel) {
             pelotaState.tiempoPermanenciaDestino = 2000;
             pelotaState.velocidadRotacion = 0.104719755; // 1 vuelta cada 2 segundos
             
-            // Radio por defecto = 70% del tamaño de celda (diámetro 70%, radio 35%)
-            const gridConfigDefault = getGridConfig(nivel);
-            pelotaState.radio = Math.round(gridConfigDefault.tamCuadrado * 0.35);
+            // Radio por defecto basado en CanvasDimensions.uml
+            if (!CanvasDimensions.uml || CanvasDimensions.uml <= 0) {
+                throw new Error(`❌ CanvasDimensions.uml no disponible en initPelota(). Valor: ${CanvasDimensions.uml}`);
+            }
+            
+            pelotaState.radio = Math.round(CanvasDimensions.uml * 40);
+            console.log(`✅ Radio desde CanvasDimensions: ${pelotaState.radio}px (uml: ${CanvasDimensions.uml})`);
+            
             pelotaState.posX = GAME_CONFIG.LOGICAL_WIDTH / 2;
             pelotaState.posY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
             break;
@@ -696,11 +703,20 @@ export function dibujarPelotaBase(nivel) {
         case 3: {
             // Asegurar que existe el canvas base
             ensurePelotaCanvas(1);
-            const gridConfig = getGridConfig(nivel);
-            const nuevoRadio = Math.round(gridConfig.tamCuadrado * 0.35);
+            
+            // Verificar que CanvasDimensions.uml esté disponible
+            if (!CanvasDimensions.uml || CanvasDimensions.uml <= 0) {
+                throw new Error(`❌ CanvasDimensions.uml no disponible en dibujarPelotaBase(). Valor: ${CanvasDimensions.uml}`);
+            }
+            
+            const nuevoRadio = Math.round(CanvasDimensions.uml * 40);
+            console.log(`✅ Radio base desde CanvasDimensions: ${nuevoRadio}px (uml: ${CanvasDimensions.uml})`);
+            
             // Si cambió el radio, marcar para redibujar
             const radioCambio = pelotaState.radio !== nuevoRadio;
             pelotaState.radio = nuevoRadio;
+
+
 
             const ctx1 = pelotaCanvases[1].getContext('2d');
             

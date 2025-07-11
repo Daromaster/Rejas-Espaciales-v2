@@ -16,6 +16,14 @@ export async function resizeGame() {
         console.error("❌ No se pudieron obtener dimensiones del canvas");
         return;
     }
+    
+    // Verificar que CanvasDimensions.uml esté disponible
+    if (!CanvasDimensions.uml || CanvasDimensions.uml <= 0) {
+        console.error(`❌ CanvasDimensions.uml no está disponible después de getCanvasDimensions(). Valor: ${CanvasDimensions.uml}`);
+        return;
+    }
+    
+    console.log(`✅ CanvasDimensions.uml verificado: ${CanvasDimensions.uml}`);
 
  /* 8 · Dimensión visual y búfer interno */
  const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
@@ -50,6 +58,9 @@ export async function resizeGame() {
         // Reinicializar todos los canvas virtuales con las nuevas dimensiones
         resizeFondo(currentLevel);
         dibujarRejaBase(currentLevel);
+        
+        // Verificar CanvasDimensions.uml antes de dibujar pelota
+        console.log(`🎾 Iniciando dibujarPelotaBase con CanvasDimensions.uml: ${CanvasDimensions.uml}`);
         dibujarPelotaBase(currentLevel);
         
         // Solo inicializar pelota y disparos si el juego está activo
@@ -60,9 +71,17 @@ export async function resizeGame() {
         
         console.log("✅ Sistemas reinicializados correctamente");
     } catch (error) {
-        console.warn("⚠️ Error reinicializando algunos sistemas:", error);
+        console.error("❌ Error reinicializando algunos sistemas:", error);
+        console.error("   CanvasDimensions.uml en el momento del error:", CanvasDimensions.uml);
+        console.error("   Nivel actual:", currentLevel);
+        console.error("   Stack trace:", error.stack);
+        
         // Al menos dibujar la reja base como fallback
-       // dibujarRejaBase(currentLevel);
+        try {
+            dibujarRejaBase(currentLevel);
+        } catch (rejaError) {
+            console.error("❌ Error incluso dibujando reja base:", rejaError);
+        }
     }
     
     console.log("✅ resizeGame completado - Canvas y sistemas actualizados");

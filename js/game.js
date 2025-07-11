@@ -7,7 +7,7 @@ const MAX_NIVELES_IMPLEMENTADOS = 3; // Actualizar a medida que se programen má
 
 // Game.js - Controlador principal del juego Rejas Espaciales V2
 
-import { GAME_CONFIG, GameLevel } from './config.js';
+import { GAME_CONFIG, GameLevel, CanvasDimensions } from './config.js';
 import { relojJuego } from './relojJuego.js';
 import { renderFondo, initFondo } from './fondo.js';
 import { 
@@ -93,6 +93,36 @@ class RejasEspacialesGame {
             
             console.log('Configurando controles...');
             this.setupControls();
+            
+            // === INICIALIZAR CANVASDIMENSIONS ANTES DE CUALQUIER SISTEMA ===
+            console.log('Inicializando CanvasDimensions...');
+            
+            // Verificar que el canvas esté disponible antes de medir
+            if (!canvas) {
+                throw new Error('❌ CRÍTICO: Canvas no está disponible para inicializar CanvasDimensions');
+            }
+            
+            // Forzar recálculo del layout antes de medir
+            canvas.offsetHeight; // Trigger reflow
+            
+            const dimensions = await CanvasDimensions.getCanvasDimensions();
+            if (!dimensions || !dimensions.uml || dimensions.uml <= 0) {
+                throw new Error(`❌ CRÍTICO: CanvasDimensions no se pudo inicializar correctamente. Valor: ${dimensions?.uml || 'undefined'}`);
+            }
+            
+            console.log('✅ CanvasDimensions inicializado correctamente');
+            console.log(`   uml: ${dimensions.uml} (${dimensions.LogicW}x${dimensions.LogicH})`);
+            
+            // Configurar canvas con las dimensiones obtenidas
+            console.log('Configurando canvas con dimensiones iniciales...');
+            canvas.width = Math.round(dimensions.LogicW * dimensions.dpr);
+            canvas.height = Math.round(dimensions.LogicH * dimensions.dpr);
+            this.ctx.setTransform(dimensions.dpr, 0, 0, dimensions.dpr, 0, 0);
+            
+            // Actualizar GAME_CONFIG con las dimensiones
+            GAME_CONFIG.setLogicalDimensions(dimensions.LogicW, dimensions.LogicH);
+            console.log(`✅ Canvas configurado: ${canvas.width}x${canvas.height}px buffer interno`);
+            console.log(`   Dimensiones lógicas: ${GAME_CONFIG.LOGICAL_WIDTH}x${GAME_CONFIG.LOGICAL_HEIGHT}px`);
             
             console.log('Inicializando sistema de audio...');
             // Inicializar sistema de disparos y audio para cargar configuración
@@ -932,10 +962,15 @@ window.debugStatus = function() {
     console.log(`      totalScore: ${instance.totalScore}`);
     console.log(`   🌐 GameLevel Global:`);
     console.log(`      getCurrentLevel(): ${globalLevel}`);
+    console.log(`   📐 CanvasDimensions:`);
+    console.log(`      uml: ${CanvasDimensions.uml || 'NO DISPONIBLE'}`);
+    console.log(`      LogicW: ${CanvasDimensions.LogicW || 'NO DISPONIBLE'}`);
+    console.log(`      LogicH: ${CanvasDimensions.LogicH || 'NO DISPONIBLE'}`);
     console.log(`   🔄 Sincronización:`);
     console.log(`      ¿Niveles sincronizados?: ${instance.currentLevel === globalLevel ? '✅ SÍ' : '❌ NO'}`);
+    console.log(`      ¿CanvasDimensions disponible?: ${!!(CanvasDimensions.uml && CanvasDimensions.uml > 0) ? '✅ SÍ' : '❌ NO'}`);
     
-    return {
+        return {
         instance: {
             currentLevel: instance.currentLevel,
             gameStarted: instance.gameStarted,
@@ -943,11 +978,81 @@ window.debugStatus = function() {
             levelScore: instance.levelScore,
             totalScore: instance.totalScore
         },
-        global: {
-            level: globalLevel
+        globalLevel: globalLevel,
+        canvasDimensions: {
+            uml: CanvasDimensions.uml || null,
+            LogicW: CanvasDimensions.LogicW || null,
+            LogicH: CanvasDimensions.LogicH || null,
+            available: !!(CanvasDimensions.uml && CanvasDimensions.uml > 0)
         },
         synchronized: instance.currentLevel === globalLevel
     };
+};
+
+// Función para debuggear problemas de inicialización de CanvasDimensions
+window.debugCanvasDimensionsInit = async function() {
+    console.log('🔬 [DEBUG] Probando inicialización de CanvasDimensions...');
+    
+    const canvas = document.getElementById(GAME_CONFIG.CANVAS_ID);
+    if (!canvas) {
+        console.error('❌ Canvas no encontrado');
+        return;
+    }
+    
+    console.log('📐 Canvas encontrado, obteniendo dimensiones...');
+    console.log(`   offsetWidth: ${canvas.offsetWidth}px`);
+    console.log(`   offsetHeight: ${canvas.offsetHeight}px`);
+    console.log(`   clientWidth: ${canvas.clientWidth}px`);
+    console.log(`   clientHeight: ${canvas.clientHeight}px`);
+    
+    // Forzar recálculo del layout
+    canvas.offsetHeight;
+    
+    try {
+        const dimensions = await CanvasDimensions.getCanvasDimensions();
+        console.log('✅ CanvasDimensions obtenido:', dimensions);
+        
+        if (!dimensions || !dimensions.uml || dimensions.uml <= 0) {
+            console.error('❌ CanvasDimensions inválido');
+            return false;
+        }
+        
+        console.log('✅ CanvasDimensions válido');
+        console.log(`   CanvasDimensions.uml: ${CanvasDimensions.uml}`);
+        console.log(`   dimensions.uml: ${dimensions.uml}`);
+        console.log(`   ¿Coinciden?: ${CanvasDimensions.uml === dimensions.uml ? '✅ SÍ' : '❌ NO'}`);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo CanvasDimensions:', error);
+        return false;
+    }
+};
+
+// Función para forzar re-inicialización del sistema
+window.debugForceReInit = async function() {
+    console.log('🔄 [DEBUG] Forzando re-inicialización del sistema...');
+    
+    try {
+        // Probar inicialización de CanvasDimensions
+        const canvasOK = await window.debugCanvasDimensionsInit();
+        if (!canvasOK) {
+            console.error('❌ No se pudo inicializar CanvasDimensions');
+            return;
+        }
+        
+        // Si está disponible, intentar re-inicializar pelota
+        if (window.gameInstance) {
+            console.log('🎾 Intentando re-inicializar pelota...');
+            const { initPelota } = await import('./pelota.js');
+            initPelota(window.gameInstance.currentLevel);
+            console.log('✅ Pelota re-inicializada correctamente');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error en re-inicialización:', error);
+    }
 };
 
 // Mensaje de ayuda para el debug
@@ -958,6 +1063,8 @@ console.log(`   debugSimularEscenarioBug() - Simular escenario del bug reportado
 console.log(`   debugChangeLevel(nivel) - Cambiar a nivel específico`);
 console.log(`   debugTestResize() - Probar resize conservando nivel`);
 console.log(`   debugStatus() - Mostrar estado actual del sistema`);
+console.log(`   debugCanvasDimensionsInit() - Probar inicialización de CanvasDimensions`);
+console.log(`   debugForceReInit() - Forzar re-inicialización del sistema`);
 
 // Exportar para uso en otros módulos si es necesario
 export { game };
