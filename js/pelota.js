@@ -709,7 +709,7 @@ export function dibujarPelotaBase(nivel) {
                 throw new Error(`❌ CanvasDimensions.uml no disponible en dibujarPelotaBase(). Valor: ${CanvasDimensions.uml}`);
             }
             
-            const nuevoRadio = Math.round(CanvasDimensions.uml * 40);
+            const nuevoRadio = Math.round(CanvasDimensions.uml * 50);
             console.log(`✅ Radio base desde CanvasDimensions: ${nuevoRadio}px (uml: ${CanvasDimensions.uml})`);
             
             // Si cambió el radio, marcar para redibujar
