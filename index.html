@@ -2,10 +2,76 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <title>Rejas Espaciales</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="css/main.css" />
+  
+  <!-- Script para manejar viewport en móviles -->
+  <script>
+    // Solución para problema de viewport en móviles
+    function adjustViewportForMobile() {
+      if (window.innerHeight < 500 && window.orientation !== undefined) {
+        // En móvil horizontal, forzar recálculo del viewport
+        const viewportMeta = document.querySelector('meta[name="viewport"]');
+        if (viewportMeta) {
+          const content = viewportMeta.getAttribute('content');
+          viewportMeta.setAttribute('content', content + ', height=' + window.innerHeight);
+          
+          // Resetear después de un momento para permitir redimensionado natural
+          setTimeout(() => {
+            viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no');
+          }, 100);
+        }
+      }
+    }
+    
+    // Función debug para móviles (activar con debugViewport() en consola)
+    function debugViewport() {
+      let debugDiv = document.getElementById('viewport-debug');
+      if (!debugDiv) {
+        debugDiv = document.createElement('div');
+        debugDiv.id = 'viewport-debug';
+        document.body.appendChild(debugDiv);
+      }
+      
+      const updateDebugInfo = () => {
+        debugDiv.innerHTML = `
+          Screen: ${screen.width}x${screen.height}<br>
+          Window: ${window.innerWidth}x${window.innerHeight}<br>
+          Orientation: ${window.orientation || 'undefined'}<br>
+          vh: ${window.innerHeight}px<br>
+          vw: ${window.innerWidth}px<br>
+          Canvas: ${document.getElementById('canvas-principal')?.clientWidth || 'N/A'}x${document.getElementById('canvas-principal')?.clientHeight || 'N/A'}<br>
+          UserAgent: ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}
+        `;
+      };
+      
+      debugDiv.classList.add('show');
+      updateDebugInfo();
+      
+      // Actualizar cada segundo
+      const interval = setInterval(updateDebugInfo, 1000);
+      
+      // Función para cerrar debug
+      window.closeViewportDebug = () => {
+        debugDiv.classList.remove('show');
+        clearInterval(interval);
+      };
+      
+      console.log('Debug viewport activado. Para cerrar: closeViewportDebug()');
+    }
+    
+    // Hacer función global
+    window.debugViewport = debugViewport;
+    
+    // Ejecutar al cargar y al cambiar orientación
+    window.addEventListener('load', adjustViewportForMobile);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(adjustViewportForMobile, 100);
+    });
+    window.addEventListener('resize', adjustViewportForMobile);
+  </script>
 </head>
 <body>
 
@@ -39,21 +105,23 @@
   <footer id="zona-inferior">
     <!-- Control audio izquierda -->
     <div id="controles-izquierda">
-      <button id="btn-audio" class="btn-control">
+      <button id="btn-audio" class="btn-control btn-audio">
         <span class="audio-icon">🔊</span>
       </button>
+      <div class="btn-label">audio</div>
     </div>
     
-    <!-- Descripción central -->
-    <div id="descripcion-controles">
+    <!-- Descripción central (solo para PC/notebook) -->
+    <div id="descripcion-controles" class="solo-desktop">
       Presiona ESPACIO o botón DISPARO para disparar
     </div>
     
     <!-- Control disparo derecha -->
     <div id="controles-derecha">
-      <button id="btn-disparo" class="btn-control">
+      <button id="btn-disparo" class="btn-control btn-disparo">
         <span class="disparo-icon">🎯</span>
       </button>
+      <div class="btn-label">disparar</div>
     </div>
   </footer>
 
