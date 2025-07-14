@@ -145,6 +145,7 @@ class RejasEspacialesGame {
             // Mostrar mensaje inicial
             this.updateUI();
             this.updateAudioButtonState(); // Inicializar estado del botón de audio
+            this.updateFullscreenButtonState(); // Inicializar estado del botón de pantalla completa
             
             // Ocultar puntaje total al inicio (solo se muestra desde nivel 2)
             const totalContainer = document.getElementById('puntaje-total');
@@ -170,7 +171,8 @@ class RejasEspacialesGame {
             timer: document.getElementById('cronometro'),
             comment: document.getElementById('comentario-juego'),
             audioBtn: document.getElementById('btn-audio'),
-            shootBtn: document.getElementById('btn-disparo')
+            shootBtn: document.getElementById('btn-disparo'),
+            fullscreenBtn: document.getElementById('btn-fullscreen')
         };
         
         // Verificar que todos los elementos existen
@@ -192,6 +194,11 @@ class RejasEspacialesGame {
             this.elements.audioBtn.addEventListener('click', () => this.toggleAudio());
         }
         
+        // Botón de pantalla completa
+        if (this.elements.fullscreenBtn) {
+            this.elements.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+        }
+        
         // Botón de disparo (equilibrado con teclado)
         if (this.elements.shootBtn) {
             this.elements.shootBtn.addEventListener('click', () => this.shootTouch());
@@ -203,6 +210,9 @@ class RejasEspacialesGame {
         if (canvas) {
             canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         }
+
+        // Event listeners para cambios de pantalla completa (F11, ESC, etc.)
+        this.setupFullscreenListeners();
     }
     
     // Manejar teclas presionadas (con control equilibrado)
@@ -224,6 +234,17 @@ class RejasEspacialesGame {
                 break;
             case 'KeyP':
                 this.togglePause();
+                break;
+            case 'F11':
+                event.preventDefault();
+                this.toggleFullscreen();
+                break;
+            case 'Escape':
+                // Solo manejar Escape para salir de pantalla completa si estamos en pantalla completa
+                // No preventDefault para no interferir con otros usos de Escape
+                if (this.isFullscreen()) {
+                    this.exitFullscreen();
+                }
                 break;
             default:
                 break;
@@ -318,6 +339,186 @@ class RejasEspacialesGame {
                 this.elements.audioBtn.classList.remove('muted');
                 this.elements.audioBtn.querySelector('.audio-icon').textContent = '🔊';
             }
+        }
+    }
+
+    // Alternar pantalla completa
+    toggleFullscreen() {
+        try {
+            // Detectar iOS donde pantalla completa tiene limitaciones
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            
+            if (isIOS) {
+                console.warn('🖥️ iOS detectado - Pantalla completa limitada. Use los controles del navegador para mejor experiencia.');
+                // En iOS, intentar de todas formas pero puede no funcionar
+            }
+
+            if (!this.isFullscreenSupported()) {
+                console.warn('🖥️ Pantalla completa no soportada en este navegador/dispositivo');
+                
+                // Mostrar mensaje al usuario sobre alternativas
+                this.showFullscreenFallbackMessage();
+                return;
+            }
+
+            if (this.isFullscreen()) {
+                console.log('🖥️ Saliendo de pantalla completa...');
+                this.exitFullscreen();
+            } else {
+                console.log('🖥️ Entrando a pantalla completa...');
+                this.requestFullscreen();
+            }
+        } catch (error) {
+            console.error('🖥️ Error al alternar pantalla completa:', error);
+            this.showFullscreenFallbackMessage();
+        }
+    }
+
+    // Mostrar mensaje cuando pantalla completa no está disponible
+    showFullscreenFallbackMessage() {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        let message = '';
+        if (isIOS) {
+            message = 'En iOS: Toque el ícono de compartir (📤) → "Añadir a pantalla de inicio" para experiencia completa';
+        } else if (isMobile) {
+            message = 'En móviles: Use el menú del navegador para acceder a pantalla completa';
+        } else {
+            message = 'Pantalla completa no disponible. Intente presionar F11 o use el menú del navegador';
+        }
+        
+        console.log(`💡 ${message}`);
+        
+        // Opcional: Mostrar mensaje temporal en la interfaz
+        this.showTemporaryMessage(message);
+    }
+
+    // Mostrar mensaje temporal en la interfaz (opcional)
+    showTemporaryMessage(message) {
+        // Solo mostrar en consola por ahora para no interrumpir el juego
+        // En el futuro se podría mostrar un pequeño toast o notification
+        console.log(`📱 Consejo: ${message}`);
+    }
+
+    // Verificar si pantalla completa está soportada
+    isFullscreenSupported() {
+        return !!(
+            document.fullscreenEnabled ||
+            document.webkitFullscreenEnabled ||
+            document.mozFullScreenEnabled ||
+            document.msFullscreenEnabled
+        );
+    }
+
+    // Verificar si está en pantalla completa
+    isFullscreen() {
+        return !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+        );
+    }
+
+    // Solicitar pantalla completa
+    requestFullscreen() {
+        const element = document.documentElement;
+        
+        if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.webkitRequestFullscreen) {
+            element.webkitRequestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+            element.mozRequestFullScreen();
+        } else if (element.msRequestFullscreen) {
+            element.msRequestFullscreen();
+        }
+    }
+
+    // Salir de pantalla completa
+    exitFullscreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+
+    // Actualizar estado visual del botón de pantalla completa
+    updateFullscreenButtonState() {
+        if (this.elements.fullscreenBtn) {
+            const isFs = this.isFullscreen();
+            const iconElement = this.elements.fullscreenBtn.querySelector('.fullscreen-icon');
+            
+            if (isFs) {
+                this.elements.fullscreenBtn.classList.add('fullscreen-active');
+                if (iconElement) iconElement.textContent = '⧉'; // Icono para salir de pantalla completa (ventana más pequeña)
+            } else {
+                this.elements.fullscreenBtn.classList.remove('fullscreen-active');
+                if (iconElement) iconElement.textContent = '⛶'; // Icono para entrar a pantalla completa (expansión)
+            }
+        }
+    }
+
+    // Configurar listeners para eventos automáticos de pantalla completa
+    setupFullscreenListeners() {
+        // Event listeners para todos los navegadores
+        const fullscreenEvents = [
+            'fullscreenchange',
+            'webkitfullscreenchange', 
+            'mozfullscreenchange',
+            'msfullscreenchange'
+        ];
+
+        fullscreenEvents.forEach(eventName => {
+            document.addEventListener(eventName, () => {
+                this.onFullscreenChange();
+            });
+        });
+
+        console.log('🖥️ Event listeners de pantalla completa configurados');
+    }
+
+    // Manejar cambios automáticos de pantalla completa (F11, ESC, etc.)
+    onFullscreenChange() {
+        const isFs = this.isFullscreen();
+        
+        // Actualizar estado visual del botón
+        this.updateFullscreenButtonState();
+        
+        // Log para debugging
+        console.log(`🖥️ Pantalla completa ${isFs ? 'activada' : 'desactivada'}`);
+        
+        // Optimizaciones específicas para móviles en pantalla completa
+        this.handleMobileFullscreenOptimizations(isFs);
+        
+        // Forzar resize del canvas cuando cambia pantalla completa
+        setTimeout(() => {
+            // Dispatch resize event para que el canvas se reajuste
+            window.dispatchEvent(new Event('resize'));
+        }, 150); // Slightly longer timeout for mobile browsers
+    }
+
+    // Optimizaciones específicas para móviles en pantalla completa
+    handleMobileFullscreenOptimizations(isFullscreen) {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (!isMobile) return;
+        
+        if (isFullscreen) {
+            // Ocultar la barra de direcciones en móviles si es posible
+            setTimeout(() => {
+                window.scrollTo(0, 1);
+            }, 100);
+            
+            console.log('📱 Optimizaciones móvil aplicadas para pantalla completa');
+        } else {
+            console.log('📱 Saliendo de optimizaciones móvil');
         }
     }
     
