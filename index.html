@@ -103,12 +103,22 @@
 
   <!-- Zona inferior - Controles e información -->
   <footer id="zona-inferior">
-    <!-- Control audio izquierda -->
+    <!-- Controles izquierda -->
     <div id="controles-izquierda">
-      <button id="btn-audio" class="btn-control btn-audio">
-        <span class="audio-icon">🔊</span>
-      </button>
-      <div class="btn-label">audio</div>
+      <div class="btn-group-left">
+        <div class="btn-container">
+          <button id="btn-fullscreen" class="btn-control btn-fullscreen">
+            <span class="fullscreen-icon">⛶</span>
+          </button>
+          <div class="btn-label">pantalla</div>
+        </div>
+        <div class="btn-container">
+          <button id="btn-audio" class="btn-control btn-audio">
+            <span class="audio-icon">🔊</span>
+          </button>
+          <div class="btn-label">audio</div>
+        </div>
+      </div>
     </div>
     
     <!-- Descripción central (solo para PC/notebook) -->
@@ -118,10 +128,12 @@
     
     <!-- Control disparo derecha -->
     <div id="controles-derecha">
-      <button id="btn-disparo" class="btn-control btn-disparo">
-        <span class="disparo-icon">🎯</span>
-      </button>
-      <div class="btn-label">disparar</div>
+      <div class="btn-container">
+        <button id="btn-disparo" class="btn-control btn-disparo">
+          <span class="disparo-icon">🎯</span>
+        </button>
+        <div class="btn-label">disparar</div>
+      </div>
     </div>
   </footer>
 

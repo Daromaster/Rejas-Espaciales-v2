@@ -42,13 +42,18 @@ html, body {
     max-height: 95%; /* Más conservador en móvil horizontal */
   }
   
-  /* Ajustar controles para móvil horizontal */
+    /* Ajustar controles para móvil horizontal */
   #controles-izquierda {
-    left: 25px; /* Más cerca en móvil horizontal pero respetando distancia mínima */
+    left: 20px; /* Más cerca en móvil horizontal para acomodar dos botones */
   }
-  
+
   #controles-derecha {
     right: 40px; /* Más cerca en móvil horizontal pero respetando distancia mínima */
+  }
+
+  /* Reducir gap entre botones en móvil horizontal */
+  .btn-group-left {
+    gap: 6px; /* Menos separación en móvil horizontal */
   }
 }
 
@@ -68,6 +73,24 @@ html, body {
   
   #zona-inferior {
     height: 5vh;
+  }
+  
+  /* Botones más pequeños en pantallas muy pequeñas */
+  .btn-control.btn-fullscreen,
+  .btn-control.btn-audio {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+  
+  .btn-control.btn-disparo {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+  }
+  
+  .btn-group-left {
+    gap: 5px;
   }
 }
 
@@ -222,18 +245,29 @@ html, body {
   position: fixed;
   bottom: 12vh;
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px; /* Separación entre botón y texto */
 }
 
 #controles-izquierda {
-  left: 30px; /* Distancia mínima del borde (mitad del tamaño del botón audio: 60px/2) */
+  left: 30px; /* Distancia mínima del borde */
 }
 
 #controles-derecha {
   right: 45px; /* Distancia mínima del borde (mitad del tamaño del botón disparar: 90px/2) */
+}
+
+/* Grupo de botones izquierdo */
+.btn-group-left {
+  display: flex;
+  gap: 8px; /* Separación entre botones de pantalla completa y audio */
+  align-items: flex-end; /* Alinear por la parte inferior para centrar los botones */
+}
+
+/* Contenedor individual de cada botón */
+.btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px; /* Separación entre botón y texto */
 }
 
 /* Botón base */
@@ -249,14 +283,21 @@ html, body {
   justify-content: center;
 }
 
-/* Botón audio (tamaño base) */
-.btn-control.btn-audio {
-  width: 60px;
-  height: 60px;
-  font-size: 1.5rem;
+/* Botón pantalla completa */
+.btn-control.btn-fullscreen {
+  width: 45px;
+  height: 45px;
+  font-size: 1.3rem;
 }
 
-/* Botón disparar (50% más grande) */
+/* Botón audio (reducido para acompañar al de pantalla completa) */
+.btn-control.btn-audio {
+  width: 45px;
+  height: 45px;
+  font-size: 1.3rem;
+}
+
+/* Botón disparar (tamaño principal) */
 .btn-control.btn-disparo {
   width: 90px;
   height: 90px;
@@ -402,16 +443,27 @@ html, body {
   }
 
   /* Ajustar tamaños de botones en portrait */
+  .btn-control.btn-fullscreen {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
   .btn-control.btn-audio {
-    width: 50px;
-    height: 50px;
-    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
   }
 
   .btn-control.btn-disparo {
-    width: 75px; /* 50% más grande que audio en portrait */
+    width: 75px; /* Tamaño principal en portrait */
     height: 75px;
     font-size: 1.8rem;
+  }
+
+  /* Ajustar gap entre botones en portrait */
+  .btn-group-left {
+    gap: 6px; /* Menos separación en portrait */
   }
 
   /* Ajustar texto de botones en portrait */
@@ -434,6 +486,17 @@ html, body {
 
 .btn-control.muted:hover {
   background-color: rgba(255, 0, 0, 0.4);
+}
+
+/* Estado de pantalla completa activa */
+.btn-control.fullscreen-active {
+  background-color: rgba(0, 255, 0, 0.2);
+  border-color: #66ff66;
+  color: #66ff66;
+}
+
+.btn-control.fullscreen-active:hover {
+  background-color: rgba(0, 255, 0, 0.4);
 }
 
 /* Animaciones y efectos */
