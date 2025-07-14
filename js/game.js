@@ -33,7 +33,10 @@ import {
     realizarDisparo, 
     getDisparosState,
     toggleMuteAudio,
-    isAudioMuted
+    isAudioMuted,
+    handleKeyboardShootDown,
+    handleKeyboardShootUp,
+    handleTouchShoot
 } from './disparos.js';
 import { 
     initModales, 
@@ -180,17 +183,18 @@ class RejasEspacialesGame {
     
     // Configurar controles del juego
     setupControls() {
-        // Controles de teclado
+        // Controles de teclado equilibrados
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        document.addEventListener('keyup', (e) => this.handleKeyUp(e));
         
         // Botón de audio
         if (this.elements.audioBtn) {
             this.elements.audioBtn.addEventListener('click', () => this.toggleAudio());
         }
         
-        // Botón de disparo
+        // Botón de disparo (equilibrado con teclado)
         if (this.elements.shootBtn) {
-            this.elements.shootBtn.addEventListener('click', () => this.shoot());
+            this.elements.shootBtn.addEventListener('click', () => this.shootTouch());
         }
         
         // Prevenir menú contextual en el canvas
@@ -201,15 +205,18 @@ class RejasEspacialesGame {
         }
     }
     
-    // Manejar teclas presionadas
+    // Manejar teclas presionadas (con control equilibrado)
     handleKeyDown(event) {
         switch (event.code) {
             case 'Space':
+            case 'KeyZ':
                 event.preventDefault();
                 if (!this.gameStarted) {
                     this.startGame();
                 } else {
-                    this.shoot();
+                    // Usar sistema equilibrado que evita repetición automática
+                    const disparoExitoso = handleKeyboardShootDown(event.code);
+                    this.mostrarEfectoDisparo(disparoExitoso);
                 }
                 break;
             case 'KeyM':
@@ -217,6 +224,18 @@ class RejasEspacialesGame {
                 break;
             case 'KeyP':
                 this.togglePause();
+                break;
+            default:
+                break;
+        }
+    }
+    
+    // Manejar teclas liberadas (para resetear estado anti-repetición)
+    handleKeyUp(event) {
+        switch (event.code) {
+            case 'Space':
+            case 'KeyZ':
+                handleKeyboardShootUp(event.code);
                 break;
             default:
                 break;
@@ -236,16 +255,20 @@ class RejasEspacialesGame {
         console.log('¡Juego iniciado!');
     }
     
-    // Disparar
-    shoot() {
+    // Disparar con touch/click (equilibrado)
+    shootTouch() {
         if (!this.gameStarted) {
             this.startGame();
             return;
         }
         
-        // Realizar disparo usando el sistema P4
-        const disparoExitoso = realizarDisparo();
-        
+        // Usar sistema equilibrado para touch
+        const disparoExitoso = handleTouchShoot();
+        this.mostrarEfectoDisparo(disparoExitoso);
+    }
+    
+    // Método auxiliar para mostrar efectos visuales de disparo
+    mostrarEfectoDisparo(disparoExitoso) {
         if (disparoExitoso) {
             console.log('🎯 Disparo realizado con éxito');
         } else {
@@ -259,6 +282,11 @@ class RejasEspacialesGame {
                 this.elements.shootBtn.classList.remove('active');
             }, 300);
         }
+    }
+    
+    // Mantener método original para compatibilidad (usa sistema equilibrado)
+    shoot() {
+        this.shootTouch();
     }
     
     // Alternar audio

@@ -14,9 +14,13 @@ let disparosState = {
     
     // Configuración de disparos
     duracion: 200,              // Duración visual del disparo en ms
-    cooldown: 250,              // Tiempo entre disparos en ms
+    cooldown: 250,              // Tiempo entre disparos en ms (equilibrado para todos los dispositivos)
     ultimoTiempoDisparo: 0,     // Último momento de disparo
     disparosActivos: [],        // Array de disparos en curso
+    
+    // Control de entrada equilibrado (teclado/touch)
+    teclaDisparoPresionada: false,  // Evita repetición automática de teclas
+    inputEnCooldown: false,         // Estado de cooldown unificado
     
     // Configuración visual
     colorInicio: 'rgba(255, 136, 0, 1)',    // Naranja en origen
@@ -50,7 +54,9 @@ export function initDisparos(nivel) {
     disparosState.disparosActivos = [];
     disparosState.particulasActivas = [];
     disparosState.puntaje = 0;
-    disparosState.ultimoTiempoDisparo = 0;
+    
+    // Resetear estado de entrada equilibrado
+    resetInputState();
     
     // Crear canvas virtuales
     ensureDisparosCanvas(1); // Canvas base para disparos
@@ -162,6 +168,28 @@ export function toggleMuteAudio() {
 
 export function isAudioMuted() {
     return disparosState.audioMuteado;
+}
+
+// === FUNCIÓN DE INTENTO DE DISPARO EQUILIBRADO ===
+export function intentarDisparo() {
+    const tiempoActual = performance.now();
+    
+    // Verificar cooldown equilibrado para todos los dispositivos
+    if (tiempoActual - disparosState.ultimoTiempoDisparo >= disparosState.cooldown) {
+        const resultado = realizarDisparo();
+        if (resultado) {
+            disparosState.ultimoTiempoDisparo = tiempoActual;
+            disparosState.inputEnCooldown = true;
+            
+            // Resetear cooldown después del tiempo configurado
+            setTimeout(() => {
+                disparosState.inputEnCooldown = false;
+            }, disparosState.cooldown);
+        }
+        return resultado;
+    }
+    
+    return false; // En cooldown
 }
 
 // === FUNCIÓN PRINCIPAL DE DISPARO ===
@@ -756,6 +784,43 @@ export function resetPuntaje() {
     console.log('🔄 Puntaje de disparos reiniciado');
 }
 
+// === FUNCIONES DE CONTROL DE ENTRADA EQUILIBRADO ===
+
+// Control de teclado con anti-repetición
+export function handleKeyboardShootDown(keyCode) {
+    // Solo aceptar Space o KeyZ
+    if (keyCode !== 'Space' && keyCode !== 'KeyZ') return false;
+    
+    // Evitar repetición automática de teclas
+    if (!disparosState.teclaDisparoPresionada) {
+        disparosState.teclaDisparoPresionada = true;
+        return intentarDisparo();
+    }
+    
+    return false;
+}
+
+export function handleKeyboardShootUp(keyCode) {
+    // Solo resetear si es la tecla correcta
+    if (keyCode === 'Space' || keyCode === 'KeyZ') {
+        disparosState.teclaDisparoPresionada = false;
+    }
+}
+
+// Control de touch/click equilibrado
+export function handleTouchShoot() {
+    // No verificar estado de tecla para touch, pero sí el cooldown global
+    return intentarDisparo();
+}
+
+// Resetear estado de entrada al inicializar nivel
+export function resetInputState() {
+    disparosState.teclaDisparoPresionada = false;
+    disparosState.inputEnCooldown = false;
+    disparosState.ultimoTiempoDisparo = 0;
+    console.log('🎮 Estado de entrada reseteado');
+}
+
 // === FUNCIÓN DE LIMPIEZA ===
 export function clearDisparosCanvases() {
     Object.keys(disparosCanvases).forEach(key => {
@@ -817,6 +882,35 @@ function agregarEfectoPulsoPuntaje(esPenalizacion = false) {
     }
 }
 
+// === FUNCIONES DE DEBUG Y CONFIGURACIÓN EQUILIBRADO ===
+window.debugSistemaDisparos = function() {
+    console.log(`🎮 [DEBUG] Estado del sistema de disparos equilibrado:`);
+    console.log(`   Cooldown configurado: ${disparosState.cooldown}ms`);
+    console.log(`   Último disparo: ${performance.now() - disparosState.ultimoTiempoDisparo}ms atrás`);
+    console.log(`   Tecla presionada: ${disparosState.teclaDisparoPresionada}`);
+    console.log(`   Input en cooldown: ${disparosState.inputEnCooldown}`);
+    console.log(`   Sistema inicializado: ${disparosState.inicializado}`);
+    
+    return {
+        cooldown: disparosState.cooldown,
+        ultimoDisparo: performance.now() - disparosState.ultimoTiempoDisparo,
+        teclaPresionada: disparosState.teclaDisparoPresionada,
+        inputEnCooldown: disparosState.inputEnCooldown,
+        inicializado: disparosState.inicializado
+    };
+};
+
+window.configurarCooldownDisparos = function(nuevoValor) {
+    if (typeof nuevoValor === 'number' && nuevoValor >= 100 && nuevoValor <= 1000) {
+        disparosState.cooldown = nuevoValor;
+        console.log(`🎮 [CONFIG] Cooldown actualizado a ${nuevoValor}ms`);
+        return true;
+    } else {
+        console.warn(`❌ [CONFIG] Valor inválido. Usar entre 100-1000ms. Actual: ${disparosState.cooldown}ms`);
+        return false;
+    }
+};
+
 // === FUNCIONES DE DEBUG DEL CRONÓMETRO ===
 window.debugCronometroEstado = function() {
     const nivel = window.gameInstance ? window.gameInstance.currentLevel : 'undefined';
@@ -858,7 +952,9 @@ window.debugForzarIniciarCronometro = function() {
     }
 };
 
-console.log('🎯 Disparos.js cargado - Sistema P4 iniciando...');
-console.log('🔧 Funciones debug cronómetro disponibles:');
-console.log('   debugCronometroEstado() - Ver estado actual');
-console.log('   debugForzarIniciarCronometro() - Forzar inicio manual'); 
+console.log('🎯 Disparos.js cargado - Sistema P4 con control equilibrado iniciado...');
+console.log('🔧 Funciones debug disponibles:');
+console.log('   debugSistemaDisparos() - Ver estado del sistema equilibrado');
+console.log('   configurarCooldownDisparos(ms) - Ajustar cooldown (100-1000ms)');
+console.log('   debugCronometroEstado() - Ver estado del cronómetro');
+console.log('   debugForzarIniciarCronometro() - Forzar inicio manual del cronómetro'); 
