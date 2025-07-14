@@ -1,4 +1,4 @@
-/* Rejas Espaciales V2 - Estilos principales */out inferior
+/* Rejas Espaciales V2 - Estilos principales */
 
 * {
   margin: 0;
@@ -40,6 +40,15 @@ html, body {
   
   #canvas-principal {
     max-height: 95%; /* Más conservador en móvil horizontal */
+  }
+  
+  /* Ajustar controles para móvil horizontal */
+  #controles-izquierda {
+    left: 25px; /* Más cerca en móvil horizontal pero respetando distancia mínima */
+  }
+  
+  #controles-derecha {
+    right: 40px; /* Más cerca en móvil horizontal pero respetando distancia mínima */
   }
 }
 
@@ -220,11 +229,11 @@ html, body {
 }
 
 #controles-izquierda {
-  left: 40px; /* Distancia mínima del borde (mitad del tamaño del botón audio) */
+  left: 30px; /* Distancia mínima del borde (mitad del tamaño del botón audio: 60px/2) */
 }
 
 #controles-derecha {
-  right: 45px; /* Distancia mínima del borde (mitad del tamaño del botón disparar) */
+  right: 45px; /* Distancia mínima del borde (mitad del tamaño del botón disparar: 90px/2) */
 }
 
 /* Botón base */

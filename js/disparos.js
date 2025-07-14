@@ -997,4 +997,5 @@ console.log('   debugCronometroEstado() - Ver estado del cronómetro');
 console.log('   debugForzarIniciarCronometro() - Forzar inicio manual del cronómetro');
 console.log('   debugViewport() - Debug de viewport para móviles (solo si hay problemas)');
 console.log('⚖️ Configuración actual: Teclado 300ms / Touch 250ms (50ms ventaja para touch)');
-console.log('📱 Layout móvil horizontal optimizado con dvh/vh dinámico'); 
+console.log('📱 Layout móvil horizontal optimizado con dvh/vh dinámico');
+console.log('🎮 UX mejorada: Botones diferenciados (disparo 50% más grande), textos solo en desktop'); 
