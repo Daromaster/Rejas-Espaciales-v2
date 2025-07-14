@@ -21,6 +21,8 @@ let disparosState = {
     // Control de entrada equilibrado (teclado/touch)
     teclaDisparoPresionada: false,  // Evita repetición automática de teclas
     inputEnCooldown: false,         // Estado de cooldown unificado
+    cooldownTeclado: 300,           // Cooldown mayor para teclado (vs 250ms touch)
+    cooldownTouch: 250,             // Cooldown base para touch/click
     
     // Configuración visual
     colorInicio: 'rgba(255, 136, 0, 1)',    // Naranja en origen
@@ -171,11 +173,11 @@ export function isAudioMuted() {
 }
 
 // === FUNCIÓN DE INTENTO DE DISPARO EQUILIBRADO ===
-export function intentarDisparo() {
+function intentarDisparoConCooldown(cooldownEspecifico) {
     const tiempoActual = performance.now();
     
-    // Verificar cooldown equilibrado para todos los dispositivos
-    if (tiempoActual - disparosState.ultimoTiempoDisparo >= disparosState.cooldown) {
+    // Verificar cooldown específico según tipo de entrada
+    if (tiempoActual - disparosState.ultimoTiempoDisparo >= cooldownEspecifico) {
         const resultado = realizarDisparo();
         if (resultado) {
             disparosState.ultimoTiempoDisparo = tiempoActual;
@@ -184,12 +186,17 @@ export function intentarDisparo() {
             // Resetear cooldown después del tiempo configurado
             setTimeout(() => {
                 disparosState.inputEnCooldown = false;
-            }, disparosState.cooldown);
+            }, cooldownEspecifico);
         }
         return resultado;
     }
     
     return false; // En cooldown
+}
+
+// Función legacy mantenida para compatibilidad
+export function intentarDisparo() {
+    return intentarDisparoConCooldown(disparosState.cooldown);
 }
 
 // === FUNCIÓN PRINCIPAL DE DISPARO ===
@@ -786,7 +793,7 @@ export function resetPuntaje() {
 
 // === FUNCIONES DE CONTROL DE ENTRADA EQUILIBRADO ===
 
-// Control de teclado con anti-repetición
+// Control de teclado con anti-repetición y cooldown equilibrado
 export function handleKeyboardShootDown(keyCode) {
     // Solo aceptar Space o KeyZ
     if (keyCode !== 'Space' && keyCode !== 'KeyZ') return false;
@@ -794,7 +801,8 @@ export function handleKeyboardShootDown(keyCode) {
     // Evitar repetición automática de teclas
     if (!disparosState.teclaDisparoPresionada) {
         disparosState.teclaDisparoPresionada = true;
-        return intentarDisparo();
+        // Usar cooldown específico para teclado (ligeramente mayor)
+        return intentarDisparoConCooldown(disparosState.cooldownTeclado);
     }
     
     return false;
@@ -807,10 +815,10 @@ export function handleKeyboardShootUp(keyCode) {
     }
 }
 
-// Control de touch/click equilibrado
+// Control de touch/click equilibrado (cooldown optimizado)
 export function handleTouchShoot() {
-    // No verificar estado de tecla para touch, pero sí el cooldown global
-    return intentarDisparo();
+    // No verificar estado de tecla para touch, usar cooldown específico más corto
+    return intentarDisparoConCooldown(disparosState.cooldownTouch);
 }
 
 // Resetear estado de entrada al inicializar nivel
@@ -818,7 +826,7 @@ export function resetInputState() {
     disparosState.teclaDisparoPresionada = false;
     disparosState.inputEnCooldown = false;
     disparosState.ultimoTiempoDisparo = 0;
-    console.log('🎮 Estado de entrada reseteado');
+    console.log(`🎮 Estado de entrada reseteado - Cooldowns: teclado=${disparosState.cooldownTeclado}ms, touch=${disparosState.cooldownTouch}ms`);
 }
 
 // === FUNCIÓN DE LIMPIEZA ===
@@ -885,14 +893,18 @@ function agregarEfectoPulsoPuntaje(esPenalizacion = false) {
 // === FUNCIONES DE DEBUG Y CONFIGURACIÓN EQUILIBRADO ===
 window.debugSistemaDisparos = function() {
     console.log(`🎮 [DEBUG] Estado del sistema de disparos equilibrado:`);
-    console.log(`   Cooldown configurado: ${disparosState.cooldown}ms`);
+    console.log(`   Cooldown teclado: ${disparosState.cooldownTeclado}ms`);
+    console.log(`   Cooldown touch: ${disparosState.cooldownTouch}ms`);
+    console.log(`   Cooldown base: ${disparosState.cooldown}ms`);
     console.log(`   Último disparo: ${performance.now() - disparosState.ultimoTiempoDisparo}ms atrás`);
     console.log(`   Tecla presionada: ${disparosState.teclaDisparoPresionada}`);
     console.log(`   Input en cooldown: ${disparosState.inputEnCooldown}`);
     console.log(`   Sistema inicializado: ${disparosState.inicializado}`);
     
     return {
-        cooldown: disparosState.cooldown,
+        cooldownTeclado: disparosState.cooldownTeclado,
+        cooldownTouch: disparosState.cooldownTouch,
+        cooldownBase: disparosState.cooldown,
         ultimoDisparo: performance.now() - disparosState.ultimoTiempoDisparo,
         teclaPresionada: disparosState.teclaDisparoPresionada,
         inputEnCooldown: disparosState.inputEnCooldown,
@@ -903,10 +915,34 @@ window.debugSistemaDisparos = function() {
 window.configurarCooldownDisparos = function(nuevoValor) {
     if (typeof nuevoValor === 'number' && nuevoValor >= 100 && nuevoValor <= 1000) {
         disparosState.cooldown = nuevoValor;
-        console.log(`🎮 [CONFIG] Cooldown actualizado a ${nuevoValor}ms`);
+        console.log(`🎮 [CONFIG] Cooldown base actualizado a ${nuevoValor}ms`);
         return true;
     } else {
         console.warn(`❌ [CONFIG] Valor inválido. Usar entre 100-1000ms. Actual: ${disparosState.cooldown}ms`);
+        return false;
+    }
+};
+
+window.configurarCooldownEquilibrado = function(teclado, touch) {
+    let cambios = [];
+    
+    if (typeof teclado === 'number' && teclado >= 100 && teclado <= 1000) {
+        disparosState.cooldownTeclado = teclado;
+        cambios.push(`teclado: ${teclado}ms`);
+    }
+    
+    if (typeof touch === 'number' && touch >= 100 && touch <= 1000) {
+        disparosState.cooldownTouch = touch;
+        cambios.push(`touch: ${touch}ms`);
+    }
+    
+    if (cambios.length > 0) {
+        console.log(`🎮 [CONFIG] Cooldowns actualizados - ${cambios.join(', ')}`);
+        console.log(`   Diferencia: ${disparosState.cooldownTeclado - disparosState.cooldownTouch}ms a favor de touch`);
+        return true;
+    } else {
+        console.warn(`❌ [CONFIG] Valores inválidos. Usar entre 100-1000ms.`);
+        console.log(`   Actuales: teclado=${disparosState.cooldownTeclado}ms, touch=${disparosState.cooldownTouch}ms`);
         return false;
     }
 };
@@ -952,9 +988,11 @@ window.debugForzarIniciarCronometro = function() {
     }
 };
 
-console.log('🎯 Disparos.js cargado - Sistema P4 con control equilibrado iniciado...');
+console.log('🎯 Disparos.js cargado - Sistema P4 con control equilibrado diferenciado iniciado...');
 console.log('🔧 Funciones debug disponibles:');
 console.log('   debugSistemaDisparos() - Ver estado del sistema equilibrado');
-console.log('   configurarCooldownDisparos(ms) - Ajustar cooldown (100-1000ms)');
+console.log('   configurarCooldownDisparos(ms) - Ajustar cooldown base (100-1000ms)');
+console.log('   configurarCooldownEquilibrado(teclado, touch) - Ajustar cooldowns específicos');
 console.log('   debugCronometroEstado() - Ver estado del cronómetro');
-console.log('   debugForzarIniciarCronometro() - Forzar inicio manual del cronómetro'); 
+console.log('   debugForzarIniciarCronometro() - Forzar inicio manual del cronómetro');
+console.log('⚖️ Configuración actual: Teclado 300ms / Touch 250ms (50ms ventaja para touch)'); 
