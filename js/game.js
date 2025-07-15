@@ -180,13 +180,19 @@ class RejasEspacialesGame {
     // Configurar referencias a elementos del DOM
     setupDOMElements() {
         this.elements = {
+            // Elementos principales (para horizontal)
             levelScore: document.getElementById('puntaje-nivel-valor'),
             totalScore: document.getElementById('puntaje-total-valor'),
             timer: document.getElementById('cronometro'),
             comment: document.getElementById('comentario-juego'),
             audioBtn: document.getElementById('btn-audio'),
             shootBtn: document.getElementById('btn-disparo'),
-            fullscreenBtn: document.getElementById('btn-fullscreen')
+            fullscreenBtn: document.getElementById('btn-fullscreen'),
+            
+            // Elementos verticales (para portrait)
+            levelScoreV: document.getElementById('puntaje-nivel-valor-v'),
+            totalScoreV: document.getElementById('puntaje-total-valor-v'),
+            timerV: document.getElementById('cronometro-v')
         };
         
         // Verificar que todos los elementos existen
@@ -559,40 +565,71 @@ class RejasEspacialesGame {
         if (this.elements.levelScore) {
             this.elements.levelScore.textContent = currentLevelScore;
         }
+        // Sincronizar con elemento vertical
+        if (this.elements.levelScoreV) {
+            this.elements.levelScoreV.textContent = currentLevelScore;
+        }
         if (this.elements.totalScore) {
             // Mostrar puntaje total solo desde el nivel 2
             if (this.currentLevel === 1) {
                 // Ocultar todo el contenedor del puntaje total en nivel 1
                 const totalContainer = document.getElementById('puntaje-total');
+                const totalContainerV = document.getElementById('puntaje-total-v');
                 if (totalContainer) totalContainer.style.display = 'none';
+                if (totalContainerV) totalContainerV.style.display = 'none';
             } else {
                 // Mostrar el contenedor del puntaje total desde nivel 2
                 const totalContainer = document.getElementById('puntaje-total');
+                const totalContainerV = document.getElementById('puntaje-total-v');
                 if (totalContainer) totalContainer.style.display = 'block';
+                if (totalContainerV) totalContainerV.style.display = 'block';
                 
                 // Total = puntaje acumulado de niveles anteriores + puntaje del nivel actual
-                this.elements.totalScore.textContent = this.totalScore + currentLevelScore;
+                const totalValue = this.totalScore + currentLevelScore;
+                this.elements.totalScore.textContent = totalValue;
+                
+                // Sincronizar con elemento vertical
+                if (this.elements.totalScoreV) {
+                    this.elements.totalScoreV.textContent = totalValue;
+                }
             }
         }
         if (this.elements.comment) {
             this.elements.comment.textContent = `Nivel ${this.currentLevel} - ${this.getGameStateText()}`;
         }
         if (this.elements.timer) {
-            this.elements.timer.textContent = relojJuego.getTiempoFormateado();
+            const timeText = relojJuego.getTiempoFormateado();
+            this.elements.timer.textContent = timeText;
+            
+            // Sincronizar con elemento vertical
+            if (this.elements.timerV) {
+                this.elements.timerV.textContent = timeText;
+            }
             
             // Cambiar color cuando quedan menos de 10 segundos
             const tiempoRestante = relojJuego.getTiempoRestante();
             if (tiempoRestante <= 10000) {
                 this.elements.timer.classList.add('warning');
+                if (this.elements.timerV) {
+                    this.elements.timerV.classList.add('warning');
+                }
                 
                 // Parpadeo en los últimos 5 segundos
                 if (tiempoRestante <= 5000) {
                     const blinkState = Math.floor(Date.now() / 500) % 2 === 0;
-                    this.elements.timer.style.opacity = blinkState ? '1' : '0.5';
+                    const opacityValue = blinkState ? '1' : '0.5';
+                    this.elements.timer.style.opacity = opacityValue;
+                    if (this.elements.timerV) {
+                        this.elements.timerV.style.opacity = opacityValue;
+                    }
                 }
             } else {
                 this.elements.timer.classList.remove('warning');
                 this.elements.timer.style.opacity = '1';
+                if (this.elements.timerV) {
+                    this.elements.timerV.classList.remove('warning');
+                    this.elements.timerV.style.opacity = '1';
+                }
             }
         }
     }
