@@ -45,6 +45,16 @@ import {
     mostrarAnimacionPuntos,
     modalSystem 
 } from './modales.js';
+import { 
+    initTimeline, 
+    updateBallState, 
+    moveBallForward, 
+    moveBallBackward, 
+    resetBallState, 
+    resizeTimeline,
+    debugTimeline,
+    debugTestAllStates
+} from './timeline.js';
 
 // === CONTROLADOR PRINCIPAL DEL JUEGO ===
 class RejasEspacialesGame {
@@ -138,6 +148,10 @@ class RejasEspacialesGame {
             console.log('Inicializando sistemas para pantalla de instrucciones...');
             initFondo(1); // Inicializar fondo nivel 1
             initGrid(1); // Inicializar grid nivel 1 para que se vea por detrás del modal
+            
+            // Inicializar timeline display
+            console.log('Inicializando timeline display...');
+            initTimeline();
             
             console.log('Iniciando bucle principal...');
             this.startGameLoop();
@@ -1284,6 +1298,43 @@ window.debugForceReInit = async function() {
     }
 };
 
+// === FUNCIONES DE DEBUG TIMELINE ===
+
+// Función para mostrar estado del timeline
+window.debugTimeline = function() {
+    debugTimeline();
+};
+
+// Función para probar todos los estados del timeline
+window.debugTestAllStates = function() {
+    debugTestAllStates();
+};
+
+// Función para actualizar estado de la pelota en timeline
+window.debugUpdateBallState = function(state) {
+    if (!state) {
+        console.log('🕐 Uso: debugUpdateBallState(estado)');
+        console.log('   donde estado es un número entre 1 y 8');
+        return;
+    }
+    updateBallState(state);
+};
+
+// Función para mover pelota hacia adelante
+window.debugMoveBallForward = function() {
+    return moveBallForward();
+};
+
+// Función para mover pelota hacia atrás
+window.debugMoveBallBackward = function() {
+    return moveBallBackward();
+};
+
+// Función para resetear pelota al estado inicial
+window.debugResetBallState = function() {
+    resetBallState();
+};
+
 // Mensaje de ayuda para el debug
 console.log(`🧪 [DEBUG] Funciones de testing disponibles:`);
 console.log(`   debugPuntajes() - Mostrar estado de puntajes`);
@@ -1294,6 +1345,13 @@ console.log(`   debugTestResize() - Probar resize conservando nivel`);
 console.log(`   debugStatus() - Mostrar estado actual del sistema`);
 console.log(`   debugCanvasDimensionsInit() - Probar inicialización de CanvasDimensions`);
 console.log(`   debugForceReInit() - Forzar re-inicialización del sistema`);
+console.log(`🕐 [TIMELINE] Funciones de timeline:`);
+console.log(`   debugTimeline() - Mostrar estado del timeline`);
+console.log(`   debugTestAllStates() - Probar todos los estados (1-8)`);
+console.log(`   debugUpdateBallState(estado) - Actualizar estado de pelota (1-8)`);
+console.log(`   debugMoveBallForward() - Mover pelota hacia adelante`);
+console.log(`   debugMoveBallBackward() - Mover pelota hacia atrás`);
+console.log(`   debugResetBallState() - Resetear pelota al estado inicial (4)`);
 
 // Exportar para uso en otros módulos si es necesario
 export { game };

@@ -189,7 +189,7 @@ html, body {
 }
 
 #cronometro {
-  font-size: 22px;
+  font-size: 18px;
   color: rgba(0, 255, 255, 1);
   font-family: Arial, sans-serif;
   font-weight: bold;
@@ -225,6 +225,39 @@ html, body {
   width: auto;        /* Ancho se calcula por aspect-ratio */
   height: 100%;       /* Usar toda la altura disponible (85vh) */
   aspect-ratio: 3/2;
+}
+
+/* Canvas timeline - Display de 8 estados de pelota */
+#canvas-timeline {
+  position: absolute;
+  background-color: transparent; /* Fondo transparente para superposición */
+  border: 1px solid rgba(0, 255, 255, 0.3); /* Borde cyan tenue para debug */
+  z-index: 15; /* Por encima del canvas principal pero debajo de controles */
+  pointer-events: none; /* No interferir con controles del juego */
+}
+
+/* Modo vertical (portrait) - Timeline horizontal abajo */
+@media screen and (orientation: portrait) {
+  #canvas-timeline {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%; /* 80% del ancho disponible */
+    height: 60px; /* Altura fija para línea horizontal */
+    max-width: 400px; /* Máximo 400px de ancho */
+  }
+}
+
+/* Modo horizontal (landscape) - Timeline vertical a la izquierda */
+@media screen and (orientation: landscape) {
+  #canvas-timeline {
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px; /* Ancho fijo para línea vertical */
+    height: 80%; /* 80% de la altura disponible */
+    max-height: 400px; /* Máximo 400px de altura */
+  }
 }
 
 /* Zona inferior: 5% de altura - Descripción de controles */
@@ -386,7 +419,7 @@ html, body {
   }
   
   #cronometro {
-    font-size: 19px;
+    font-size: 18px;
   }
   
   /* Zona central: Canvas toma el espacio restante */

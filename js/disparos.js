@@ -57,6 +57,9 @@ export function initDisparos(nivel) {
     disparosState.particulasActivas = [];
     disparosState.puntaje = 0;
     
+    // 🕐 TIMELINE: Resetear timeline para nuevo nivel
+    resetearTimelineNivel();
+    
     // Resetear estado de entrada equilibrado
     resetInputState();
     
@@ -401,6 +404,9 @@ function verificarImpactoYPuntos() {
             window.pelotaImpacto();
         }
         
+        // 🕐 TIMELINE: Mover pelota hacia adelante en acierto
+        actualizarTimelineDisparo(true);
+        
         console.log(`✅ ¡Acierto! +10 puntos. Total: ${disparosState.puntaje}`);
         
     } else {
@@ -430,6 +436,9 @@ function verificarImpactoYPuntos() {
         } else {
             console.log('❌ Fallo: Sin penalización (puntos ≤ 20)');
         }
+        
+        // 🕐 TIMELINE: Mover pelota hacia atrás en fallo
+        actualizarTimelineDisparo(false);
     }
 }
 
@@ -998,4 +1007,43 @@ console.log('   debugForzarIniciarCronometro() - Forzar inicio manual del cronó
 console.log('   debugViewport() - Debug de viewport para móviles (solo si hay problemas)');
 console.log('⚖️ Configuración actual: Teclado 300ms / Touch 250ms (50ms ventaja para touch)');
 console.log('📱 Layout móvil horizontal optimizado con dvh/vh dinámico');
-console.log('🎮 UX mejorada: 3 botones (pantalla+audio 45px | disparo 90px), textos solo en desktop'); 
+console.log('🎮 UX mejorada: 3 botones (pantalla+audio 45px | disparo 90px), textos solo en desktop');
+
+// === INTEGRACIÓN CON TIMELINE ===
+
+// Función para actualizar timeline según resultado del disparo
+function actualizarTimelineDisparo(esAcierto) {
+    try {
+        // Importar función de timeline solo cuando se necesite
+        import('./timeline.js').then(timelineModule => {
+            if (esAcierto) {
+                // Acierto: mover pelota hacia adelante
+                const nuevoEstado = timelineModule.moveBallForward();
+                console.log(`🕐 Timeline: Acierto → Estado ${nuevoEstado}`);
+            } else {
+                // Fallo: mover pelota hacia atrás
+                const nuevoEstado = timelineModule.moveBallBackward();
+                console.log(`🕐 Timeline: Fallo → Estado ${nuevoEstado}`);
+            }
+        }).catch(error => {
+            console.warn('🕐 Timeline no disponible:', error);
+        });
+    } catch (error) {
+        console.warn('🕐 Error actualizando timeline:', error);
+    }
+}
+
+// Función para resetear timeline al iniciar nuevo nivel
+function resetearTimelineNivel() {
+    try {
+        // Importar función de timeline solo cuando se necesite
+        import('./timeline.js').then(timelineModule => {
+            timelineModule.resetBallState();
+            console.log('🕐 Timeline reseteado para nuevo nivel');
+        }).catch(error => {
+            console.warn('🕐 Timeline no disponible para resetear:', error);
+        });
+    } catch (error) {
+        console.warn('🕐 Error reseteando timeline:', error);
+    }
+} 

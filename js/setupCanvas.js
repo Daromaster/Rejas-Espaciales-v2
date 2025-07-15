@@ -5,6 +5,7 @@ import { initDisparos } from "./disparos.js";
 import { GameLevel, CanvasDimensions, GAME_CONFIG } from "./config.js";
 import { resizeFondo } from "./fondo.js";
 import { dibujarPelotaBase } from "./pelota.js";
+import { resizeTimeline } from "./timeline.js";
 
 export async function resizeGame() {
     
@@ -62,6 +63,9 @@ export async function resizeGame() {
         // Verificar CanvasDimensions.uml antes de dibujar pelota
         console.log(`🎾 Iniciando dibujarPelotaBase con CanvasDimensions.uml: ${CanvasDimensions.uml}`);
         dibujarPelotaBase(currentLevel);
+        
+        // Redimensionar timeline display
+        resizeTimeline();
         
         // Solo inicializar pelota y disparos si el juego está activo
         if (window.gameInstance && window.gameInstance.gameStarted) {
