@@ -44,11 +44,12 @@ html, body {
   
     /* Ajustar controles para móvil horizontal */
   #controles-izquierda {
-    left: 20px; /* Más cerca en móvil horizontal para acomodar dos botones */
+    left: 70px; /* Dejar espacio para timeline, consistente con regla general */
   }
 
   #controles-derecha {
     right: 40px; /* Más cerca en móvil horizontal pero respetando distancia mínima */
+    bottom: 12px; /* Distancia de seguridad menor para móviles pequeños */
   }
 
   /* Reducir gap entre botones en móvil horizontal */
@@ -92,6 +93,16 @@ html, body {
   .btn-group-left {
     gap: 5px;
   }
+  
+  /* Ajustar posición para mantener consistencia con timeline */
+  #controles-izquierda {
+    left: 70px; /* Consistente con espacio para timeline */
+    bottom: 10px; /* Distancia de seguridad mínima para pantallas muy pequeñas */
+  }
+  
+  #controles-derecha {
+    bottom: 10px; /* Distancia de seguridad mínima para pantallas muy pequeñas */
+  }
 }
 
 /* Fallback para navegadores sin soporte dvh */
@@ -114,72 +125,127 @@ html, body {
   height: 10vh;
   height: 10dvh; /* Usar dynamic viewport height para móviles */
   background-color: #000000;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  padding: 2px 2vw 0 2vw; /* 2px desde el borde superior */
   position: relative;
   z-index: 10;
 }
 
-/* Título y subtítulo SIEMPRE centrados arriba */
-#info-centro {
-  text-align: center;
-  margin-bottom: 4px; /* Separación mínima con la línea de datos */
+/* ===========================================
+   LAYOUT VERTICAL (orientación portrait)
+   =========================================== */
+@media screen and (orientation: portrait) {
+  #zona-superior {
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+      "centro centro"
+      "izquierda derecha";
+    padding: 2px 15px 0 15px; /* Distancia prudencial de bordes */
+    gap: 4px;
+  }
+  
+  /* Título centrado en primera fila */
+  #info-centro {
+    grid-area: centro;
+    text-align: center;
+  }
+  
+  #info-centro h1 {
+    font-size: 2.0rem;
+    color: #00ffff;
+    margin: 0 0 2px 0;
+    line-height: 1;
+  }
+  
+  #comentario-juego {
+    font-size: 1rem;
+    color: #ccc;
+    margin: 0;
+    line-height: 1;
+  }
+  
+  /* Puntajes izquierda en segunda fila */
+  #info-izquierda {
+    grid-area: izquierda;
+    justify-self: start;
+  }
+  
+  /* Tiempo derecha en segunda fila */
+  #info-derecha {
+    grid-area: derecha;
+    justify-self: end;
+  }
 }
 
-#info-centro h1 {
-  font-size: 2.0rem;
-  color: #00ffff;
-  margin: 0 0 2px 0; /* Solo 2px de separación */
-  line-height: 1;
+/* ===========================================
+   LAYOUT HORIZONTAL (orientación landscape)
+   =========================================== */
+@media screen and (orientation: landscape) {
+  #zona-superior {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 2px 15px 0 15px; /* Distancia prudencial de bordes */
+    height: 10vh;
+  }
+  
+  /* En horizontal: una sola línea con tres columnas */
+  #info-izquierda {
+    flex: 0 0 auto; /* No crecer, tamaño natural */
+    margin-right: 20px; /* Separación con el centro */
+  }
+  
+  #info-centro {
+    flex: 1; /* Ocupar espacio central disponible */
+    text-align: center;
+    margin-bottom: 0; /* Sin margen inferior en horizontal */
+  }
+  
+  #info-centro h1 {
+    font-size: 1.4rem; /* Título más pequeño en horizontal */
+    color: #00ffff;
+    margin: 0;
+    line-height: 1;
+  }
+  
+  #comentario-juego {
+    font-size: 0.85rem; /* Subtítulo más pequeño */
+    color: #ccc;
+    margin: 0;
+    line-height: 1;
+  }
+  
+  #info-derecha {
+    flex: 0 0 auto; /* No crecer, tamaño natural */
+    margin-left: 20px; /* Separación con el centro */
+  }
+  
+
 }
 
-#comentario-juego {
-  font-size: 1rem;
-  color: #ccc;
-  margin: 0;
-  line-height: 1;
-}
+/* ===========================================
+   ESTILOS BASE COMUNES
+   =========================================== */
 
-/* Línea de datos: puntajes izquierda, cronómetro derecha */
-.linea-datos {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start; /* Alineación superior para control preciso */
-  flex: 1;
-}
-
+/* Contenedores de información */
 #info-izquierda {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px; /* Par de px entre puntaje y total */
+  gap: 2px; /* Separación entre puntaje y total */
 }
 
 #info-derecha {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
 }
 
+/* Estilos de puntajes */
 #puntaje-nivel, #puntaje-total {
   font-size: 18px;
   color: rgba(0, 255, 255, 1);
   font-family: Arial, sans-serif;
   font-weight: bold;
-  margin: 0; /* Sin márgenes para control preciso */
-  padding: 5px 10px;
-  background-color: rgba(0, 0, 0, 0.5);
-  border-radius: 5px;
-  text-shadow: 1px 1px 2px #000;
-  text-align: center;
-}
-
-#puntaje-total {
-  font-size: 18px;
-  color: rgba(0, 255, 255, 1);
-  font-family: Arial, sans-serif;
-  font-weight: bold;
   margin: 0;
   padding: 5px 10px;
   background-color: rgba(0, 0, 0, 0.5);
@@ -188,6 +254,7 @@ html, body {
   text-align: center;
 }
 
+/* Estilo del cronómetro */
 #cronometro {
   font-size: 18px;
   color: rgba(0, 255, 255, 1);
@@ -201,7 +268,7 @@ html, body {
   text-align: center;
 }
 
-/* Estilo para cronómetro en últimos 10 segundos */
+/* Cronómetro en últimos 10 segundos */
 #cronometro.warning {
   color: rgba(255, 50, 50, 1);
 }
@@ -254,9 +321,14 @@ html, body {
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    width: 60px; /* Ancho fijo para línea vertical */
-    height: 80%; /* 80% de la altura disponible */
-    max-height: 400px; /* Máximo 400px de altura */
+    width: 50px; /* Ancho reducido para no interferir con puntajes */
+    height: 50%; /* Más compacto para no interferir */
+    max-height: 250px; /* Máximo más conservador */
+  }
+  
+  /* Asegurar que puntajes no se superpongan con timeline */
+  #info-izquierda {
+    margin-left: 70px; /* Dejar espacio libre para timeline (50px + 20px margen) */
   }
 }
 
@@ -278,6 +350,17 @@ html, body {
   position: fixed;
   bottom: 12vh;
   z-index: 20;
+}
+
+/* Ajustes específicos para modo horizontal - bajar botones con distancia de seguridad */
+@media screen and (orientation: landscape) {
+  #controles-izquierda, #controles-derecha {
+    bottom: 15px; /* Distancia fija de seguridad del borde inferior */
+  }
+  
+  #controles-izquierda {
+    left: 70px; /* Dejar espacio libre para el timeline (50px + 20px margen) */
+  }
 }
 
 #controles-izquierda {
@@ -406,21 +489,7 @@ html, body {
     width: 100%;
   }
   
-  #info-izquierda {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start; /* Mantiene alineación izquierda */
-    gap: 2px; /* Par de px entre puntaje y total */
-  }
-  
-  #info-derecha {
-    display: flex;
-    align-items: flex-start;
-  }
-  
-  #cronometro {
-    font-size: 18px;
-  }
+
   
   /* Zona central: Canvas toma el espacio restante */
   #zona-juego {
