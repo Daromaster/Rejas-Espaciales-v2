@@ -669,6 +669,8 @@ if (!apiClient.config.isBackendLocal()) {
         let wakeUpAttempts = 0;
         const maxAttempts = 3;
         
+
+        if (1==0){
         // Función para actualizar el indicador visual
         const updateBackendStatus = (text, detail = '', isSuccess = false, isError = false) => {
             // Crear indicador si no existe
@@ -706,6 +708,7 @@ if (!apiClient.config.isBackendLocal()) {
                 statusDiv.style.borderLeft = '3px solid #ffff00';
             }
         };
+        ;}
         
         const attemptWakeUp = async () => {
             wakeUpAttempts++;

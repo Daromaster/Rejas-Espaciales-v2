@@ -18,19 +18,21 @@ html, body {
 
 /* Solución específica para móviles horizontales */
 @media screen and (orientation: landscape) and (max-height: 500px) {
+  /* No reducir altura del body - usar viewport completo */
   html, body {
-    height: 95vh; /* Reducir altura total para evitar desbordamiento */
-    height: 95dvh;
+    height: 100vh;
+    height: 100dvh;
   }
   
+  /* Redistribuir alturas para móviles horizontales: más espacio para juego */
   #zona-superior {
-    height: 12vh;
-    height: 12dvh;
+    height: 8vh;   /* Más compacto en horizontal */
+    height: 8dvh;
   }
   
   #zona-juego {
-    height: 78vh;
-    height: 78dvh;
+    height: 87vh;  /* Más espacio para el canvas */
+    height: 87dvh;
   }
   
   #zona-inferior {
@@ -39,7 +41,8 @@ html, body {
   }
   
   #canvas-principal {
-    max-height: 95%; /* Más conservador en móvil horizontal */
+    /* El canvas debe usar toda la altura disponible y calcular ancho proporcionalmente */
+    /* NO limitar la altura - debe usar el 100% de zona-juego */
   }
   
     /* Ajustar controles para móvil horizontal */
@@ -61,19 +64,24 @@ html, body {
 /* Ajuste específico para iOS Safari en horizontal */
 @media screen and (orientation: landscape) and (max-height: 430px) {
   html, body {
-    height: 90vh; /* Aún más conservador para iPhone en horizontal */
+    height: 100vh; /* Usar viewport completo, no reducir */
+    height: 100dvh;
   }
   
+  /* Redistribución más agresiva para pantallas muy pequeñas */
   #zona-superior {
-    height: 15vh;
+    height: 6vh;   /* Muy compacto en pantallas pequeñas */
+    height: 6dvh;
   }
   
   #zona-juego {
-    height: 70vh;
+    height: 89vh;  /* Máximo espacio posible para el canvas */
+    height: 89dvh;
   }
   
   #zona-inferior {
     height: 5vh;
+    height: 5dvh;
   }
   
   /* Botones más pequeños en pantallas muy pequeñas */
@@ -336,6 +344,8 @@ html, body {
   aspect-ratio: 3/2;
   position: absolute;
   z-index:1 ;
+  /*   border-radius: 50px;
+  border: 5px solid #00ffff;  */
 }
 
 /* Canvas timeline - Display de 8 estados de pelota */
