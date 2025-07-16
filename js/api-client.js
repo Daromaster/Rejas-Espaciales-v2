@@ -713,7 +713,7 @@ if (!apiClient.config.isBackendLocal()) {
         const attemptWakeUp = async () => {
             wakeUpAttempts++;
             console.log(`🔄 Intento ${wakeUpAttempts}/${maxAttempts} de wake-up del backend...`);
-            updateBackendStatus(`🔄 Despertando backend...`, `Intento ${wakeUpAttempts}/${maxAttempts}`);
+           // updateBackendStatus(`🔄 Despertando backend...`, `Intento ${wakeUpAttempts}/${maxAttempts}`);
             
             try {
                 const startTime = performance.now();
@@ -733,9 +733,9 @@ if (!apiClient.config.isBackendLocal()) {
                     console.log(`✅ Backend despierto en ${responseTime}ms`);
                     if (responseTime > 10000) {
                         console.log("⏰ Cold start detectado - Backend estaba dormido");
-                        updateBackendStatus('✅ Backend despierto', `Era un cold start (${responseTime}ms)`, true);
+                       // updateBackendStatus('✅ Backend despierto', `Era un cold start (${responseTime}ms)`, true);
                     } else {
-                        updateBackendStatus('✅ Backend listo', `Respuesta rápida (${responseTime}ms)`, true);
+                       // updateBackendStatus('✅ Backend listo', `Respuesta rápida (${responseTime}ms)`, true);
                     }
                     
                     // Health check completo ahora que sabemos que está despierto
@@ -747,11 +747,11 @@ if (!apiClient.config.isBackendLocal()) {
                             console.log("✅ Backend completamente operacional");
                             console.log(`   📋 Revisión: ${healthInfo.revision}`);
                             console.log(`   🔢 Versión: ${healthInfo.version}`);
-                            updateBackendStatus('✅ Backend operacional', `v${healthInfo.version} - ${healthInfo.revision}`, true);
+                            // updateBackendStatus('✅ Backend operacional', `v${healthInfo.version} - ${healthInfo.revision}`, true);
                         }
                     } catch (healthError) {
                         console.log("⚠️ Health check detallado falló, pero el backend responde");
-                        updateBackendStatus('✅ Backend básico OK', 'Health check limitado', true);
+                      //  updateBackendStatus('✅ Backend básico OK', 'Health check limitado', true);
                     }
                     
                     return true; // Wake-up exitoso
@@ -762,22 +762,22 @@ if (!apiClient.config.isBackendLocal()) {
             } catch (error) {
                 if (error.name === 'TimeoutError') {
                     console.log(`⏱️ Timeout en intento ${wakeUpAttempts} (normal en cold start)`);
-                    updateBackendStatus('⏱️ Timeout de conexión', 'Normal en cold start, reintentando...');
+                  //  updateBackendStatus('⏱️ Timeout de conexión', 'Normal en cold start, reintentando...');
                 } else {
                     console.log(`❌ Error en intento ${wakeUpAttempts}: ${error.message}`);
-                    updateBackendStatus('❌ Error de conexión', error.message);
+                  //  updateBackendStatus('❌ Error de conexión', error.message);
                 }
                 
                 // Si no es el último intento, esperar y reintentar
                 if (wakeUpAttempts < maxAttempts) {
                     console.log(`⏳ Esperando 5 segundos antes del siguiente intento...`);
-                    updateBackendStatus('⏳ Esperando...', `Próximo intento en 5 segundos`);
+                  //  updateBackendStatus('⏳ Esperando...', `Próximo intento en 5 segundos`);
                     await new Promise(resolve => setTimeout(resolve, 5000));
                     return await attemptWakeUp();
                 } else {
                     console.log("❌ Wake-up falló después de todos los intentos");
                     console.log("🔄 Se usará modo local como respaldo");
-                    updateBackendStatus('❌ Backend no disponible', 'Usando modo local como respaldo', false, true);
+                  //  updateBackendStatus('❌ Backend no disponible', 'Usando modo local como respaldo', false, true);
                     return false;
                 }
             }

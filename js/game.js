@@ -48,13 +48,23 @@ import {
 import { 
     initTimeline, 
     updateBallState, 
-    moveBallForward, 
-    moveBallBackward, 
+    incrementBallState, 
+    decrementBallState, 
     resetBallState, 
     resizeTimeline,
     debugTimeline,
     debugTestAllStates
 } from './timeline.js';
+import { 
+    initGradoImpacto,
+    incrementarGradoPorDisparo,
+    decrementarGrado,
+    pelotaCambiaDestino,
+    resetearGradoImpacto,
+    pausarGradoImpacto,
+    reanudarGradoImpacto,
+    destruirGradoImpacto 
+} from './pelota-grado-impacto.js';
 
 // === CONTROLADOR PRINCIPAL DEL JUEGO ===
 class RejasEspacialesGame {
@@ -152,6 +162,10 @@ class RejasEspacialesGame {
             // Inicializar timeline display
             console.log('Inicializando timeline display...');
             initTimeline();
+            
+            // Inicializar sistema de grado de impacto
+            console.log('Inicializando sistema de grado de impacto...');
+            initGradoImpacto();
             
             console.log('Iniciando bucle principal...');
             this.startGameLoop();
@@ -994,6 +1008,10 @@ class RejasEspacialesGame {
         relojJuego.reiniciar();
         relojJuego.configurarTiempo(60000); // 60 segundos
         console.log('⏰ Cronómetro reinicializado');
+        
+        // === 4. RESETEAR GRADO DE IMPACTO ===
+        resetearGradoImpacto();
+        console.log('🎯 Grado de impacto reseteado para nuevo nivel');
         
         // === 4. REINICIALIZAR SISTEMAS DE JUEGO ===
         try {

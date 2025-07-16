@@ -4,6 +4,7 @@ import { GAME_CONFIG } from './config.js';
 import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridObj } from './grid.js';
 import { getPelotaPosition, getPelotaState } from './pelota.js';
 import { relojJuego } from './relojJuego.js';
+import { incrementarGradoPorDisparo } from './pelota-grado-impacto.js';
 
 // === VARIABLES GLOBALES DEL SISTEMA DE DISPAROS ===
 let disparosState = {
@@ -406,6 +407,9 @@ function verificarImpactoYPuntos() {
         
         // 🕐 TIMELINE: Mover pelota hacia adelante en acierto
         actualizarTimelineDisparo(true);
+        
+        // 🎯 GRADO IMPACTO: Incrementar por disparo exitoso
+        incrementarGradoPorDisparo();
         
         console.log(`✅ ¡Acierto! +10 puntos. Total: ${disparosState.puntaje}`);
         

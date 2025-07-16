@@ -352,7 +352,7 @@ html, body {
 #canvas-timeline {
   position: absolute;
   background-color: transparent; /* Fondo transparente para superposición */
-  border: 1px solid rgba(0, 255, 255, 0.3); /* Borde cyan tenue para debug */
+ /* border: 1px solid rgba(0, 255, 255, 0.3);  Borde cyan tenue para debug */
   z-index: 15; /* Por encima del canvas principal pero debajo de controles */
   pointer-events: none; /* No interferir con controles del juego */
   /* NO usar padding - interfiere con getBoundingClientRect() y coordenadas del canvas */

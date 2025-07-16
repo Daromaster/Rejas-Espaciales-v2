@@ -3,6 +3,7 @@
 import { CanvasDimensions, GAME_CONFIG } from './config.js';
 import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridConfig, getTransformMatrix, getTransformMatrices, distanciaMaxima, getGridObj } from './grid.js';
 import { relojJuego } from './relojJuego.js';
+import { pelotaCambiaDestino } from './pelota-grado-impacto.js';
 
 // === VARIABLES GLOBALES DE PELOTA ===
 
@@ -255,6 +256,9 @@ function ensurePelotaCanvas(index) {
 // === LÓGICA DE DESTINOS POR NIVEL ===
 
 function seleccionarProximoDestino(nivel) {
+    // 🎯 GRADO IMPACTO: Decrementar cuando pelota cambia destino
+    pelotaCambiaDestino();
+    
     switch (nivel) {
         case 1: {
             // Motor de destinos nivel 1: Alternado cubierto/descubierto

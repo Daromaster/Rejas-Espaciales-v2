@@ -5,21 +5,24 @@ import { CanvasDimensions } from './config.js';
 
 // === CONFIGURACIÓN DEL TIMELINE ===
 const TIMELINE_CONFIG = {
-    // 8 estados de la pelota en la línea de tiempo
-    TOTAL_STATES: 8,
+    // 9 estados de grado de impacto (0 a 8)
+    TOTAL_STATES: 9,
+    MIN_STATE: 0,
+    MAX_STATE: 8,
     
     // Colores
     LINE_COLOR: '#00ffff',        // Cyan para la línea
     BALL_COLOR: '#ffff00',        // Amarillo para la pelota
     MARKER_COLOR: '#ffffff',      // Blanco para marcadores
+    EXPLOSION_COLOR: '#ff4444',   // Rojo para estado máximo (8)
     
     // Dimensiones
     LINE_THICKNESS: 2,
     BALL_RADIUS: 8,
     MARKER_RADIUS: 4,
     
-    // Posición inicial de la pelota (estado 4 - centro)
-    INITIAL_STATE: 4
+    // Posición inicial de la pelota (estado 0 - inicio)
+    INITIAL_STATE: 0
 };
 
 // === VARIABLES GLOBALES ===
@@ -152,7 +155,7 @@ function drawStateMarkers() {
     
     timelineCtx.fillStyle = TIMELINE_CONFIG.MARKER_COLOR;
     
-    for (let i = 1; i <= TIMELINE_CONFIG.TOTAL_STATES; i++) {
+    for (let i = TIMELINE_CONFIG.MIN_STATE; i <= TIMELINE_CONFIG.MAX_STATE; i++) {
         const pos = getStatePosition(i, width, height);
         
         timelineCtx.beginPath();
@@ -169,15 +172,30 @@ function drawTimelineBall() {
     
     const pos = getStatePosition(currentBallState, width, height);
     
-    timelineCtx.fillStyle = TIMELINE_CONFIG.BALL_COLOR;
+    // Color especial para grado máximo (estado de explosión)
+    const isMaxState = currentBallState === TIMELINE_CONFIG.MAX_STATE;
+    timelineCtx.fillStyle = isMaxState ? TIMELINE_CONFIG.EXPLOSION_COLOR : TIMELINE_CONFIG.BALL_COLOR;
+    
     timelineCtx.beginPath();
     timelineCtx.arc(pos.x, pos.y, TIMELINE_CONFIG.BALL_RADIUS, 0, Math.PI * 2);
     timelineCtx.fill();
     
     // Borde de la pelota
-    timelineCtx.strokeStyle = TIMELINE_CONFIG.LINE_COLOR;
-    timelineCtx.lineWidth = 1;
+    timelineCtx.strokeStyle = isMaxState ? TIMELINE_CONFIG.EXPLOSION_COLOR : TIMELINE_CONFIG.LINE_COLOR;
+    timelineCtx.lineWidth = isMaxState ? 2 : 1;
     timelineCtx.stroke();
+    
+    // Efecto de pulsación en estado máximo
+    if (isMaxState) {
+        const pulseRadius = TIMELINE_CONFIG.BALL_RADIUS + 3 + Math.sin(Date.now() * 0.01) * 2;
+        timelineCtx.strokeStyle = TIMELINE_CONFIG.EXPLOSION_COLOR;
+        timelineCtx.lineWidth = 1;
+        timelineCtx.globalAlpha = 0.5;
+        timelineCtx.beginPath();
+        timelineCtx.arc(pos.x, pos.y, pulseRadius, 0, Math.PI * 2);
+        timelineCtx.stroke();
+        timelineCtx.globalAlpha = 1.0;
+    }
 }
 
 // === DIBUJAR NÚMEROS DE ESTADO ===
@@ -191,7 +209,7 @@ function drawStateNumbers() {
     timelineCtx.textAlign = 'center';
     timelineCtx.textBaseline = 'middle';
     
-    for (let i = 1; i <= TIMELINE_CONFIG.TOTAL_STATES; i++) {
+    for (let i = TIMELINE_CONFIG.MIN_STATE; i <= TIMELINE_CONFIG.MAX_STATE; i++) {
         const pos = getStatePosition(i, width, height);
         
         // Offset para no solapar con los marcadores
@@ -204,21 +222,21 @@ function drawStateNumbers() {
 
 // === CALCULAR POSICIÓN DE UN ESTADO ===
 function getStatePosition(state, width, height) {
-    // Normalizar estado a rango 0-1
-    const normalizedPos = (state - 1) / (TIMELINE_CONFIG.TOTAL_STATES - 1);
+    // Normalizar estado a rango 0-1 (estados van de 0 a 8)
+    const normalizedPos = state / TIMELINE_CONFIG.MAX_STATE;
     
     if (isHorizontal) {
-        // Línea vertical - estados van de arriba a abajo
-        const startY = height * 0.1;
-        const endY = height * 0.9;
+        // Modo horizontal: línea vertical - estados van de abajo hacia arriba (0 abajo, 8 arriba)
+        const startY = height * 0.9;  // Abajo
+        const endY = height * 0.1;    // Arriba
         return {
             x: width / 2,
             y: startY + (endY - startY) * normalizedPos
         };
     } else {
-        // Línea horizontal - estados van de izquierda a derecha
-        const startX = width * 0.1;
-        const endX = width * 0.9;
+        // Modo vertical: línea horizontal - estados van de izquierda a derecha (0 izquierda, 8 derecha)
+        const startX = width * 0.1;   // Izquierda
+        const endX = width * 0.9;     // Derecha
         return {
             x: startX + (endX - startX) * normalizedPos,
             y: height / 2
@@ -228,10 +246,10 @@ function getStatePosition(state, width, height) {
 
 // === FUNCIONES PÚBLICAS ===
 
-// Actualizar estado de la pelota
+// Actualizar estado de la pelota (grado de impacto 0-8)
 export function updateBallState(newState) {
-    if (newState < 1 || newState > TIMELINE_CONFIG.TOTAL_STATES) {
-        console.warn(`🕐 Estado inválido: ${newState}. Debe estar entre 1 y ${TIMELINE_CONFIG.TOTAL_STATES}`);
+    if (newState < TIMELINE_CONFIG.MIN_STATE || newState > TIMELINE_CONFIG.MAX_STATE) {
+        console.warn(`🕐 Estado inválido: ${newState}. Debe estar entre ${TIMELINE_CONFIG.MIN_STATE} y ${TIMELINE_CONFIG.MAX_STATE}`);
         return;
     }
     
@@ -241,19 +259,19 @@ export function updateBallState(newState) {
     // Redibujar timeline
     drawTimeline();
     
-    console.log(`🕐 Estado de pelota actualizado: ${oldState} → ${newState}`);
+    console.log(`🕐 Grado de impacto actualizado: ${oldState} → ${newState}`);
 }
 
-// Mover pelota hacia adelante
-export function moveBallForward() {
-    const newState = Math.min(currentBallState + 1, TIMELINE_CONFIG.TOTAL_STATES);
+// Incrementar grado de impacto
+export function incrementBallState() {
+    const newState = Math.min(currentBallState + 1, TIMELINE_CONFIG.MAX_STATE);
     updateBallState(newState);
     return newState;
 }
 
-// Mover pelota hacia atrás
-export function moveBallBackward() {
-    const newState = Math.max(currentBallState - 1, 1);
+// Decrementar grado de impacto
+export function decrementBallState() {
+    const newState = Math.max(currentBallState - 1, TIMELINE_CONFIG.MIN_STATE);
     updateBallState(newState);
     return newState;
 }
@@ -287,30 +305,32 @@ export function resizeTimeline() {
 
 // === FUNCIONES DE DEBUG ===
 export function debugTimeline() {
-    console.log('🕐 DEBUG Timeline:');
+    console.log('🎯 DEBUG Timeline - GRADO DE IMPACTO:');
     console.log(`   Canvas: ${timelineCanvas?.width}x${timelineCanvas?.height}`);
-    console.log(`   Orientación: ${isHorizontal ? 'Horizontal' : 'Vertical'}`);
-    console.log(`   Estado actual: ${currentBallState}`);
+    console.log(`   Orientación: ${isHorizontal ? 'Horizontal (vertical abajo→arriba)' : 'Vertical (horizontal izquierda→derecha)'}`);
+    console.log(`   Grado actual: ${currentBallState} (rango: ${TIMELINE_CONFIG.MIN_STATE}-${TIMELINE_CONFIG.MAX_STATE})`);
     console.log(`   Estados totales: ${TIMELINE_CONFIG.TOTAL_STATES}`);
+    console.log('   Comandos disponibles en window.debugGradoImpacto');
 }
 
-// Función para probar todos los estados
+// Función para probar todos los estados (0-8)
 export function debugTestAllStates() {
-    console.log('🕐 Probando todos los estados...');
+    console.log('🎯 Probando todos los grados de impacto (0-8)...');
     
-    let state = 1;
+    let grado = TIMELINE_CONFIG.MIN_STATE;
     const interval = setInterval(() => {
-        updateBallState(state);
-        state++;
+        updateBallState(grado);
+        console.log(`Grado: ${grado} ${grado === TIMELINE_CONFIG.MAX_STATE ? '💥 (EXPLOSIÓN)' : ''}`);
+        grado++;
         
-        if (state > TIMELINE_CONFIG.TOTAL_STATES) {
+        if (grado > TIMELINE_CONFIG.MAX_STATE) {
             clearInterval(interval);
-            console.log('✅ Prueba de estados completada');
+            console.log('✅ Prueba de grados completada');
             
             // Volver al estado inicial
             setTimeout(() => {
                 resetBallState();
             }, 1000);
         }
-    }, 500);
+    }, 800);
 } 
