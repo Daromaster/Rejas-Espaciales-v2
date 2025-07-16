@@ -334,6 +334,8 @@ html, body {
   width: auto;        /* Ancho se calcula por aspect-ratio */
   height: 100%;       /* Usar toda la altura disponible (85vh) */
   aspect-ratio: 3/2;
+  position: absolute;
+  z-index:1 ;
 }
 
 /* Canvas timeline - Display de 8 estados de pelota */
@@ -343,12 +345,13 @@ html, body {
   border: 1px solid rgba(0, 255, 255, 0.3); /* Borde cyan tenue para debug */
   z-index: 15; /* Por encima del canvas principal pero debajo de controles */
   pointer-events: none; /* No interferir con controles del juego */
+  /* NO usar padding - interfiere con getBoundingClientRect() y coordenadas del canvas */
 }
 
 /* Modo vertical (portrait) - Timeline horizontal abajo */
 @media screen and (orientation: portrait) {
   #canvas-timeline {
-    bottom: 0;
+    bottom: 70px; /* Separación del borde inferior para que no interfiera con botones */
     left: 50%;
     transform: translateX(-50%);
     width: 80%; /* 80% del ancho disponible */
@@ -360,7 +363,7 @@ html, body {
 /* Modo horizontal (landscape) - Timeline vertical a la izquierda */
 @media screen and (orientation: landscape) {
   #canvas-timeline {
-    left: 5px; /* Más pegado al borde para no interferir con puntajes */
+    left: 15px; /* Separación del borde izquierdo */
     top: 50%;
     transform: translateY(-50%);
     width: 50px; /* Ancho fijo */
