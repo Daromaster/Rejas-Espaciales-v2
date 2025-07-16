@@ -3,6 +3,10 @@
 import { GAME_CONFIG, LEVELS_CONFIG, Utils } from './config.js';
 import { relojJuego } from './relojJuego.js';
 
+import { simplify } from './lib/simplify.js';
+import { isoContours } from './lib/marching-squares.js';
+import { Vector, Polygon, Circle, testPolygonCircle } from './lib/sat.js';
+
 // === VARIABLES PRINCIPALES ===
 let configGrid = null; // Configuración única para todos los niveles
 let gridCanvases = []; // Array de canvas virtuales para composición
@@ -1260,6 +1264,8 @@ export function initGrid(level = 1) {
             ensureGridCanvas(2); // Canvas composición final
             
             console.log("🎯 Nivel 3 con GridObj inicializado correctamente");
+            console.log("🔷 Polígonos calculados automáticamente en cada reja GridObj");
+            
             break;
             
         default:
@@ -1699,7 +1705,16 @@ class GridObj {
             // Coordenadas base (sin transformaciones)
             coordenadasCubiertasBase: [],
             coordenadasDescubiertasBase: [],
-            poligonosColision: []
+            
+            // 🔷 SISTEMA DE POLÍGONOS INTEGRADO
+            poligonosColision: [],        // Polígonos SAT calculados de esta reja
+            contornosOriginales: [],      // Contornos sin simplificar (debug)
+            timestampPoligonos: 0,        // Cuándo se calcularon los polígonos
+            configPoligonos: {
+                alphaThreshold: 10,         // Umbral para píxeles activos
+                toleranciaSimplificacion: 2, // Tolerancia simplify-js
+                debugMode: false            // Modo debug para esta reja
+            }
         };
         
         // 🎨 COLORES SIMPLES Y DIRECTOS (MODIFICABLES)
@@ -1874,6 +1889,9 @@ class GridObj {
         
         this.needsRedrawBase = false;
         console.log(`✨ GridObj ${this.id}: Reja base dibujada con patrón nivel 2`);
+        
+        // 🔷 NUEVO: Calcular polígonos automáticamente después del dibujo
+        this.calcularPoligonos();
     }
     
     // === MÉTODO DE DIBUJO POR DEFECTO (CENTRADO EN CANVAS COMO NIVEL 1 Y 2) ===
@@ -2102,6 +2120,179 @@ class GridObj {
         this.calcularConfiguracion(width, height, level);
         this.needsRedrawBase = true;
         console.log(`🔄 GridObj ${this.id}: Resize aplicado`);
+    }
+    
+    // 🔷 === SISTEMA DE POLÍGONOS INTEGRADO ===
+    
+    /**
+     * Calcula polígonos de colisión a partir del canvas[0] dibujado
+     */
+    calcularPoligonos() {
+        const startTime = performance.now();
+        
+        try {
+            // Obtener canvas base (sin transformaciones)
+            const ctx = this.canvases[0];
+            if (!ctx || !ctx.canvas) {
+                console.warn(`⚠️ GridObj ${this.id}: Canvas[0] no disponible para cálculo de polígonos`);
+                return;
+            }
+            
+            // 1. Detectar píxeles activos
+            const binaryGrid = this.detectarPixelesActivos(ctx);
+            if (binaryGrid.length === 0) {
+                console.warn(`⚠️ GridObj ${this.id}: No se detectaron píxeles activos`);
+                return;
+            }
+            
+            // 2. Trazar contornos
+            const contornos = this.trazarContornos(binaryGrid);
+            this.config.contornosOriginales = contornos;
+            
+            // 3. Simplificar y convertir a polígonos SAT
+            this.config.poligonosColision = [];
+            for (const contorno of contornos) {
+                const simplified = this.simplificarContorno(contorno);
+                const satPolygon = this.crearPoligonoSAT(simplified);
+                if (satPolygon) {
+                    this.config.poligonosColision.push(satPolygon);
+                }
+            }
+            
+            this.config.timestampPoligonos = Date.now();
+            const processingTime = performance.now() - startTime;
+            
+            console.log(`✅ GridObj ${this.id}: ${this.config.poligonosColision.length} polígonos calculados en ${processingTime.toFixed(1)}ms`);
+            
+            if (this.config.configPoligonos.debugMode) {
+                console.log(`🧪 [DEBUG] ${this.id}: Contornos originales: ${contornos.length}, Polígonos finales: ${this.config.poligonosColision.length}`);
+            }
+            
+        } catch (error) {
+            console.error(`❌ GridObj ${this.id}: Error calculando polígonos:`, error);
+        }
+    }
+    
+    /**
+     * Detecta píxeles activos en el canvas
+     */
+    detectarPixelesActivos(ctx) {
+        const canvas = ctx.canvas;
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        let imgData;
+        try {
+            imgData = ctx.getImageData(0, 0, width, height);
+        } catch (error) {
+            console.error(`❌ GridObj ${this.id}: Error obteniendo ImageData:`, error);
+            return [];
+        }
+        
+        const data = imgData.data;
+        const binaryGrid = [];
+        
+        for (let y = 0; y < height; y++) {
+            const row = [];
+            for (let x = 0; x < width; x++) {
+                const i = (y * width + x) * 4;
+                const alpha = data[i + 3];
+                row.push(alpha > this.config.configPoligonos.alphaThreshold ? 1 : 0);
+            }
+            binaryGrid.push(row);
+        }
+        
+        return binaryGrid;
+    }
+    
+    /**
+     * Traza contornos usando marching-squares
+     */
+    trazarContornos(binaryGrid) {
+        try {
+            const contours = isoContours(binaryGrid, 0.5);
+            return contours || [];
+        } catch (error) {
+            console.error(`❌ GridObj ${this.id}: Error trazando contornos:`, error);
+            return [];
+        }
+    }
+    
+    /**
+     * Simplifica contorno usando Douglas-Peucker
+     */
+    simplificarContorno(contorno) {
+        if (!contorno || contorno.length < 3) {
+            return contorno;
+        }
+        
+        try {
+            return simplify(contorno, this.config.configPoligonos.toleranciaSimplificacion);
+        } catch (error) {
+            console.error(`❌ GridObj ${this.id}: Error simplificando contorno:`, error);
+            return contorno;
+        }
+    }
+    
+    /**
+     * Crea polígono SAT a partir de contorno simplificado
+     */
+    crearPoligonoSAT(contorno) {
+        if (!contorno || contorno.length < 3) {
+            return null;
+        }
+        
+        try {
+            const satPoints = contorno.map(p => new Vector(p.x, p.y));
+            return new Polygon(new Vector(0, 0), satPoints);
+        } catch (error) {
+            console.error(`❌ GridObj ${this.id}: Error creando polígono SAT:`, error);
+            return null;
+        }
+    }
+    
+    /**
+     * Detecta colisión de la pelota con los polígonos de esta reja
+     * @param {Object} ballData - {x, y, radius}
+     * @returns {boolean} true si hay colisión
+     */
+    detectarColisionPelota(ballData) {
+        if (!ballData || !this.config.poligonosColision.length) {
+            return false;
+        }
+        
+        try {
+            // Crear círculo SAT para la pelota
+            const ballCircle = new Circle(new Vector(ballData.x, ballData.y), ballData.radius);
+            
+            // Probar colisión contra todos los polígonos de esta reja
+            for (const polygon of this.config.poligonosColision) {
+                if (testPolygonCircle(polygon, ballCircle)) {
+                    if (this.config.configPoligonos.debugMode) {
+                        console.log(`💥 GridObj ${this.id}: Colisión detectada con pelota(${ballData.x}, ${ballData.y}, r=${ballData.radius})`);
+                    }
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (error) {
+            console.error(`❌ GridObj ${this.id}: Error en detección de colisión:`, error);
+            return false;
+        }
+    }
+    
+    /**
+     * Obtiene información de debug de polígonos
+     */
+    getDebugPoligonos() {
+        return {
+            rejaId: this.id,
+            cantidadPoligonos: this.config.poligonosColision.length,
+            cantidadContornos: this.config.contornosOriginales.length,
+            timestamp: this.config.timestampPoligonos,
+            configuracion: this.config.configPoligonos
+        };
     }
     
     // === MÉTODO DE INICIALIZACIÓN ===
@@ -2561,3 +2752,159 @@ console.log("   setTiempoCambioDir(5) - Cambiar dirección cada 5 segundos (en f
 console.log("   setTiempoIntermitente(30) - Rotación intermitente después de 30 segundos");
 console.log("   setTiempoAceleracion(50) - Acelerar después de 50 segundos");
 console.log("   setVelocidadBase(30) - Rotar a 30°/s en la fase intermitente");
+
+// === FUNCIONES DE DEBUG GLOBALES PARA POLÍGONOS GRIDOBJ ===
+
+/**
+ * Debug de polígonos para una reja específica
+ */
+window.debugGridObjPolygons = function(rejaId) {
+    const reja = getGridObj(rejaId);
+    if (!reja) {
+        console.log(`⚠️ [DEBUG] Reja '${rejaId}' no encontrada`);
+        return null;
+    }
+    
+    const debugInfo = reja.getDebugPoligonos();
+    console.log(`🧪 [DEBUG] Polígonos de ${rejaId}:`, debugInfo);
+    return debugInfo;
+};
+
+/**
+ * Test completo del sistema de polígonos integrado
+ */
+window.testGridObjPolygons = function() {
+    console.log("🧪 [TEST] Sistema de polígonos integrado en GridObj...");
+    
+    // Verificar nivel 3
+    const currentLevel = window.gameInstance ? window.gameInstance.currentLevel : 0;
+    if (currentLevel !== 3) {
+        console.log("⚠️ [TEST] El test requiere estar en nivel 3");
+        return { error: "Nivel incorrecto" };
+    }
+    
+    const results = {
+        nivel: currentLevel,
+        reja1: null,
+        reja2: null,
+        testColisiones: []
+    };
+    
+    // Test reja1
+    const reja1 = getGridObj('reja1');
+    if (reja1) {
+        results.reja1 = reja1.getDebugPoligonos();
+        console.log(`✅ Reja1: ${results.reja1.cantidadPoligonos} polígonos`);
+    } else {
+        console.log("❌ Reja1 no encontrada");
+    }
+    
+    // Test reja2
+    const reja2 = getGridObj('reja2');
+    if (reja2) {
+        results.reja2 = reja2.getDebugPoligonos();
+        console.log(`✅ Reja2: ${results.reja2.cantidadPoligonos} polígonos`);
+    } else {
+        console.log("❌ Reja2 no encontrada");
+    }
+    
+    // Test de colisiones
+    const testPoints = [
+        { x: 200, y: 200, radius: 8, expected: "cubierta" },
+        { x: 450, y: 300, radius: 8, expected: "descubierta" },
+        { x: 700, y: 400, radius: 8, expected: "cubierta" }
+    ];
+    
+    for (const point of testPoints) {
+        let collision1 = false, collision2 = false;
+        
+        if (reja1) {
+            collision1 = reja1.detectarColisionPelota(point);
+        }
+        if (reja2) {
+            collision2 = reja2.detectarColisionPelota(point);
+        }
+        
+        const resultado = (collision1 || collision2) ? "cubierta" : "descubierta";
+        
+        results.testColisiones.push({
+            point: point,
+            collision1: collision1,
+            collision2: collision2,
+            resultado: resultado,
+            expected: point.expected,
+            correcto: resultado === point.expected
+        });
+    }
+    
+    console.log("🧪 [TEST] Resultados:", results);
+    return results;
+};
+
+/**
+ * Visualizar polígonos de todas las rejas
+ */
+window.visualizeGridObjPolygons = function() {
+    console.log("🎨 [DEBUG] Visualizando polígonos de GridObj...");
+    
+    const canvas = document.getElementById('canvas-principal');
+    if (!canvas) {
+        console.error("❌ Canvas principal no encontrado");
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    let polygonsDrawn = 0;
+    
+    // Visualizar reja1 (rojo)
+    const reja1 = getGridObj('reja1');
+    if (reja1 && reja1.config.poligonosColision.length > 0) {
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.lineWidth = 2;
+        
+        for (const polygon of reja1.config.poligonosColision) {
+            if (polygon.points && polygon.points.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(polygon.points[0].x, polygon.points[0].y);
+                
+                for (let i = 1; i < polygon.points.length; i++) {
+                    ctx.lineTo(polygon.points[i].x, polygon.points[i].y);
+                }
+                
+                ctx.closePath();
+                ctx.stroke();
+                polygonsDrawn++;
+            }
+        }
+        
+        console.log(`🎨 Reja1: ${reja1.config.poligonosColision.length} polígonos dibujados en rojo`);
+    }
+    
+    // Visualizar reja2 (verde)
+    const reja2 = getGridObj('reja2');
+    if (reja2 && reja2.config.poligonosColision.length > 0) {
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+        ctx.lineWidth = 2;
+        
+        for (const polygon of reja2.config.poligonosColision) {
+            if (polygon.points && polygon.points.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(polygon.points[0].x, polygon.points[0].y);
+                
+                for (let i = 1; i < polygon.points.length; i++) {
+                    ctx.lineTo(polygon.points[i].x, polygon.points[i].y);
+                }
+                
+                ctx.closePath();
+                ctx.stroke();
+                polygonsDrawn++;
+            }
+        }
+        
+        console.log(`🎨 Reja2: ${reja2.config.poligonosColision.length} polígonos dibujados en verde`);
+    }
+    
+    console.log(`🎨 [DEBUG] Total: ${polygonsDrawn} polígonos visualizados`);
+};
+
+console.log("📦 Sistema de Grid cargado - Multi-nivel con GridObj y polígonos integrados");

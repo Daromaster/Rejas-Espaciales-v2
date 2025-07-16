@@ -7,6 +7,7 @@ import { resizeFondo } from "./fondo.js";
 import { dibujarPelotaBase } from "./pelota.js";
 import { resizeTimeline } from "./timeline.js";
 
+
 export async function resizeGame() {
     
     console.log("🔄 1111111111111111111111111111111111111111111111111111111111111111111 Iniciando resizeGame - Aplicando 3 procesos...");
@@ -59,6 +60,8 @@ export async function resizeGame() {
         // Reinicializar todos los canvas virtuales con las nuevas dimensiones
         resizeFondo(currentLevel);
         dibujarRejaBase(currentLevel);
+        
+        // 🔷 En nivel 3 los polígonos se actualizan automáticamente al redibujar cada reja
         
         // Verificar CanvasDimensions.uml antes de dibujar pelota
         console.log(`🎾 Iniciando dibujarPelotaBase con CanvasDimensions.uml: ${CanvasDimensions.uml}`);

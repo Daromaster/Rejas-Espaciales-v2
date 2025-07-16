@@ -5,6 +5,8 @@ import { getCoordenadasCubiertas, getCoordenadasDescubiertas, getGridObj } from 
 import { getPelotaPosition, getPelotaState } from './pelota.js';
 import { relojJuego } from './relojJuego.js';
 import { incrementarGradoPorDisparo } from './pelota-grado-impacto.js';
+import { incrementBallState, decrementBallState } from './timeline.js';
+
 
 // === VARIABLES GLOBALES DEL SISTEMA DE DISPAROS ===
 let disparosState = {
@@ -304,25 +306,37 @@ function detectarEstadoPelota() {
         puntosCubiertos = getCoordenadasCubiertas(nivelActual) || [];
         
     } else if (nivelActual === 3) {
-        // Nivel 3: Rejas instanciadas - obtener coordenadas de ambas rejas
-        const reja1 = getGridObj('reja1');
-        const reja2 = getGridObj('reja2');
+        // Nivel 3: Usar detección por polígonos integrada en GridObj
+        console.log('🔷 [NIVEL 3] Usando detección por polígonos integrada');
         
-        if (reja1 && reja2) {
-            // Combinar coordenadas de ambas rejas
-            const desc1 = reja1.getCoordenadasDescubiertas() || [];
-            const desc2 = reja2.getCoordenadasDescubiertas() || [];
-            const cub1 = reja1.getCoordenadasCubiertas() || [];
-            const cub2 = reja2.getCoordenadasCubiertas() || [];
-            
-            puntosDescubiertos = [...desc1, ...desc2];
-            puntosCubiertos = [...cub1, ...cub2];
-            
-            console.log(`🎯 [DEBUG] Nivel 3 detección: ${desc1.length}+${desc2.length}=${puntosDescubiertos.length} desc, ${cub1.length}+${cub2.length}=${puntosCubiertos.length} cub`);
-        } else {
-            console.warn(`⚠️ GridObj no encontrados para detección: reja1=${!!reja1}, reja2=${!!reja2}`);
-            return 'cubierta'; // Fallback
+        // Obtener radio actual de la pelota
+        const pelotaState = getPelotaState();
+        const radioPelota = pelotaState.radio || 8;
+        
+        // Datos de la pelota para detección
+        const ballData = {
+            x: posicionPelota.x,
+            y: posicionPelota.y,
+            radius: radioPelota
+        };
+        
+        // Verificar colisión contra reja1
+        const reja1 = getGridObj('reja1');
+        if (reja1 && reja1.detectarColisionPelota(ballData)) {
+            console.log("🎯 [POLÍGONOS] Pelota CUBIERTA - colisión con reja1");
+            return 'cubierta';
         }
+        
+        // Verificar colisión contra reja2
+        const reja2 = getGridObj('reja2');
+        if (reja2 && reja2.detectarColisionPelota(ballData)) {
+            console.log("🎯 [POLÍGONOS] Pelota CUBIERTA - colisión con reja2");
+            return 'cubierta';
+        }
+        
+        // Si no hay colisión con ninguna reja, está descubierta
+        console.log("🎯 [POLÍGONOS] Pelota DESCUBIERTA - sin colisiones");
+        return 'descubierta';
         
     } else {
         // Niveles futuros: usar grid tradicional como fallback
@@ -406,7 +420,7 @@ function verificarImpactoYPuntos() {
         }
         
         // 🕐 TIMELINE: Mover pelota hacia adelante en acierto
-        actualizarTimelineDisparo(true);
+        incrementBallState();
         
         // 🎯 GRADO IMPACTO: Incrementar por disparo exitoso
         incrementarGradoPorDisparo();
@@ -442,7 +456,7 @@ function verificarImpactoYPuntos() {
         }
         
         // 🕐 TIMELINE: Mover pelota hacia atrás en fallo
-        actualizarTimelineDisparo(false);
+        decrementBallState();
     }
 }
 
@@ -1014,28 +1028,6 @@ console.log('📱 Layout móvil horizontal optimizado con dvh/vh dinámico');
 console.log('🎮 UX mejorada: 3 botones (pantalla+audio 45px | disparo 90px), textos solo en desktop');
 
 // === INTEGRACIÓN CON TIMELINE ===
-
-// Función para actualizar timeline según resultado del disparo
-function actualizarTimelineDisparo(esAcierto) {
-    try {
-        // Importar función de timeline solo cuando se necesite
-        import('./timeline.js').then(timelineModule => {
-            if (esAcierto) {
-                // Acierto: mover pelota hacia adelante
-                const nuevoEstado = timelineModule.moveBallForward();
-                console.log(`🕐 Timeline: Acierto → Estado ${nuevoEstado}`);
-            } else {
-                // Fallo: mover pelota hacia atrás
-                const nuevoEstado = timelineModule.moveBallBackward();
-                console.log(`🕐 Timeline: Fallo → Estado ${nuevoEstado}`);
-            }
-        }).catch(error => {
-            console.warn('🕐 Timeline no disponible:', error);
-        });
-    } catch (error) {
-        console.warn('🕐 Error actualizando timeline:', error);
-    }
-}
 
 // Función para resetear timeline al iniciar nuevo nivel
 function resetearTimelineNivel() {
