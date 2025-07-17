@@ -1243,7 +1243,7 @@ export function initGrid(level = 1) {
             
             // === CREAR E INICIALIZAR REJA1 (2x3 CELDAS, SOLO FLOTACIÓN) ===
             const reja1 = createGridObj('reja1');
-            reja1.setConfiguracionManual(2, 3); // 2 celdas horizontales, 3 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
+            reja1.setConfiguracionManual(3, 3); // 2 celdas horizontales, 3 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
             // 🎨 ASIGNAR COLORES VERDES A REJA1
             reja1.colorDark = "rgb(0, 31, 20)";      // Verde oscuro
             reja1.colorClaro = "rgb(45, 200, 214)";   // Verde brillante
@@ -1258,7 +1258,7 @@ export function initGrid(level = 1) {
             // 🎨 ASIGNAR COLORES DORADOS A REJA2
             reja2.colorDark = "rgb(29, 23, 13)";     // Dorado oscuro
             reja2.colorClaro = "rgb(0, 255, 30)";   // Dorado brillante
-            reja2.config.tamCuadrado = CanvasDimensions.uml * 220;
+            reja2.config.tamCuadrado = CanvasDimensions.uml * 195;
             reja2.config.grosorLinea = CanvasDimensions.uml * 24;
             reja2.init(width, height, level);
             console.log("✅ Reja2 (3x4) creada e inicializada - CENTRADA automáticamente - 🎨 COLORES DORADOS");
