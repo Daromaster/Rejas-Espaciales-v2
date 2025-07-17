@@ -2,6 +2,7 @@
 
 import { GAME_CONFIG, LEVELS_CONFIG, Utils } from './config.js';
 import { relojJuego } from './relojJuego.js';
+import { getPelotaState, getPelotaPosition } from './pelota.js';
 
 import { simplify } from './lib/simplify.js';
 import { isoContours } from './lib/marching-squares.js';
@@ -1710,6 +1711,7 @@ class GridObj {
             poligonosColision: [],        // Polígonos SAT calculados de esta reja
             contornosOriginales: [],      // Contornos sin simplificar (debug)
             timestampPoligonos: 0,        // Cuándo se calcularon los polígonos
+            thresholdContornos: 0.5,      // Threshold para marching-squares
             configPoligonos: {
                 alphaThreshold: 10,         // Umbral para píxeles activos
                 toleranciaSimplificacion: 2, // Tolerancia simplify-js
@@ -2210,7 +2212,14 @@ class GridObj {
      */
     trazarContornos(binaryGrid) {
         try {
-            const contours = isoContours(binaryGrid, 0.5);
+            // Usar threshold configurable (por defecto 0.5)
+            const threshold = this.config.thresholdContornos || 0.5;
+            const contours = isoContours(binaryGrid, threshold);
+            
+            if (this.config.configPoligonos.debugMode) {
+                console.log(`🎯 GridObj ${this.id}: Usando threshold ${threshold}, detectados ${contours.length} contornos`);
+            }
+            
             return contours || [];
         } catch (error) {
             console.error(`❌ GridObj ${this.id}: Error trazando contornos:`, error);
@@ -2253,6 +2262,7 @@ class GridObj {
     
     /**
      * Detecta colisión de la pelota con los polígonos de esta reja
+     * ⚠️ IMPORTANTE: Usa polígonos transformados igual que el debug visual
      * @param {Object} ballData - {x, y, radius}
      * @returns {boolean} true si hay colisión
      */
@@ -2266,8 +2276,11 @@ class GridObj {
             const ballCircle = new Circle(new Vector(ballData.x, ballData.y), ballData.radius);
             
             // Probar colisión contra todos los polígonos de esta reja
-            for (const polygon of this.config.poligonosColision) {
-                if (testPolygonCircle(polygon, ballCircle)) {
+            for (const polygonBase of this.config.poligonosColision) {
+                // 🔄 APLICAR MISMAS TRANSFORMACIONES QUE EL DEBUG VISUAL
+                const polygonTransformado = this.transformarPoligonoParaSAT(polygonBase);
+                
+                if (testPolygonCircle(polygonTransformado, ballCircle)) {
                     if (this.config.configPoligonos.debugMode) {
                         console.log(`💥 GridObj ${this.id}: Colisión detectada con pelota(${ballData.x}, ${ballData.y}, r=${ballData.radius})`);
                     }
@@ -2283,6 +2296,20 @@ class GridObj {
     }
     
     /**
+     * Transforma un polígono base aplicando las mismas transformaciones que el debug visual
+     * @param {Polygon} polygonBase - Polígono en coordenadas base
+     * @returns {Polygon} Polígono transformado para SAT
+     */
+    transformarPoligonoParaSAT(polygonBase) {
+        const puntosTransformados = polygonBase.points.map(point => {
+            const puntoTransformado = this.aplicarTransformacionesDebug(point);
+            return new Vector(puntoTransformado.x, puntoTransformado.y);
+        });
+        
+        return new Polygon(new Vector(0, 0), puntosTransformados);
+    }
+    
+    /**
      * Obtiene información de debug de polígonos
      */
     getDebugPoligonos() {
@@ -2292,6 +2319,105 @@ class GridObj {
             cantidadContornos: this.config.contornosOriginales.length,
             timestamp: this.config.timestampPoligonos,
             configuracion: this.config.configPoligonos
+        };
+    }
+    
+    // 🎨 === SISTEMA DE DEBUG VISUAL DE POLÍGONOS ===
+    
+    /**
+     * Dibuja los polígonos de esta reja en la capa borrador para debug visual
+     * ⚠️ IMPORTANTE: Dibuja EXACTAMENTE lo mismo que evalúa el SAT
+     * @param {CanvasRenderingContext2D} ctxBorrador - Contexto de la capa borrador
+     * @param {string} color - Color para dibujar los polígonos
+     * @param {number} alpha - Transparencia (0-1)
+     */
+    dibujarPoligonosDebug(ctxBorrador, color = 'white', alpha = 0.6) {
+        if (!this.config.poligonosColision.length) {
+            return 0; // No hay polígonos para dibujar
+        }
+        
+        // Configurar estilo para polígonos LLENOS (más claro para entender)
+        ctxBorrador.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctxBorrador.strokeStyle = color;
+        ctxBorrador.lineWidth = 2; // Borde más fino
+        ctxBorrador.setLineDash([]); // Línea sólida
+        
+        let poligonosDrawn = 0;
+        
+        for (const polygon of this.config.poligonosColision) {
+            if (polygon.points && polygon.points.length > 0) {
+                ctxBorrador.beginPath();
+                
+                // Aplicar EXACTAMENTE las mismas transformaciones que usa SAT
+                const firstPoint = this.aplicarTransformacionesDebug(polygon.points[0]);
+                ctxBorrador.moveTo(firstPoint.x, firstPoint.y);
+                
+                for (let i = 1; i < polygon.points.length; i++) {
+                    const point = this.aplicarTransformacionesDebug(polygon.points[i]);
+                    ctxBorrador.lineTo(point.x, point.y);
+                }
+                
+                ctxBorrador.closePath();
+                
+                // Dibujar LLENO para ver claramente qué es área sólida
+                ctxBorrador.fill();
+                // Y también el borde para definir mejor
+                ctxBorrador.stroke();
+                
+                poligonosDrawn++;
+            }
+        }
+        
+        return poligonosDrawn;
+    }
+    
+    /**
+     * Aplica transformaciones del objeto para debug visual
+     * ⚠️ DEBE SER IDÉNTICO a cómo se renderiza la reja en pantalla
+     * @param {Object} point - Punto original {x, y}
+     * @returns {Object} Punto transformado {x, y}
+     */
+    aplicarTransformacionesDebug(point) {
+        // 🔄 APLICAR TRANSFORMACIONES REALES DEL GRIDOBJ
+        
+        // Si hay matriz de transformación disponible, usarla
+        if (this.transformMatrix) {
+            const transformed = this.applyTransformMatrix(point.x, point.y);
+            return {
+                x: transformed.x,
+                y: transformed.y
+            };
+        }
+        
+        // Si no hay matriz, aplicar transformaciones básicas
+        // (posición + rotación manual)
+        let x = point.x;
+        let y = point.y;
+        
+        // Aplicar rotación desde el centro del objeto si hay rotación
+        if (this.rot && this.rot !== 0) {
+            const centerX = GAME_CONFIG.LOGICAL_WIDTH / 2;  // Centro de la reja
+            const centerY = GAME_CONFIG.LOGICAL_HEIGHT / 2;
+            
+            // Trasladar al origen
+            const localX = x - centerX;
+            const localY = y - centerY;
+            
+            // Rotar
+            const cos = Math.cos(this.rot);
+            const sin = Math.sin(this.rot);
+            const rotatedX = localX * cos - localY * sin;
+            const rotatedY = localX * sin + localY * cos;
+            
+            // Volver a trasladar
+            x = rotatedX + centerX;
+            y = rotatedY + centerY;
+        }
+        
+        // Aplicar traslación
+        return {
+            x: x + this.posX,
+            y: y + this.posY
         };
     }
     
@@ -2907,4 +3033,350 @@ window.visualizeGridObjPolygons = function() {
     console.log(`🎨 [DEBUG] Total: ${polygonsDrawn} polígonos visualizados`);
 };
 
+// === FUNCIONES GLOBALES DE DEBUG VISUAL ===
+
+/**
+ * Detecta si estamos en live server (desarrollo)
+ */
+function isLiveServer() {
+    return window.location.hostname === '127.0.0.1' || 
+           window.location.hostname === 'localhost' ||
+           window.location.hostname.includes('local');
+}
+
+/**
+ * Activa la visualización de polígonos por un tiempo determinado
+ * Se llama desde el sistema de disparos en cada disparo
+ */
+window.activarVisualizacionPoligonos = function(duracionExtendida = false) {
+    // Solo activar si el debug está habilitado y estamos en desarrollo
+    if (!window.debugDeteccionDibujoPoligonos || !isLiveServer()) {
+        return;
+    }
+    
+    // Duración: normal para disparos (30 frames), extendida para diagnóstico (300 frames = 5 segundos)
+    const frames = duracionExtendida ? 300 : window.debugVisualizacionState.maxFrames;
+    
+    // Activar visualización
+    window.debugVisualizacionState.activo = true;
+    window.debugVisualizacionState.framesRestantes = frames;
+    window.debugVisualizacionState.ultimoDisparo = performance.now();
+    
+    const duracion = duracionExtendida ? "5 segundos" : `${window.debugVisualizacionState.maxFrames} frames`;
+    console.log(`🎨 [DEBUG] Visualización de polígonos activada por ${duracion}`);
+};
+
+/**
+ * Dibuja todos los polígonos de detección en la capa borrador
+ * Se debe llamar desde el game loop principal si la visualización está activa
+ */
+window.dibujarDebugPoligonos = function() {
+    // Verificar si la visualización está activa
+    if (!window.debugVisualizacionState.activo || 
+        !window.debugDeteccionDibujoPoligonos || 
+        !isLiveServer()) {
+        return;
+    }
+    
+    // Decrementar frames restantes
+    window.debugVisualizacionState.framesRestantes--;
+    
+    // Desactivar si se acabó el tiempo
+    if (window.debugVisualizacionState.framesRestantes <= 0) {
+        window.debugVisualizacionState.activo = false;
+        
+        // ✨ LIMPIAR VISUALIZACIÓN: Los polígonos se borrarán en el siguiente frame normal
+        // No necesitamos limpiar manualmente, el render normal limpia todo
+        
+        console.log("🎨 [DEBUG] Visualización de polígonos desactivada");
+        return;
+    }
+    
+    // Obtener canvas de borrador
+    const canvas = document.getElementById('canvas-principal');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Limpiar solo si es el primer frame de visualización
+    if (window.debugVisualizacionState.framesRestantes === window.debugVisualizacionState.maxFrames - 1) {
+        // No limpiar todo el canvas, solo preparar para dibujo
+        ctx.save();
+    }
+    
+    let totalPoligonos = 0;
+    
+    // Dibujar polígonos de reja1 (blanco con transparencia)
+    const reja1 = getGridObj('reja1');
+    if (reja1) {
+        const count1 = reja1.dibujarPoligonosDebug(ctx, 'white', 0.4);
+        totalPoligonos += count1;
+    }
+    
+    // Dibujar polígonos de reja2 (blanco con transparencia)
+    const reja2 = getGridObj('reja2');
+    if (reja2) {
+        const count2 = reja2.dibujarPoligonosDebug(ctx, 'white', 0.4);
+        totalPoligonos += count2;
+    }
+    
+    // Dibujar círculo de la pelota (verde para distinguir)
+    const ballState = getPelotaState ? getPelotaState() : null;
+    const ballPosition = getPelotaPosition ? getPelotaPosition() : null;
+    
+    if (ballState && ballPosition) {
+        // Área de la pelota (círculo lleno verde translúcido)
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+        ctx.beginPath();
+        ctx.arc(ballPosition.x, ballPosition.y, ballState.radio || 8, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Borde de la pelota (verde sólido)
+        ctx.strokeStyle = 'lime';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.stroke();
+        
+        // Punto central de la pelota (rojo para visibilidad)
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(ballPosition.x, ballPosition.y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    // Mostrar info detallada en la primera ejecución
+    if (window.debugVisualizacionState.framesRestantes === window.debugVisualizacionState.maxFrames - 1) {
+        console.log(`🎨 [DEBUG] Dibujando ${totalPoligonos} polígonos de detección + pelota`);
+        
+        // Info detallada de transformaciones
+        if (reja1) {
+            console.log(`🔄 [DEBUG] Reja1 - posX:${reja1.posX.toFixed(1)} posY:${reja1.posY.toFixed(1)} rot:${(reja1.rot*180/Math.PI).toFixed(1)}° matriz:${!!reja1.transformMatrix}`);
+        }
+        if (reja2) {
+            console.log(`🔄 [DEBUG] Reja2 - posX:${reja2.posX.toFixed(1)} posY:${reja2.posY.toFixed(1)} rot:${(reja2.rot*180/Math.PI).toFixed(1)}° matriz:${!!reja2.transformMatrix}`);
+        }
+        if (ballPosition) {
+            console.log(`🎯 [DEBUG] Pelota - x:${ballPosition.x.toFixed(1)} y:${ballPosition.y.toFixed(1)} radio:${ballState.radio || 8}`);
+        }
+        
+        console.log(`⚠️ [DEBUG] VERIFICAR: Los polígonos blancos deben verse EXACTAMENTE donde está la reja visible`);
+        console.log(`⚠️ [DEBUG] VERIFICAR: El círculo verde debe estar EXACTAMENTE donde está la pelota`);
+    }
+    
+    ctx.restore();
+};
+
+/**
+ * Función manual para activar visualización desde consola
+ */
+window.debugShowPolygons = function() {
+    console.log("🎨 [DEBUG] Activando visualización manual de polígonos...");
+    window.pausarParaDiagnostico();
+    window.activarVisualizacionPoligonos(true);
+    console.log("💡 Para reanudar: reanudarDespuesDiagnostico()");
+};
+
+/**
+ * Verifica coherencia entre evaluación SAT y visualización debug
+ */
+/**
+ * Diagnóstico simple: ¿Qué está detectando realmente?
+ */
+/**
+ * Pausar/reanudar juego para diagnóstico
+ */
+window.pausarParaDiagnostico = function() {
+    if (window.gameInstance && window.gameInstance.pauseGame) {
+        window.gameInstance.pauseGame();
+        console.log("⏸️ Juego pausado para diagnóstico");
+    } else {
+        console.log("⚠️ No se pudo pausar automáticamente");
+        console.log("💡 Pausa manualmente con ESPACIO o el botón de pausa");
+    }
+};
+
+window.reanudarDespuesDiagnostico = function() {
+    if (window.gameInstance && window.gameInstance.resumeGame) {
+        window.gameInstance.resumeGame();
+        console.log("▶️ Juego reanudado");
+    }
+};
+
+window.diagnosticarDeteccionPoligonos = function() {
+    console.log("🔍 [DIAGNÓSTICO] ¿Qué está detectando el sistema?");
+    
+    // Pausar automáticamente
+    window.pausarParaDiagnostico();
+    
+    const reja1 = getGridObj('reja1');
+    if (!reja1) {
+        console.log("❌ Reja1 no encontrada");
+        return;
+    }
+    
+    // Mostrar info básica
+    console.log(`📊 Polígonos detectados: ${reja1.config.poligonosColision.length}`);
+    
+    // Calcular área de cada polígono
+    reja1.config.poligonosColision.forEach((polygon, index) => {
+        const area = calcularAreaPoligono(polygon.points);
+        const vertices = polygon.points.length;
+        console.log(`   Polígono ${index}: ${vertices} vértices, área ≈ ${area.toFixed(0)}px²`);
+    });
+    
+    console.log("💡 [INTERPRETACIÓN]:");
+    console.log("   - Áreas pequeñas (~100-500px²) = Probablemente barrotes ✅");
+    console.log("   - Áreas grandes (~1000+px²) = Probablemente celdas vacías ❌");
+    
+    // Activar visualización extendida (5 segundos) para diagnóstico
+    window.activarVisualizacionPoligonos(true);
+    
+    console.log("👀 Mira los polígonos blancos: ¿cuáles están en barrotes y cuáles en espacios vacíos?");
+    console.log("💡 Para reanudar: reanudarDespuesDiagnostico()");
+};
+
+/**
+ * Calcula área aproximada de un polígono
+ */
+function calcularAreaPoligono(points) {
+    if (!points || points.length < 3) return 0;
+    
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+        const j = (i + 1) % points.length;
+        area += points[i].x * points[j].y;
+        area -= points[j].x * points[i].y;
+    }
+    return Math.abs(area) / 2;
+}
+
+/**
+ * Prueba diferentes thresholds para ver cuál funciona mejor
+ */
+window.probarThresholds = function() {
+    console.log("🧪 [PRUEBA] Probando diferentes thresholds...");
+    
+    // Pausar automáticamente
+    window.pausarParaDiagnostico();
+    
+    const reja1 = getGridObj('reja1');
+    if (!reja1 || !reja1.canvases[0]) {
+        console.log("❌ Reja1 no disponible");
+        return;
+    }
+    
+    // Detectar píxeles una sola vez
+    const binaryGrid = reja1.detectarPixelesActivos(reja1.canvases[0]);
+    
+    const thresholds = [0.2, 0.5, 0.8];
+    
+    thresholds.forEach(threshold => {
+        const contours = isoContours(binaryGrid, threshold);
+        console.log(`📐 Threshold ${threshold}: ${contours.length} contornos detectados`);
+        
+        contours.forEach((contour, index) => {
+            const area = calcularAreaPoligono(contour);
+            console.log(`     Contorno ${index}: ${contour.length} puntos, área ≈ ${area.toFixed(0)}px²`);
+        });
+    });
+    
+    console.log("💡 ¿Cuál threshold detecta menos contornos grandes (celdas vacías)?");
+    console.log("   Usa: cambiarThreshold(0.2) o cambiarThreshold(0.8) para probar");
+};
+
+/**
+ * Cambia el threshold y recalcula polígonos
+ */
+window.cambiarThreshold = function(nuevoThreshold) {
+    console.log(`🔧 Cambiando threshold a ${nuevoThreshold}...`);
+    
+    // Pausar automáticamente
+    window.pausarParaDiagnostico();
+    
+    const reja1 = getGridObj('reja1');
+    const reja2 = getGridObj('reja2');
+    
+    if (reja1) {
+        reja1.config.thresholdContornos = nuevoThreshold;
+        reja1.config.configPoligonos.debugMode = true; // Activar debug temporal
+        reja1.calcularPoligonos();
+        console.log(`✅ Reja1: ${reja1.config.poligonosColision.length} polígonos con threshold ${nuevoThreshold}`);
+    }
+    
+    if (reja2) {
+        reja2.config.thresholdContornos = nuevoThreshold;
+        reja2.config.configPoligonos.debugMode = true; // Activar debug temporal
+        reja2.calcularPoligonos();
+        console.log(`✅ Reja2: ${reja2.config.poligonosColision.length} polígonos con threshold ${nuevoThreshold}`);
+    }
+    
+    // Mostrar resultado visualmente con duración extendida
+    window.activarVisualizacionPoligonos(true);
+    
+    console.log("👀 Compara visualmente: ¿Los polígonos blancos están solo en los barrotes ahora?");
+    console.log("💡 Para reanudar: reanudarDespuesDiagnostico()");
+};
+
+window.verificarCoherenciaSAT = function() {
+    console.log("🔍 [DEBUG] Verificando coherencia SAT vs Visualización...");
+    
+    const nivel = window.gameInstance ? window.gameInstance.currentLevel : 0;
+    if (nivel !== 3) {
+        console.log("⚠️ Solo disponible en nivel 3");
+        return;
+    }
+    
+    const ballPosition = getPelotaPosition ? getPelotaPosition() : null;
+    const ballState = getPelotaState ? getPelotaState() : null;
+    
+    if (!ballPosition || !ballState) {
+        console.log("⚠️ No se puede obtener posición/estado de pelota");
+        return;
+    }
+    
+    const ballData = {
+        x: ballPosition.x,
+        y: ballPosition.y,
+        radius: ballState.radio || 8
+    };
+    
+    const reja1 = getGridObj('reja1');
+    const reja2 = getGridObj('reja2');
+    
+    console.log(`🎯 Pelota: (${ballData.x.toFixed(1)}, ${ballData.y.toFixed(1)}) radio=${ballData.radius}`);
+    
+    if (reja1) {
+        const collision1 = reja1.detectarColisionPelota(ballData);
+        console.log(`🔴 Reja1: ${collision1 ? 'COLISIÓN' : 'sin colisión'} - ${reja1.config.poligonosColision.length} polígonos`);
+        console.log(`   Transformaciones: posX=${reja1.posX.toFixed(1)} posY=${reja1.posY.toFixed(1)} rot=${(reja1.rot*180/Math.PI).toFixed(1)}°`);
+    }
+    
+    if (reja2) {
+        const collision2 = reja2.detectarColisionPelota(ballData);
+        console.log(`🔵 Reja2: ${collision2 ? 'COLISIÓN' : 'sin colisión'} - ${reja2.config.poligonosColision.length} polígonos`);
+        console.log(`   Transformaciones: posX=${reja2.posX.toFixed(1)} posY=${reja2.posY.toFixed(1)} rot=${(reja2.rot*180/Math.PI).toFixed(1)}°`);
+    }
+    
+    // Mostrar visualización para comparar
+    window.pausarParaDiagnostico();
+    window.activarVisualizacionPoligonos(true);
+    
+    console.log("💡 Compara visualmente: ¿Los polígonos blancos coinciden con donde detecta colisión?");
+    console.log("💡 Para reanudar: reanudarDespuesDiagnostico()");
+};
+
 console.log("📦 Sistema de Grid cargado - Multi-nivel con GridObj y polígonos integrados");
+console.log("🎨 [DEBUG] Funciones disponibles (pausan automáticamente):");
+console.log("   🔍 DIAGNÓSTICO:");
+console.log("     diagnosticarDeteccionPoligonos() - Ver qué está detectando");
+console.log("     probarThresholds() - Probar diferentes configuraciones");
+console.log("   🔧 AJUSTES:");
+console.log("     cambiarThreshold(0.2) - Cambiar a threshold 0.2");
+console.log("     cambiarThreshold(0.8) - Cambiar a threshold 0.8");
+console.log("   👀 VISUALIZACIÓN:");
+console.log("     debugShowPolygons() - Mostrar polígonos manualmente");
+console.log("     verificarCoherenciaSAT() - Verificar coherencia SAT");
+console.log("   ⏸️ CONTROL:");
+console.log("     pausarParaDiagnostico() - Pausar juego");
+console.log("     reanudarDespuesDiagnostico() - Reanudar juego");
+console.log("     estadoDebugPoligonos() - Estado del sistema");

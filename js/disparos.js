@@ -401,6 +401,12 @@ function verificarImpactoYPuntos() {
     const estadoPelota = detectarEstadoPelota();
     const posicionPelota = getPelotaPosition();
     
+    // 🎨 DEBUG VISUAL: Activar visualización de polígonos en cada disparo (nivel 3 + live server)
+    const nivelActual = window.gameInstance ? window.gameInstance.currentLevel : 1;
+    if (nivelActual === 3 && typeof window.activarVisualizacionPoligonos === 'function') {
+        window.activarVisualizacionPoligonos();
+    }
+    
     if (estadoPelota === 'descubierta') {
         // ✅ ACIERTO: Pelota descubierta
         reproducirSonido('acierto');

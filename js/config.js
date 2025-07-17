@@ -315,3 +315,70 @@ export const RENDER_LAYERS = {
     EFECTOS: 4,
     BORRADOR: 5  // Debug/desarrollo
 }; 
+
+// === VARIABLE GLOBAL DE DEBUG PARA DETECCIÓN POR POLÍGONOS ===
+/**
+ * Variable global para debug visual de polígonos de detección
+ * 0 = Desactivado (producción)
+ * 1 = Activado (desarrollo/testing)
+ * Solo funciona en live server para evitar mostrar en producción
+ */
+window.debugDeteccionDibujoPoligonos = 1; // Cambiar a 0 para desactivar
+
+// === ESTADO DEL DEBUG VISUAL ===
+window.debugVisualizacionState = {
+    activo: false,
+    framesRestantes: 0,
+    maxFrames: 30, // Duración en frames (0.5 segundos a 60fps)
+    ultimoDisparo: 0
+};
+
+console.log(`🧪 [DEBUG] Sistema de visualización de polígonos: ${window.debugDeteccionDibujoPoligonos ? 'ACTIVADO' : 'DESACTIVADO'}`);
+
+// === FUNCIONES GLOBALES DE CONTROL DEL DEBUG ===
+
+/**
+ * Activa el debug visual de polígonos
+ */
+window.activarDebugPoligonos = function() {
+    window.debugDeteccionDibujoPoligonos = 1;
+    console.log("🎨 [DEBUG] Debug visual de polígonos ACTIVADO");
+    console.log("💡 Ahora los disparos en nivel 3 mostrarán polígonos por 30 frames");
+    console.log("💡 También puedes usar debugShowPolygons() para activar manualmente");
+};
+
+/**
+ * Desactiva el debug visual de polígonos
+ */
+window.desactivarDebugPoligonos = function() {
+    window.debugDeteccionDibujoPoligonos = 0;
+    window.debugVisualizacionState.activo = false;
+    console.log("🎨 [DEBUG] Debug visual de polígonos DESACTIVADO");
+};
+
+/**
+ * Muestra el estado actual del debug
+ */
+window.estadoDebugPoligonos = function() {
+    const isLiveServer = window.location.hostname === '127.0.0.1' || 
+                        window.location.hostname === 'localhost' ||
+                        window.location.hostname.includes('local');
+    
+    console.log("🧪 [DEBUG] Estado del sistema de visualización:");
+    console.log(`   Variable global: ${window.debugDeteccionDibujoPoligonos ? 'ACTIVADO' : 'DESACTIVADO'}`);
+    console.log(`   Live server: ${isLiveServer ? 'SÍ' : 'NO'}`);
+    console.log(`   Visualización activa: ${window.debugVisualizacionState.activo ? 'SÍ' : 'NO'}`);
+    console.log(`   Frames restantes: ${window.debugVisualizacionState.framesRestantes}`);
+    console.log("💡 Funciones disponibles:");
+    console.log("   activarDebugPoligonos() - Activar debug");
+    console.log("   desactivarDebugPoligonos() - Desactivar debug");
+    console.log("   debugShowPolygons() - Mostrar polígonos manualmente");
+    console.log("   estadoDebugPoligonos() - Ver este estado");
+    
+    return {
+        debugActivo: !!window.debugDeteccionDibujoPoligonos,
+        liveServer: isLiveServer,
+        visualizacionActiva: window.debugVisualizacionState.activo,
+        framesRestantes: window.debugVisualizacionState.framesRestantes
+    };
+}; 

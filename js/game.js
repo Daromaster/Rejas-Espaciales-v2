@@ -761,6 +761,11 @@ class RejasEspacialesGame {
         
         // 5. BORRADOR / DEBUG (siempre al final)
         this.debugRenderCoords();
+        
+        // 6. DEBUG VISUAL: Polígonos de detección (solo nivel 3 + live server)
+        if (typeof window.dibujarDebugPoligonos === 'function') {
+            window.dibujarDebugPoligonos();
+        }
     }
     
     // Debug: renderizar destino actual (solo en desarrollo)
