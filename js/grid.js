@@ -1,6 +1,6 @@
 // Grid.js - Sistema de rejas espaciales V2 - P2b
 
-import { GAME_CONFIG, LEVELS_CONFIG, Utils } from './config.js';
+import { GAME_CONFIG, LEVELS_CONFIG, Utils, CanvasDimensions } from './config.js';
 import { relojJuego } from './relojJuego.js';
 import { getPelotaState, getPelotaPosition } from './pelota.js';
 
@@ -1247,15 +1247,19 @@ export function initGrid(level = 1) {
             // 🎨 ASIGNAR COLORES VERDES A REJA1
             reja1.colorDark = "rgb(0, 31, 20)";      // Verde oscuro
             reja1.colorClaro = "rgb(45, 200, 214)";   // Verde brillante
+            reja1.config.tamCuadrado = CanvasDimensions.uml * 130;
+            reja1.config.grosorLinea = CanvasDimensions.uml * 24;
             reja1.init(width, height, level);
             console.log("✅ Reja1 (2x3) creada e inicializada - CENTRADA automáticamente - 🎨 COLORES VERDES");
             
             // === CREAR E INICIALIZAR REJA2 (3x4 CELDAS, FLOTACIÓN + ROTACIÓN) ===
             const reja2 = createGridObj('reja2');
-            reja2.setConfiguracionManual(3, 4); // 3 celdas horizontales, 4 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
+            reja2.setConfiguracionManual(2, 2); // 3 celdas horizontales, 4 verticales - SE DIBUJA CENTRADA AUTOMÁTICAMENTE
             // 🎨 ASIGNAR COLORES DORADOS A REJA2
             reja2.colorDark = "rgb(29, 23, 13)";     // Dorado oscuro
             reja2.colorClaro = "rgb(0, 255, 30)";   // Dorado brillante
+            reja2.config.tamCuadrado = CanvasDimensions.uml * 220;
+            reja2.config.grosorLinea = CanvasDimensions.uml * 24;
             reja2.init(width, height, level);
             console.log("✅ Reja2 (3x4) creada e inicializada - CENTRADA automáticamente - 🎨 COLORES DORADOS");
             console.log(`   Canvas lógico: ${width}x${height}`);
